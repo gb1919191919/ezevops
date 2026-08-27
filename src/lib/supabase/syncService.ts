@@ -124,11 +124,16 @@ class SupabaseSyncService {
       // Keep baseline
     }
 
-    // 10. Objectives & Tasks
+    // 10. Objectives, Milestones & Tasks
     try {
       const { data: objectives, error: objErr } = await supabase.from('objectives').select('*');
       if (!objErr && objectives && objectives.length > 0) {
         useAppStore.setState({ objectives: objectives as Objective[] });
+      }
+
+      const { data: milestones, error: msErr } = await supabase.from('milestones').select('*').order('order_index', { ascending: true });
+      if (!msErr && milestones && milestones.length > 0) {
+        useAppStore.setState({ milestones: milestones as any[] });
       }
 
       const { data: tasks, error: tskErr } = await supabase.from('tasks').select('*, remarks:task_remarks(*)');
@@ -144,6 +149,31 @@ class SupabaseSyncService {
       const { data: profiles, error } = await supabase.from('profiles').select('*');
       if (!error && profiles && profiles.length > 0) {
         useAppStore.setState({ staffProfiles: profiles as Profile[] });
+      }
+    } catch (e) {
+      // Keep baseline
+    }
+
+    // 12. Daily Shift Logs
+    try {
+      const { data: shiftLogs, error } = await supabase.from('daily_shift_logs').select('*').order('created_at', { ascending: false });
+      if (!error && shiftLogs && shiftLogs.length > 0) {
+        useAppStore.setState({ dailyShiftLogs: shiftLogs as any[] });
+      }
+    } catch (e) {
+      // Keep baseline
+    }
+
+    // 13. Chat Channels & Messages
+    try {
+      const { data: channels, error: chanErr } = await supabase.from('chat_channels').select('*');
+      if (!chanErr && channels && channels.length > 0) {
+        useAppStore.setState({ chatChannels: channels as any[] });
+      }
+
+      const { data: messages, error: msgErr } = await supabase.from('channel_messages').select('*').order('created_at', { ascending: true });
+      if (!msgErr && messages && messages.length > 0) {
+        useAppStore.setState({ channelMessages: messages as any[] });
       }
     } catch (e) {
       // Keep baseline
@@ -191,6 +221,26 @@ class SupabaseSyncService {
             if (payload.eventType === 'INSERT' && payload.new) {
               const { teamNotes } = useAppStore.getState();
               useAppStore.setState({ teamNotes: [payload.new as TeamNote, ...teamNotes] });
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'channel_messages' },
+          (payload) => {
+            if (payload.eventType === 'INSERT' && payload.new) {
+              const { channelMessages } = useAppStore.getState();
+              useAppStore.setState({ channelMessages: [...channelMessages, payload.new as any] });
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'daily_shift_logs' },
+          (payload) => {
+            if (payload.eventType === 'INSERT' && payload.new) {
+              const { dailyShiftLogs } = useAppStore.getState();
+              useAppStore.setState({ dailyShiftLogs: [payload.new as any, ...dailyShiftLogs] });
             }
           }
         )

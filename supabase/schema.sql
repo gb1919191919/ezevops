@@ -255,6 +255,7 @@ CREATE TABLE IF NOT EXISTS public.refunds (
     payout_type refund_payout_type NOT NULL DEFAULT 'EzEv Wallet',
     reason TEXT NOT NULL,
     internal_remarks TEXT,
+    evidence_attachments TEXT[] DEFAULT '{}',
     status refund_status NOT NULL DEFAULT 'SUBMITTED',
     requested_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
     requester_name TEXT NOT NULL,
@@ -359,6 +360,7 @@ CREATE TABLE IF NOT EXISTS public.daily_shift_logs (
     roadblocks TEXT,
     milestones_completed TEXT,
     handover_notes TEXT,
+    media_attachments TEXT[] DEFAULT '{}',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -371,6 +373,7 @@ CREATE TABLE IF NOT EXISTS public.chat_channels (
     is_system BOOLEAN NOT NULL DEFAULT FALSE,
     is_private BOOLEAN NOT NULL DEFAULT FALSE,
     allowed_roles TEXT[] NOT NULL DEFAULT '{owner,manager,rsa,mechanic}',
+    allowed_members TEXT[] NOT NULL DEFAULT '{}',
     created_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

@@ -230,6 +230,7 @@ export async function POST() {
         odometer_km: j.odometer_km || null,
         issue_description: j.issue_description,
         solution_applied: j.solution_applied || null,
+        photos_url: j.photos_url || [],
         status: j.status,
         approved_by: j.approved_by || null,
         approval_notes: j.approval_notes || null,
@@ -266,6 +267,7 @@ export async function POST() {
         payout_type: r.payout_type,
         reason: r.reason,
         internal_remarks: r.internal_remarks || null,
+        evidence_attachments: (r as any).evidence_attachments || [],
         status: r.status,
         requested_by: r.requested_by || null,
         requester_name: r.requester_name,
@@ -294,6 +296,7 @@ export async function POST() {
         vehicles_serviced: s.vehicles_serviced || 0,
         customer_issues_resolved: s.customer_issues_resolved || 0,
         roadblocks: s.blockers || null,
+        media_attachments: (s as any).media_attachments || [],
       }));
       const { error } = await supabaseAdmin.from('daily_shift_logs').upsert(shiftLogsToInsert, { onConflict: 'id' });
       summary['daily_shift_logs'] = error ? { status: 'error', error: error.message } : { status: 'inserted', count: shiftLogsToInsert.length };
@@ -310,6 +313,7 @@ export async function POST() {
         is_system: c.is_system || false,
         is_private: c.is_private || false,
         allowed_roles: c.allowed_roles || [],
+        allowed_members: (c as any).allowed_members || [],
       }));
       const { error: chanErr } = await supabaseAdmin.from('chat_channels').upsert(channelsToInsert, { onConflict: 'id' });
       summary['chat_channels'] = chanErr ? { status: 'error', error: chanErr.message } : { status: 'inserted', count: channelsToInsert.length };
@@ -321,6 +325,7 @@ export async function POST() {
         sender_name: m.sender_name,
         sender_role: m.sender_role,
         content: m.message,
+        attachments: m.attachments || [],
       }));
       const { error: msgErr } = await supabaseAdmin.from('channel_messages').upsert(messagesToInsert, { onConflict: 'id' });
       summary['channel_messages'] = msgErr ? { status: 'error', error: msgErr.message } : { status: 'inserted', count: messagesToInsert.length };

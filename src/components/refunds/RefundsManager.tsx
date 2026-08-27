@@ -1,4 +1,5 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useMemo, useRef } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
