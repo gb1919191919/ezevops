@@ -120,6 +120,7 @@ export interface ChargerLog {
   reported_at: string;
   reported_by: string;
   remarks?: string;
+  is_archived?: boolean;
 }
 
 export interface Profile {
@@ -130,6 +131,7 @@ export interface Profile {
   avatar_url?: string;
   assigned_hub_id?: string;
   is_active: boolean;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
   roles?: Role[];
@@ -142,6 +144,7 @@ export interface Role {
   description?: string;
   permissions?: PermissionKey[];
   is_system?: boolean;
+  is_archived?: boolean;
 }
 
 export interface Permission {
@@ -172,6 +175,7 @@ export interface Hub {
   charger_logs?: ChargerLog[];
   is_active: boolean;
   is_warehouse?: boolean;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -193,6 +197,7 @@ export interface VehicleInspection {
   notes?: string;
   defect_media_url?: string;
   inspected_at: string;
+  is_archived?: boolean;
 }
 
 export interface Vehicle {
@@ -215,6 +220,7 @@ export interface Vehicle {
   active_days_count?: number; // Active days over rolling 30-day window (e.g. 23)
   uptime_percentage?: number; // Calculated availability score (e.g. 76.6)
   is_active: boolean;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
   hub?: Hub;
@@ -230,6 +236,7 @@ export interface PartInventory {
   min_threshold?: number;
   supplier?: string;
   is_active: boolean;
+  is_archived?: boolean;
   created_at: string;
 }
 
@@ -243,6 +250,7 @@ export interface PartUsageLog {
   used_by_name: string;
   recipient_name?: string;
   reason: string;
+  is_archived?: boolean;
   created_at: string;
   part?: PartInventory;
 }
@@ -254,6 +262,7 @@ export interface HubPartStock {
   physical_stock: number;
   pending_allocated_stock: number;
   min_threshold: number;
+  is_archived?: boolean;
   updated_at: string;
   part?: PartInventory;
   hub?: Hub;
@@ -266,6 +275,7 @@ export interface JobCardPart {
   quantity: number;
   unit_cost_snapshot: number;
   is_approved: boolean;
+  is_archived?: boolean;
   created_at: string;
   part?: PartInventory;
 }
@@ -284,6 +294,7 @@ export interface JobCard {
   status: ApprovalStatus;
   approved_by?: string | null;
   approval_notes?: string | null;
+  is_archived?: boolean;
   created_at: string;
   resolved_at?: string | null;
   approved_at?: string | null;
@@ -313,6 +324,7 @@ export interface Refund {
   settled_at?: string | null;
   settled_by_name?: string | null;
   rejection_reason?: string | null;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
   requester?: Profile;
@@ -326,6 +338,7 @@ export interface TaskRemark {
   author_name: string;
   author_role?: string;
   comment: string;
+  is_archived?: boolean;
   created_at: string;
 }
 
@@ -337,6 +350,7 @@ export interface TaskChangelogEntry {
   field_changed: string;
   old_value: string;
   new_value: string;
+  is_archived?: boolean;
   changed_at: string;
 }
 
@@ -347,6 +361,7 @@ export interface Milestone {
   description?: string;
   target_date?: string;
   is_completed: boolean;
+  is_archived?: boolean;
   order_index?: number;
   created_at?: string;
 }
@@ -359,6 +374,7 @@ export interface TaskAttachment {
   file_type?: string;
   uploaded_at: string;
   uploaded_by?: string;
+  is_archived?: boolean;
 }
 
 export interface Objective {
@@ -370,9 +386,11 @@ export interface Objective {
   hub_id: string;
   created_by: string;
   is_completed: boolean;
+  is_archived?: boolean;
   milestones?: Milestone[];
   remarks?: TaskRemark[];
   created_at: string;
+  updated_at?: string;
   hub?: Hub;
   creator?: Profile;
   tasks?: TaskItem[];
@@ -394,6 +412,7 @@ export interface TaskItem {
   due_date?: string | null;
   completed_at?: string | null;
   created_by: string;
+  is_archived?: boolean;
   attachments?: TaskAttachment[];
   remarks?: TaskRemark[];
   changelog?: TaskChangelogEntry[];
@@ -422,6 +441,8 @@ export interface DailyShiftLog {
   customer_issues_resolved: number;
   blockers?: string;
   handover_notes?: string;
+  is_archived?: boolean;
+  media_attachments?: string[];
   created_at: string;
   updated_at?: string;
 }
@@ -435,6 +456,8 @@ export interface ChatChannel {
   description?: string;
   is_system?: boolean; // true for Operations, Mechanics, Accounts
   is_private?: boolean;
+  is_archived?: boolean;
+  is_active?: boolean;
   allowed_roles?: string[];
   allowed_members?: string[];
   created_by?: string;
@@ -451,6 +474,8 @@ export interface ChannelMessage {
   sender_avatar?: string;
   message: string;
   attachments?: { name: string; url: string; type: string }[];
+  is_hidden?: boolean;
+  is_archived?: boolean;
   created_at: string;
 }
 
@@ -474,6 +499,7 @@ export interface SOP {
   category: string;
   version: string;
   status: SOPStatus;
+  is_archived?: boolean;
   content: string; // Markdown / step-by-step instructions
   summary: string;
   author_id: string;
@@ -505,6 +531,7 @@ export interface TeamNote {
   content: string;
   category: NoteCategory;
   status: NoteStatus;
+  is_archived?: boolean;
   priority?: 'NORMAL' | 'HIGH' | 'URGENT';
   tags?: string[];
   hub_id?: string | null;
@@ -534,13 +561,14 @@ export interface BlockedUser {
   reason: string;
   recovery_status: RecoveryStatus;
   recovery_amount: number;
+  is_archived?: boolean;
 }
 
 export interface AuditLog {
   id: string;
   table_name: string;
   record_id: string;
-  action: 'INSERT' | 'UPDATE' | 'DELETE' | 'SOFT_DELETE' | 'DELETE_ATTEMPT';
+  action: 'INSERT' | 'UPDATE' | 'DELETE' | 'SOFT_DELETE' | 'DELETE_ATTEMPT' | 'ARCHIVE' | 'RESTORE';
   performed_by?: string | null;
   performer_name?: string | null;
   old_data?: Record<string, any> | null;

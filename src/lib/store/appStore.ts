@@ -1,3 +1,5 @@
+'use client';
+
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import {
@@ -5,31 +7,28 @@ import {
   Vehicle,
   PartInventory,
   HubPartStock,
-  PartUsageLog,
-  VehicleInspection,
   JobCard,
   Refund,
   Objective,
-  Milestone,
   TaskItem,
-  TaskAttachment,
-  DailyShiftLog,
-  ChatChannel,
-  ChannelMessage,
   AuditLog,
   Profile,
   Role,
   RoleCode,
   PermissionKey,
+  ChargerStatus,
   VehicleStatus,
   TaskStatus,
-  ChargerStatus,
   SOP,
-  SOPStatus,
   TeamNote,
-  NoteCategory,
-  NoteStatus,
+  DailyShiftLog,
+  ChatChannel,
+  ChannelMessage,
   BlockedUser,
+  VehicleInspection,
+  PartUsageLog,
+  Milestone,
+  TaskAttachment,
 } from '@/types';
 import {
   INITIAL_HUBS,
@@ -41,12 +40,12 @@ import {
   INITIAL_OBJECTIVES,
   INITIAL_MILESTONES,
   INITIAL_TASKS,
+  INITIAL_AUDIT_LOGS,
+  INITIAL_ROLES,
+  INITIAL_PROFILES,
   INITIAL_DAILY_SHIFT_LOGS,
   INITIAL_CHAT_CHANNELS,
   INITIAL_CHANNEL_MESSAGES,
-  INITIAL_AUDIT_LOGS,
-  INITIAL_PROFILES,
-  INITIAL_ROLES,
   INITIAL_SOPS,
   INITIAL_NOTES,
   INITIAL_BLOCKED_USERS,
@@ -83,6 +82,8 @@ interface AppStoreState {
   addStaffProfile: (profile: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => void;
   updateStaffProfile: (id: string, updates: Partial<Profile>) => void;
   updateStaffRoles: (profileId: string, roleIds: string[]) => void;
+  archiveStaffProfile: (id: string) => void;
+  restoreStaffProfile: (id: string) => void;
 
   // Core Entity Data
   hubs: Hub[];
@@ -111,10 +112,14 @@ interface AppStoreState {
   verifyRefund: (refundId: string, remarks?: string) => void;
   settleRefund: (refundId: string, frappeReference?: string) => void;
   rejectRefund: (refundId: string, reason: string) => void;
+  archiveRefund: (refundId: string) => void;
+  restoreRefund: (refundId: string) => void;
 
-  // 2. Hubs & Charger Operations (Full Edit, Add Hub, Quick Charger Toggle)
+  // 2. Hubs & Charger Operations
   addHub: (hubData: Omit<Hub, 'id' | 'created_at' | 'updated_at'>) => void;
   updateHub: (hubId: string, hubData: Partial<Omit<Hub, 'id' | 'created_at'>>) => void;
+  archiveHub: (hubId: string) => void;
+  restoreHub: (hubId: string) => void;
   toggleChargerStatus: (
     hubId: string,
     portNumber: number,
@@ -131,12 +136,19 @@ interface AppStoreState {
 
   // 3. Objectives & Hierarchical 3-Tier Tasks Engine
   createObjective: (objectiveData: Omit<Objective, 'id' | 'created_at' | 'is_completed'>) => void;
+  archiveObjective: (id: string) => void;
+  restoreObjective: (id: string) => void;
   addMilestone: (milestoneData: Omit<Milestone, 'id' | 'created_at'>) => void;
   updateMilestone: (id: string, updates: Partial<Milestone>) => void;
-  deleteMilestone: (id: string) => void;
+  archiveMilestone: (id: string) => void;
+  restoreMilestone: (id: string) => void;
+  deleteMilestone: (id: string) => void; // Soft-delete alias
   createTask: (taskData: Omit<TaskItem, 'id' | 'created_at' | 'updated_at' | 'remarks' | 'changelog'>) => void;
   updateTask: (taskId: string, updates: Partial<TaskItem>) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
+  archiveTask: (taskId: string) => void;
+  restoreTask: (taskId: string) => void;
+  deleteTask: (taskId: string) => void; // Soft-delete alias
   addTaskRemark: (taskId: string, comment: string) => void;
   addTaskAttachment: (taskId: string, attachment: TaskAttachment) => void;
   updateTaskAssignees: (taskId: string, assigneeIds: string[]) => void;
@@ -150,6 +162,8 @@ interface AppStoreState {
   rejectVehicleStatus: (vehicleId: string) => void;
   reassignVehicleIotId: (vehicleId: string, newIotId: string, reason: string) => void;
   updateVehicleOdometer: (vehicleId: string, odometerKm: number) => void;
+  archiveVehicle: (vehicleId: string) => void;
+  restoreVehicle: (vehicleId: string) => void;
   logInspection: (
     inspectionData: Omit<VehicleInspection, 'id' | 'inspected_at' | 'inspector_id' | 'inspector_name'>
   ) => void;
@@ -157,11 +171,15 @@ interface AppStoreState {
   // Daily Shift Logs (8.1)
   addDailyShiftLog: (log: Omit<DailyShiftLog, 'id' | 'created_at' | 'updated_at'>) => void;
   updateDailyShiftLog: (id: string, updates: Partial<DailyShiftLog>) => void;
+  archiveDailyShiftLog: (id: string) => void;
+  restoreDailyShiftLog: (id: string) => void;
 
   // Role-Based Group Communications (8.2)
   createChatChannel: (channel: Omit<ChatChannel, 'id' | 'created_at'>) => void;
   updateChatChannel: (id: string, updates: Partial<ChatChannel>) => void;
-  deleteChatChannel: (id: string) => void;
+  archiveChatChannel: (id: string) => void;
+  restoreChatChannel: (id: string) => void;
+  deleteChatChannel: (id: string) => void; // Soft-delete alias
   sendChannelMessage: (msg: Omit<ChannelMessage, 'id' | 'created_at'>) => void;
 
   // 6. Spare Parts Catalog (Single "Store 1" Warehouse, Dispatch & Usage)
@@ -169,6 +187,8 @@ interface AppStoreState {
     partData: Omit<PartInventory, 'id' | 'created_at'>
   ) => void;
   updatePart: (partId: string, partData: Partial<Omit<PartInventory, 'id' | 'created_at'>>) => void;
+  archivePart: (partId: string) => void;
+  restorePart: (partId: string) => void;
   issuePartFromStore1: (
     partId: string,
     quantity: number,
@@ -188,13 +208,17 @@ interface AppStoreState {
   updateJobCard: (jobCardId: string, updates: Partial<JobCard>) => void;
   approveJobCard: (jobCardId: string, approvalNotes?: string) => void;
   rejectJobCard: (jobCardId: string, rejectionNotes: string) => void;
+  archiveJobCard: (jobCardId: string) => void;
+  restoreJobCard: (jobCardId: string) => void;
 
   // 8. Standard Operating Procedures (SOPs Engine)
   createSOP: (sopData: Omit<SOP, 'id' | 'version' | 'view_count' | 'acknowledged_by' | 'revisions' | 'created_at' | 'updated_at'>) => void;
   updateSOP: (sopId: string, updates: Partial<Omit<SOP, 'id' | 'revisions' | 'created_at'>>, changeSummary: string) => void;
   publishSOP: (sopId: string) => void;
   acknowledgeSOP: (sopId: string, profileId?: string) => void;
-  deleteSOP: (sopId: string) => void;
+  archiveSOP: (sopId: string) => void;
+  restoreSOP: (sopId: string) => void;
+  deleteSOP: (sopId: string) => void; // Soft-delete alias
 
   // 9. Team Notes & Scratchpad with Disposal Lifecycle
   createNote: (noteData: Omit<TeamNote, 'id' | 'status' | 'author_id' | 'author_name' | 'author_role' | 'created_at' | 'updated_at'>) => void;
@@ -202,16 +226,40 @@ interface AppStoreState {
   archiveNote: (noteId: string) => void;
   resolveNote: (noteId: string) => void;
   restoreNote: (noteId: string) => void;
-  deleteNote: (noteId: string) => void;
+  deleteNote: (noteId: string) => void; // Soft-delete alias
   bulkDisposeOldNotes: () => void;
   togglePinNote: (noteId: string) => void;
 
   // 10. Blocked Users
   addBlockedUser: (user: Omit<BlockedUser, 'id'>) => void;
   updateBlockedUser: (id: string, updates: Partial<BlockedUser>) => void;
+  archiveBlockedUser: (id: string) => void;
+  restoreBlockedUser: (id: string) => void;
 
   // State Reset
   resetToDefaultData: () => void;
+}
+
+// Helper to generate forensic audit log entries
+function createAuditLog(
+  currentUser: Profile | null,
+  tableName: string,
+  recordId: string,
+  action: 'INSERT' | 'UPDATE' | 'DELETE' | 'SOFT_DELETE' | 'ARCHIVE' | 'RESTORE',
+  oldData?: any,
+  newData?: any
+): AuditLog {
+  return {
+    id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    table_name: tableName,
+    record_id: String(recordId),
+    action,
+    performed_by: currentUser?.id || 'system',
+    performer_name: currentUser?.full_name || 'Staff Member',
+    old_data: oldData ?? null,
+    new_data: newData ?? null,
+    timestamp: new Date().toISOString(),
+  };
 }
 
 export const useAppStore = create<AppStoreState>()(
@@ -287,54 +335,108 @@ export const useAppStore = create<AppStoreState>()(
       clearBadge: (key) => set((state) => ({ clearedBadges: { ...state.clearedBadges, [key]: true } })),
 
       // Role & Staff Admin
-      addCustomRole: (roleData) =>
-        set((state) => {
-          const newRole: Role = {
-            ...roleData,
-            id: `role-custom-${Date.now()}`,
-          };
-          return { customRoles: [...state.customRoles, newRole] };
-        }),
+      addCustomRole: (roleData) => {
+        const { customRoles, auditLogs, currentUser } = get();
+        const newRole: Role = {
+          ...roleData,
+          id: `role-custom-${Date.now()}`,
+          is_archived: false,
+        };
+        const newAudit = createAuditLog(currentUser, 'roles', newRole.id, 'INSERT', null, newRole);
+        set({
+          customRoles: [...customRoles, newRole],
+          auditLogs: [newAudit, ...auditLogs],
+        });
+        supabaseSync.pushMutation('roles', 'insert', newRole, { action: 'INSERT', new_data: newRole });
+      },
 
-      updateRolePermissions: (roleId, permissions) =>
-        set((state) => ({
-          customRoles: state.customRoles.map((r) =>
-            r.id === roleId || r.code === roleId ? { ...r, permissions } : r
-          ),
-        })),
+      updateRolePermissions: (roleId, permissions) => {
+        const { customRoles, auditLogs, currentUser } = get();
+        const existing = customRoles.find((r) => r.id === roleId);
+        const updatedRoles = customRoles.map((r) => (r.id === roleId ? { ...r, permissions } : r));
+        const newAudit = createAuditLog(
+          currentUser,
+          'roles',
+          roleId,
+          'UPDATE',
+          { permissions: existing?.permissions },
+          { permissions }
+        );
+        set({ customRoles: updatedRoles, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('roles', 'update', { id: roleId, permissions }, { action: 'UPDATE', old_data: existing, new_data: { permissions } });
+      },
 
-      addStaffProfile: (staffData) =>
-        set((state) => {
-          const newProfile: Profile = {
-            ...staffData,
-            id: `usr-${Date.now()}`,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          };
-          return { staffProfiles: [...state.staffProfiles, newProfile] };
-        }),
+      addStaffProfile: (profileData) => {
+        const { staffProfiles, auditLogs, currentUser } = get();
+        const newProfile: Profile = {
+          ...profileData,
+          id: `usr-${Date.now()}`,
+          is_active: true,
+          is_archived: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const newAudit = createAuditLog(currentUser, 'profiles', newProfile.id, 'INSERT', null, newProfile);
+        set({
+          staffProfiles: [...staffProfiles, newProfile],
+          auditLogs: [newAudit, ...auditLogs],
+        });
+        supabaseSync.pushMutation('profiles', 'insert', newProfile, { action: 'INSERT', new_data: newProfile });
+      },
 
-      updateStaffProfile: (profileId, updates) =>
-        set((state) => ({
-          staffProfiles: state.staffProfiles.map((p) =>
-            p.id === profileId ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
-          ),
-        })),
+      updateStaffProfile: (id, updates) => {
+        const { staffProfiles, auditLogs, currentUser } = get();
+        const existing = staffProfiles.find((s) => s.id === id);
+        const updatedStaff = staffProfiles.map((s) =>
+          s.id === id ? { ...s, ...updates, updated_at: new Date().toISOString() } : s
+        );
+        const newAudit = createAuditLog(currentUser, 'profiles', id, 'UPDATE', existing, updates);
+        set({ staffProfiles: updatedStaff, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('profiles', 'update', { id, ...updates, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing, new_data: updates });
+      },
 
-      updateStaffRoles: (profileId, roleIds) =>
-        set((state) => ({
-          staffProfiles: state.staffProfiles.map((p) => {
-            if (p.id === profileId) {
-              const matchedRoles = state.customRoles.filter((r) =>
-                roleIds.includes(r.id) || roleIds.includes(r.code)
-              );
-              return { ...p, roles: matchedRoles, updated_at: new Date().toISOString() };
-            }
-            return p;
-          }),
-        })),
+      updateStaffRoles: (profileId, roleIds) => {
+        const { staffProfiles, customRoles, auditLogs, currentUser } = get();
+        const existing = staffProfiles.find((s) => s.id === profileId);
+        const assignedRoles = customRoles.filter((r) => roleIds.includes(r.id) || roleIds.includes(r.code));
+        const updatedStaff = staffProfiles.map((s) =>
+          s.id === profileId ? { ...s, roles: assignedRoles, updated_at: new Date().toISOString() } : s
+        );
+        const newAudit = createAuditLog(
+          currentUser,
+          'profiles',
+          profileId,
+          'UPDATE',
+          { roles: existing?.roles },
+          { roles: assignedRoles }
+        );
+        set({ staffProfiles: updatedStaff, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('profiles', 'update', { id: profileId, roles: assignedRoles, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing, new_data: { roles: assignedRoles } });
+      },
 
-      // Entities
+      archiveStaffProfile: (id) => {
+        const { staffProfiles, auditLogs, currentUser } = get();
+        const existing = staffProfiles.find((s) => s.id === id);
+        const updated = staffProfiles.map((s) =>
+          s.id === id ? { ...s, is_active: false, is_archived: true, updated_at: new Date().toISOString() } : s
+        );
+        const newAudit = createAuditLog(currentUser, 'profiles', id, 'ARCHIVE', existing, { is_active: false, is_archived: true });
+        set({ staffProfiles: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('profiles', 'archive', { id, is_active: false, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreStaffProfile: (id) => {
+        const { staffProfiles, auditLogs, currentUser } = get();
+        const existing = staffProfiles.find((s) => s.id === id);
+        const updated = staffProfiles.map((s) =>
+          s.id === id ? { ...s, is_active: true, is_archived: false, updated_at: new Date().toISOString() } : s
+        );
+        const newAudit = createAuditLog(currentUser, 'profiles', id, 'RESTORE', existing, { is_active: true, is_archived: false });
+        set({ staffProfiles: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('profiles', 'restore', { id, is_active: true, is_archived: false }, { action: 'RESTORE', old_data: existing });
+      },
+
+      // Entities Data
       hubs: INITIAL_HUBS,
       vehicles: INITIAL_VEHICLES,
       inspections: [],
@@ -355,225 +457,165 @@ export const useAppStore = create<AppStoreState>()(
       auditLogs: INITIAL_AUDIT_LOGS,
 
       // ====================================================================
-      // 1. REFUNDS ENGINE (Supports up to 3 decimal points)
+      // 1. REFUNDS ENGINE
       // ====================================================================
       createRefund: (refundData) => {
-        const { refunds, auditLogs, currentUser, activeRoles } = get();
-        const newId = `r-${Date.now()}`;
-        const isAuthorized = activeRoles.includes('owner') || activeRoles.includes('manager');
-        const initialStatus = isAuthorized ? 'VERIFIED' : 'SUBMITTED';
-
+        const { refunds, auditLogs, currentUser } = get();
+        const newRefundId = `ref-${Date.now()}`;
         const newRefund: Refund = {
           ...refundData,
-          id: newId,
-          amount: parseFloat(Number(refundData.amount).toFixed(3)),
-          status: initialStatus,
+          id: newRefundId,
+          status: 'SUBMITTED',
           requested_by: currentUser.id,
           requester_name: currentUser.full_name,
-          requester_role: currentUser.roles?.[0]?.label || 'Operations Manager',
-          rejection_reason: null,
+          requester_role: currentUser.roles?.[0]?.label || 'Staff',
+          is_archived: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'refunds',
-          record_id: newId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newRefund,
-          timestamp: new Date().toISOString(),
-        };
-
-        set({
-          refunds: [newRefund, ...refunds],
-          auditLogs: [newAudit, ...auditLogs],
-        });
-        supabaseSync.pushMutation('refunds', 'insert', newRefund);
+        const newAudit = createAuditLog(currentUser, 'refunds', newRefundId, 'INSERT', null, newRefund);
+        set({ refunds: [newRefund, ...refunds], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'insert', newRefund, { action: 'INSERT', new_data: newRefund });
       },
 
       verifyRefund: (refundId, remarks) => {
         const { refunds, auditLogs, currentUser } = get();
         const existing = refunds.find((r) => r.id === refundId);
-        if (!existing) return;
-
-        const updatedRefunds = refunds.map((r) =>
+        const updated = refunds.map((r) =>
           r.id === refundId
             ? {
                 ...r,
                 status: 'VERIFIED' as const,
+                approved_by: currentUser.id,
                 internal_remarks: remarks || r.internal_remarks,
                 updated_at: new Date().toISOString(),
               }
             : r
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'refunds',
-          record_id: refundId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { status: existing.status },
-          new_data: { status: 'VERIFIED', internal_remarks: remarks },
-          timestamp: new Date().toISOString(),
-        };
-
-        set({ refunds: updatedRefunds, auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('refunds', 'update', {
-          id: refundId,
-          status: 'VERIFIED',
-          internal_remarks: remarks || existing.internal_remarks,
-          updated_at: new Date().toISOString(),
-        });
+        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'UPDATE', existing, { status: 'VERIFIED', remarks });
+        set({ refunds: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'update', { id: refundId, status: 'VERIFIED', internal_remarks: remarks }, { action: 'UPDATE', old_data: existing });
       },
 
       settleRefund: (refundId, frappeReference) => {
         const { refunds, auditLogs, currentUser } = get();
         const existing = refunds.find((r) => r.id === refundId);
-        if (!existing) return;
-
-        const autoFrappeRef =
-          frappeReference ||
-          `FRAP-MUM-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${Date.now().toString().slice(-4)}`;
-
-        const updatedRefunds = refunds.map((r) =>
+        const updated = refunds.map((r) =>
           r.id === refundId
             ? {
                 ...r,
                 status: 'SETTLED' as const,
-                frappe_reference: autoFrappeRef,
                 settled_at: new Date().toISOString(),
                 settled_by_name: currentUser.full_name,
+                frappe_reference: frappeReference || r.frappe_reference,
+                updated_at: new Date().toISOString(),
+              }
+            : r
+        );
+
+        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'UPDATE', existing, { status: 'SETTLED', frappeReference });
+        set({ refunds: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'update', { id: refundId, status: 'SETTLED', frappe_reference: frappeReference }, { action: 'UPDATE', old_data: existing });
+      },
+
+      rejectRefund: (refundId, reason) => {
+        const { refunds, auditLogs, currentUser } = get();
+        const existing = refunds.find((r) => r.id === refundId);
+        const updated = refunds.map((r) =>
+          r.id === refundId
+            ? {
+                ...r,
+                status: 'REJECTED' as const,
+                rejection_reason: reason,
                 approved_by: currentUser.id,
                 updated_at: new Date().toISOString(),
               }
             : r
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'refunds',
-          record_id: refundId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { status: existing.status },
-          new_data: { status: 'SETTLED', frappe_reference: autoFrappeRef, settled_at: new Date().toISOString() },
-          timestamp: new Date().toISOString(),
-        };
-
-        set({ refunds: updatedRefunds, auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('refunds', 'update', {
-          id: refundId,
-          status: 'SETTLED',
-          frappe_reference: autoFrappeRef,
-          settled_at: new Date().toISOString(),
-          settled_by_name: currentUser.full_name,
-          approved_by: currentUser.id,
-          updated_at: new Date().toISOString(),
-        });
+        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'UPDATE', existing, { status: 'REJECTED', rejection_reason: reason });
+        set({ refunds: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'update', { id: refundId, status: 'REJECTED', rejection_reason: reason }, { action: 'UPDATE', old_data: existing });
       },
 
-      rejectRefund: (refundId, reason) => {
+      archiveRefund: (refundId) => {
         const { refunds, auditLogs, currentUser } = get();
         const existing = refunds.find((r) => r.id === refundId);
-        if (!existing) return;
-
-        const updatedRefunds = refunds.map((r) =>
-          r.id === refundId
-            ? {
-                ...r,
-                status: 'REJECTED' as const,
-                rejection_reason: reason,
-                updated_at: new Date().toISOString(),
-              }
-            : r
+        const updated = refunds.map((r) =>
+          r.id === refundId ? { ...r, is_archived: true, updated_at: new Date().toISOString() } : r
         );
+        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'ARCHIVE', existing, { is_archived: true });
+        set({ refunds: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'archive', { id: refundId, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'refunds',
-          record_id: refundId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { status: existing.status },
-          new_data: { status: 'REJECTED', rejection_reason: reason },
-          timestamp: new Date().toISOString(),
-        };
-
-        set({ refunds: updatedRefunds, auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('refunds', 'update', {
-          id: refundId,
-          status: 'REJECTED',
-          rejection_reason: reason,
-          updated_at: new Date().toISOString(),
-        });
+      restoreRefund: (refundId) => {
+        const { refunds, auditLogs, currentUser } = get();
+        const existing = refunds.find((r) => r.id === refundId);
+        const updated = refunds.map((r) =>
+          r.id === refundId ? { ...r, is_archived: false, updated_at: new Date().toISOString() } : r
+        );
+        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'RESTORE', existing, { is_archived: false });
+        set({ refunds: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'restore', { id: refundId, is_archived: false }, { action: 'RESTORE', old_data: existing });
       },
 
       // ====================================================================
-      // 2. HUBS & CHARGER OPERATIONS
+      // 2. HUBS & CHARGERS
       // ====================================================================
       addHub: (hubData) => {
         const { hubs, auditLogs, currentUser } = get();
-        const newId = `hub-${Date.now()}`;
+        const newHubId = `hub-${Date.now()}`;
         const newHub: Hub = {
           ...hubData,
-          id: newId,
+          id: newHubId,
+          is_active: true,
+          is_archived: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'hubs',
-          record_id: newId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newHub,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'hubs', newHubId, 'INSERT', null, newHub);
         set({ hubs: [...hubs, newHub], auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('hubs', 'insert', newHub);
+        supabaseSync.pushMutation('hubs', 'insert', newHub, { action: 'INSERT', new_data: newHub });
       },
 
       updateHub: (hubId, hubData) => {
         const { hubs, auditLogs, currentUser } = get();
         const existing = hubs.find((h) => h.id === hubId);
-        if (!existing) return;
-
         const updatedHubs = hubs.map((h) =>
           h.id === hubId
             ? { ...h, ...hubData, updated_at: new Date().toISOString() }
             : h
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'hubs',
-          record_id: hubId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: existing,
-          new_data: hubData,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'hubs', hubId, 'UPDATE', existing, hubData);
         set({ hubs: updatedHubs, auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('hubs', 'update', {
-          id: hubId,
-          ...hubData,
-          updated_at: new Date().toISOString(),
-        });
+        supabaseSync.pushMutation('hubs', 'update', { id: hubId, ...hubData }, { action: 'UPDATE', old_data: existing });
+      },
+
+      archiveHub: (hubId) => {
+        const { hubs, auditLogs, currentUser } = get();
+        const existing = hubs.find((h) => h.id === hubId);
+        const updated = hubs.map((h) =>
+          h.id === hubId ? { ...h, is_active: false, is_archived: true, updated_at: new Date().toISOString() } : h
+        );
+        const newAudit = createAuditLog(currentUser, 'hubs', hubId, 'ARCHIVE', existing, { is_active: false, is_archived: true });
+        set({ hubs: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('hubs', 'archive', { id: hubId, is_active: false, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreHub: (hubId) => {
+        const { hubs, auditLogs, currentUser } = get();
+        const existing = hubs.find((h) => h.id === hubId);
+        const updated = hubs.map((h) =>
+          h.id === hubId ? { ...h, is_active: true, is_archived: false, updated_at: new Date().toISOString() } : h
+        );
+        const newAudit = createAuditLog(currentUser, 'hubs', hubId, 'RESTORE', existing, { is_active: true, is_archived: false });
+        set({ hubs: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('hubs', 'restore', { id: hubId, is_active: true, is_archived: false }, { action: 'RESTORE', old_data: existing });
       },
 
       toggleChargerStatus: (hubId, portNumber, status, remarks) => {
@@ -581,64 +623,45 @@ export const useAppStore = create<AppStoreState>()(
         const targetHub = hubs.find((h) => h.id === hubId);
         if (!targetHub) return;
 
-        const portKey = `P${portNumber}`;
-        const existingLogs = targetHub.charger_logs || [];
-        const existingLogIndex = existingLogs.findIndex((l) => l.connector_number === portKey);
-
-        let updatedLogs = [...existingLogs];
-        const newLogEntry = {
-          id: `cl-${Date.now()}-${portNumber}`,
+        const newLogId = `clog-${Date.now()}-${portNumber}`;
+        const newLog = {
+          id: newLogId,
           hub_id: hubId,
-          charger_name: `Charger Bay ${portNumber}`,
-          connector_number: portKey,
+          charger_name: `Charger Port #${portNumber}`,
+          connector_number: String(portNumber),
           status,
           reported_at: new Date().toISOString(),
           reported_by: currentUser.full_name,
           remarks: remarks || undefined,
+          is_archived: false,
         };
 
-        if (existingLogIndex >= 0) {
-          updatedLogs[existingLogIndex] = newLogEntry;
-        } else {
-          updatedLogs.push(newLogEntry);
-        }
+        const updatedHubs = hubs.map((h) => {
+          if (h.id === hubId) {
+            const currentLogs = h.charger_logs || [];
+            const otherLogs = currentLogs.filter((l) => l.connector_number !== String(portNumber));
+            const allLogs = [newLog, ...otherLogs];
+            const activeCount = allLogs.filter((l) => l.status === 'ACTIVE').length;
+            return {
+              ...h,
+              charging_points_active: Math.min(h.charging_points_total, activeCount),
+              charger_logs: allLogs,
+              updated_at: new Date().toISOString(),
+            };
+          }
+          return h;
+        });
 
-        const faultyCount = updatedLogs.filter((l) => l.status !== 'ACTIVE').length;
-        const activeCount = Math.max(0, targetHub.charging_points_total - faultyCount);
-
-        const updatedHubs = hubs.map((h) =>
-          h.id === hubId
-            ? {
-                ...h,
-                charging_points_active: activeCount,
-                charger_logs: updatedLogs,
-                updated_at: new Date().toISOString(),
-              }
-            : h
-        );
-
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'charger_logs',
-          record_id: `${hubId}-${portKey}`,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newLogEntry,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'charger_logs', newLogId, 'INSERT', null, newLog);
         set({ hubs: updatedHubs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('charger_logs', 'insert', newLog, { action: 'INSERT', new_data: newLog });
       },
 
       logChargerStatus: (hubId, chargerName, connectorNumber, status, remarks) => {
         const { hubs, auditLogs, currentUser } = get();
-        const targetHub = hubs.find((h) => h.id === hubId);
-        if (!targetHub) return;
-
+        const newLogId = `clog-${Date.now()}`;
         const newLog = {
-          id: `cl-${Date.now()}`,
+          id: newLogId,
           hub_id: hubId,
           charger_name: chargerName,
           connector_number: connectorNumber,
@@ -646,43 +669,28 @@ export const useAppStore = create<AppStoreState>()(
           reported_at: new Date().toISOString(),
           reported_by: currentUser.full_name,
           remarks,
+          is_archived: false,
         };
 
         const updatedHubs = hubs.map((h) => {
           if (h.id === hubId) {
-            const logs = h.charger_logs || [];
-            const activeDelta = status === 'ACTIVE' ? 1 : -1;
-            const newActive = Math.min(
-              h.charging_points_total,
-              Math.max(0, h.charging_points_active + activeDelta)
-            );
+            const existingLogs = h.charger_logs || [];
             return {
               ...h,
-              charging_points_active: newActive,
-              charger_logs: [newLog, ...logs],
+              charger_logs: [newLog, ...existingLogs],
               updated_at: new Date().toISOString(),
             };
           }
           return h;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'charger_logs',
-          record_id: newLog.id,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newLog,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'charger_logs', newLogId, 'INSERT', null, newLog);
         set({ hubs: updatedHubs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('charger_logs', 'insert', newLog, { action: 'INSERT', new_data: newLog });
       },
 
       // ====================================================================
-      // 3. OBJECTIVES & TASKS ENGINE
+      // 3. OBJECTIVES, MILESTONES & TASKS ENGINE (3-TIER)
       // ====================================================================
       createObjective: (objectiveData) => {
         const { objectives, auditLogs, currentUser } = get();
@@ -691,122 +699,192 @@ export const useAppStore = create<AppStoreState>()(
           ...objectiveData,
           id: newId,
           is_completed: false,
-          created_at: new Date().toISOString(),
-        };
-
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'objectives',
-          record_id: newId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newObj,
-          timestamp: new Date().toISOString(),
-        };
-
-        set({ objectives: [newObj, ...objectives], auditLogs: [newAudit, ...auditLogs] });
-      },
-
-      createTask: (taskData) => {
-        const { tasks, auditLogs, currentUser } = get();
-        const newId = `tsk-${Date.now()}`;
-        const newTask: TaskItem = {
-          ...taskData,
-          id: newId,
-          remarks: [],
-          changelog: [],
+          is_archived: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'tasks',
-          record_id: newId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newTask,
-          timestamp: new Date().toISOString(),
+        const newAudit = createAuditLog(currentUser, 'objectives', newId, 'INSERT', null, newObj);
+        set({ objectives: [newObj, ...objectives], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('objectives', 'insert', newObj, { action: 'INSERT', new_data: newObj });
+      },
+
+      archiveObjective: (id) => {
+        const { objectives, auditLogs, currentUser } = get();
+        const existing = objectives.find((o) => o.id === id);
+        const updated = objectives.map((o) =>
+          o.id === id ? { ...o, is_archived: true, updated_at: new Date().toISOString() } : o
+        );
+        const newAudit = createAuditLog(currentUser, 'objectives', id, 'ARCHIVE', existing, { is_archived: true });
+        set({ objectives: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('objectives', 'archive', { id, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreObjective: (id) => {
+        const { objectives, auditLogs, currentUser } = get();
+        const existing = objectives.find((o) => o.id === id);
+        const updated = objectives.map((o) =>
+          o.id === id ? { ...o, is_archived: false, updated_at: new Date().toISOString() } : o
+        );
+        const newAudit = createAuditLog(currentUser, 'objectives', id, 'RESTORE', existing, { is_archived: false });
+        set({ objectives: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('objectives', 'restore', { id, is_archived: false }, { action: 'RESTORE', old_data: existing });
+      },
+
+      addMilestone: (milestoneData) => {
+        const { milestones, auditLogs, currentUser } = get();
+        const newId = `ms-${Date.now()}`;
+        const newMs: Milestone = {
+          ...milestoneData,
+          id: newId,
+          is_completed: false,
+          is_archived: false,
+          created_at: new Date().toISOString(),
         };
 
+        const newAudit = createAuditLog(currentUser, 'milestones', newId, 'INSERT', null, newMs);
+        set({ milestones: [...milestones, newMs], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('milestones', 'insert', newMs, { action: 'INSERT', new_data: newMs });
+      },
+
+      updateMilestone: (id, updates) => {
+        const { milestones, auditLogs, currentUser } = get();
+        const existing = milestones.find((m) => m.id === id);
+        const updated = milestones.map((m) => (m.id === id ? { ...m, ...updates } : m));
+        const newAudit = createAuditLog(currentUser, 'milestones', id, 'UPDATE', existing, updates);
+        set({ milestones: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('milestones', 'update', { id, ...updates }, { action: 'UPDATE', old_data: existing });
+      },
+
+      archiveMilestone: (id) => {
+        const { milestones, auditLogs, currentUser } = get();
+        const existing = milestones.find((m) => m.id === id);
+        const updated = milestones.map((m) =>
+          m.id === id ? { ...m, is_archived: true } : m
+        );
+        const newAudit = createAuditLog(currentUser, 'milestones', id, 'ARCHIVE', existing, { is_archived: true });
+        set({ milestones: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('milestones', 'archive', { id, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreMilestone: (id) => {
+        const { milestones, auditLogs, currentUser } = get();
+        const existing = milestones.find((m) => m.id === id);
+        const updated = milestones.map((m) =>
+          m.id === id ? { ...m, is_archived: false } : m
+        );
+        const newAudit = createAuditLog(currentUser, 'milestones', id, 'RESTORE', existing, { is_archived: false });
+        set({ milestones: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('milestones', 'restore', { id, is_archived: false }, { action: 'RESTORE', old_data: existing });
+      },
+
+      deleteMilestone: (id) => {
+        // Enforce soft-delete archive
+        get().archiveMilestone(id);
+      },
+
+      createTask: (taskData) => {
+        const { tasks, auditLogs, currentUser } = get();
+        const newId = `task-${Date.now()}`;
+        const newTask: TaskItem = {
+          ...taskData,
+          id: newId,
+          is_archived: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          changelog: [
+            {
+              id: `chg-${Date.now()}`,
+              task_id: newId,
+              changed_by: currentUser.id,
+              performer_name: currentUser.full_name,
+              field_changed: 'creation',
+              old_value: 'None',
+              new_value: 'Created',
+              changed_at: new Date().toISOString(),
+            },
+          ],
+        };
+
+        const newAudit = createAuditLog(currentUser, 'tasks', newId, 'INSERT', null, newTask);
         set({ tasks: [newTask, ...tasks], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('tasks', 'insert', newTask, { action: 'INSERT', new_data: newTask });
       },
 
       updateTask: (taskId, updates) => {
         const { tasks, auditLogs, currentUser } = get();
         const existing = tasks.find((t) => t.id === taskId);
-        if (!existing) return;
-
-        const updatedTasks = tasks.map((t) =>
-          t.id === taskId
-            ? { ...t, ...updates, updated_at: new Date().toISOString() }
-            : t
+        const updated = tasks.map((t) =>
+          t.id === taskId ? { ...t, ...updates, updated_at: new Date().toISOString() } : t
         );
-
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'tasks',
-          record_id: taskId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: existing,
-          new_data: updates,
-          timestamp: new Date().toISOString(),
-        };
-
-        set({ tasks: updatedTasks, auditLogs: [newAudit, ...auditLogs] });
+        const newAudit = createAuditLog(currentUser, 'tasks', taskId, 'UPDATE', existing, updates);
+        set({ tasks: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('tasks', 'update', { id: taskId, ...updates, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing });
       },
 
       updateTaskStatus: (taskId, status) => {
         const { tasks, auditLogs, currentUser } = get();
-        const existing = tasks.find((t) => t.id === taskId);
-        if (!existing) return;
+        const task = tasks.find((t) => t.id === taskId);
+        if (!task) return;
 
-        const changelogEntry = {
+        const oldStatus = task.status;
+        const newEntry = {
           id: `chg-${Date.now()}`,
           task_id: taskId,
           changed_by: currentUser.id,
           performer_name: currentUser.full_name,
           field_changed: 'status',
-          old_value: existing.status,
+          old_value: oldStatus,
           new_value: status,
           changed_at: new Date().toISOString(),
         };
 
-        const updatedTasks = tasks.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                status,
-                completed_at: status === 'COMPLETED' ? new Date().toISOString() : null,
-                changelog: [changelogEntry, ...(t.changelog || [])],
-                updated_at: new Date().toISOString(),
-              }
-            : t
-        );
+        const updatedTasks = tasks.map((t) => {
+          if (t.id === taskId) {
+            return {
+              ...t,
+              status,
+              completed_at: status === 'COMPLETED' ? new Date().toISOString() : t.completed_at,
+              changelog: [newEntry, ...(t.changelog || [])],
+              updated_at: new Date().toISOString(),
+            };
+          }
+          return t;
+        });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'tasks',
-          record_id: taskId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { status: existing.status },
-          new_data: { status },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'tasks', taskId, 'UPDATE', { status: oldStatus }, { status });
         set({ tasks: updatedTasks, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('tasks', 'update', { id: taskId, status, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: { status: oldStatus } });
+      },
+
+      archiveTask: (taskId) => {
+        const { tasks, auditLogs, currentUser } = get();
+        const existing = tasks.find((t) => t.id === taskId);
+        const updated = tasks.map((t) =>
+          t.id === taskId ? { ...t, is_archived: true, status: 'ABANDONED' as const, updated_at: new Date().toISOString() } : t
+        );
+        const newAudit = createAuditLog(currentUser, 'tasks', taskId, 'ARCHIVE', existing, { is_archived: true, status: 'ABANDONED' });
+        set({ tasks: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('tasks', 'archive', { id: taskId, is_archived: true, status: 'ABANDONED' }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreTask: (taskId) => {
+        const { tasks, auditLogs, currentUser } = get();
+        const existing = tasks.find((t) => t.id === taskId);
+        const updated = tasks.map((t) =>
+          t.id === taskId ? { ...t, is_archived: false, status: 'TODO' as const, updated_at: new Date().toISOString() } : t
+        );
+        const newAudit = createAuditLog(currentUser, 'tasks', taskId, 'RESTORE', existing, { is_archived: false, status: 'TODO' });
+        set({ tasks: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('tasks', 'restore', { id: taskId, is_archived: false, status: 'TODO' }, { action: 'RESTORE', old_data: existing });
+      },
+
+      deleteTask: (taskId) => {
+        get().archiveTask(taskId);
       },
 
       addTaskRemark: (taskId, comment) => {
-        const { tasks, currentUser } = get();
+        const { tasks, auditLogs, currentUser } = get();
         const newRemark = {
           id: `rem-${Date.now()}`,
           task_id: taskId,
@@ -814,125 +892,110 @@ export const useAppStore = create<AppStoreState>()(
           author_name: currentUser.full_name,
           author_role: currentUser.roles?.[0]?.label,
           comment,
+          is_archived: false,
           created_at: new Date().toISOString(),
         };
 
         const updatedTasks = tasks.map((t) =>
           t.id === taskId
-            ? {
-                ...t,
-                remarks: [...(t.remarks || []), newRemark],
-                updated_at: new Date().toISOString(),
-              }
+            ? { ...t, remarks: [...(t.remarks || []), newRemark], updated_at: new Date().toISOString() }
             : t
         );
 
-        set({ tasks: updatedTasks });
-      },
-
-      updateTaskAssignees: (taskId, assigneeIds) => {
-        const { tasks, currentUser } = get();
-        const existing = tasks.find((t) => t.id === taskId);
-        if (!existing) return;
-
-        const changelogEntry = {
-          id: `chg-${Date.now()}`,
-          task_id: taskId,
-          changed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          field_changed: 'assigned_to',
-          old_value: existing.assigned_to.join(', '),
-          new_value: assigneeIds.join(', '),
-          changed_at: new Date().toISOString(),
-        };
-
-        const updatedTasks = tasks.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                assigned_to: assigneeIds,
-                changelog: [changelogEntry, ...(t.changelog || [])],
-                updated_at: new Date().toISOString(),
-              }
-            : t
-        );
-
-        set({ tasks: updatedTasks });
-      },
-
-      updateTaskDates: (taskId, startDate, dueDate) => {
-        const { tasks } = get();
-        const updatedTasks = tasks.map((t) =>
-          t.id === taskId
-            ? {
-                ...t,
-                start_date: startDate !== undefined ? startDate : t.start_date,
-                due_date: dueDate !== undefined ? dueDate : t.due_date,
-                updated_at: new Date().toISOString(),
-              }
-            : t
-        );
-        set({ tasks: updatedTasks });
-      },
-
-      addMilestone: (milestoneData) => {
-        const { milestones } = get();
-        const newId = `mls-${Date.now()}`;
-        const newMilestone: Milestone = {
-          ...milestoneData,
-          id: newId,
-          created_at: new Date().toISOString(),
-        };
-        set({ milestones: [...milestones, newMilestone] });
-      },
-
-      updateMilestone: (id, updates) => {
-        const { milestones } = get();
-        set({
-          milestones: milestones.map((m) => (m.id === id ? { ...m, ...updates } : m)),
-        });
-      },
-
-      deleteMilestone: (id) => {
-        const { milestones } = get();
-        set({ milestones: milestones.filter((m) => m.id !== id) });
+        const newAudit = createAuditLog(currentUser, 'task_remarks', newRemark.id, 'INSERT', null, newRemark);
+        set({ tasks: updatedTasks, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('task_remarks', 'insert', newRemark, { action: 'INSERT', new_data: newRemark });
       },
 
       addTaskAttachment: (taskId, attachment) => {
-        const { tasks } = get();
-        set({
-          tasks: tasks.map((t) =>
-            t.id === taskId
-              ? {
-                  ...t,
-                  attachments: [...(t.attachments || []), attachment],
-                  updated_at: new Date().toISOString(),
-                }
-              : t
-          ),
-        });
+        const { tasks, auditLogs, currentUser } = get();
+        const fullAttachment = {
+          ...attachment,
+          is_archived: false,
+        };
+        const updatedTasks = tasks.map((t) =>
+          t.id === taskId
+            ? {
+                ...t,
+                attachments: [...(t.attachments || []), fullAttachment],
+                updated_at: new Date().toISOString(),
+              }
+            : t
+        );
+        const newAudit = createAuditLog(currentUser, 'task_attachments', attachment.id, 'INSERT', null, fullAttachment);
+        set({ tasks: updatedTasks, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('task_attachments', 'insert', fullAttachment, { action: 'INSERT', new_data: fullAttachment });
+      },
+
+      updateTaskAssignees: (taskId, assigneeIds) => {
+        const { tasks, auditLogs, currentUser } = get();
+        const existing = tasks.find((t) => t.id === taskId);
+        const updatedTasks = tasks.map((t) =>
+          t.id === taskId ? { ...t, assigned_to: assigneeIds, updated_at: new Date().toISOString() } : t
+        );
+        const newAudit = createAuditLog(currentUser, 'tasks', taskId, 'UPDATE', { assigned_to: existing?.assigned_to }, { assigned_to: assigneeIds });
+        set({ tasks: updatedTasks, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('tasks', 'update', { id: taskId, assigned_to: assigneeIds }, { action: 'UPDATE', old_data: existing });
+      },
+
+      updateTaskDates: (taskId, startDate, dueDate) => {
+        const { tasks, auditLogs, currentUser } = get();
+        const existing = tasks.find((t) => t.id === taskId);
+        const updatedTasks = tasks.map((t) =>
+          t.id === taskId ? { ...t, start_date: startDate, due_date: dueDate, updated_at: new Date().toISOString() } : t
+        );
+        const newAudit = createAuditLog(currentUser, 'tasks', taskId, 'UPDATE', { start_date: existing?.start_date, due_date: existing?.due_date }, { start_date: startDate, due_date: dueDate });
+        set({ tasks: updatedTasks, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('tasks', 'update', { id: taskId, start_date: startDate, due_date: dueDate }, { action: 'UPDATE', old_data: existing });
       },
 
       // Daily Shift Logs (8.1)
       addDailyShiftLog: (logData) => {
-        const { dailyShiftLogs } = get();
+        const { dailyShiftLogs, auditLogs, currentUser } = get();
         const newId = `shift-${Date.now()}`;
         const newLog: DailyShiftLog = {
           ...logData,
           id: newId,
+          is_archived: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
-        set({ dailyShiftLogs: [newLog, ...dailyShiftLogs] });
+        const newAudit = createAuditLog(currentUser, 'daily_shift_logs', newId, 'INSERT', null, newLog);
+        set({ dailyShiftLogs: [newLog, ...dailyShiftLogs], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('daily_shift_logs', 'insert', newLog, { action: 'INSERT', new_data: newLog });
       },
 
       updateDailyShiftLog: (id, updates) => {
-        const { dailyShiftLogs } = get();
-        set({
-          dailyShiftLogs: dailyShiftLogs.map((l) =>
-            l.id === id ? { ...l, ...updates, updated_at: new Date().toISOString() } : l
-          ),
-        });
+        const { dailyShiftLogs, auditLogs, currentUser } = get();
+        const existing = dailyShiftLogs.find((l) => l.id === id);
+        const updatedLogs = dailyShiftLogs.map((l) =>
+          l.id === id ? { ...l, ...updates, updated_at: new Date().toISOString() } : l
+        );
+        const newAudit = createAuditLog(currentUser, 'daily_shift_logs', id, 'UPDATE', existing, updates);
+        set({ dailyShiftLogs: updatedLogs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('daily_shift_logs', 'update', { id, ...updates }, { action: 'UPDATE', old_data: existing });
+      },
+
+      archiveDailyShiftLog: (id) => {
+        const { dailyShiftLogs, auditLogs, currentUser } = get();
+        const existing = dailyShiftLogs.find((l) => l.id === id);
+        const updated = dailyShiftLogs.map((l) =>
+          l.id === id ? { ...l, is_archived: true, updated_at: new Date().toISOString() } : l
+        );
+        const newAudit = createAuditLog(currentUser, 'daily_shift_logs', id, 'ARCHIVE', existing, { is_archived: true });
+        set({ dailyShiftLogs: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('daily_shift_logs', 'archive', { id, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreDailyShiftLog: (id) => {
+        const { dailyShiftLogs, auditLogs, currentUser } = get();
+        const existing = dailyShiftLogs.find((l) => l.id === id);
+        const updated = dailyShiftLogs.map((l) =>
+          l.id === id ? { ...l, is_archived: false, updated_at: new Date().toISOString() } : l
+        );
+        const newAudit = createAuditLog(currentUser, 'daily_shift_logs', id, 'RESTORE', existing, { is_archived: false });
+        set({ dailyShiftLogs: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('daily_shift_logs', 'restore', { id, is_archived: false }, { action: 'RESTORE', old_data: existing });
       },
 
       // Role-Based Group Communications (8.2)
@@ -942,27 +1005,14 @@ export const useAppStore = create<AppStoreState>()(
         const newChan: ChatChannel = {
           ...channelData,
           id: newId,
+          is_archived: false,
+          is_active: true,
           created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
-
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'chat_channels',
-          record_id: newId,
-          action: 'INSERT',
-          performed_by: currentUser?.id || 'admin',
-          performer_name: currentUser?.full_name || 'Staff Member',
-          new_data: newChan,
-          timestamp: new Date().toISOString(),
-        };
-
-        set({
-          chatChannels: [...chatChannels, newChan],
-          auditLogs: [newAudit, ...auditLogs],
-        });
-
-        // Background push to Supabase
-        supabaseSync.pushMutation('chat_channels', 'insert', newChan);
+        const newAudit = createAuditLog(currentUser, 'chat_channels', newId, 'INSERT', null, newChan);
+        set({ chatChannels: [...chatChannels, newChan], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('chat_channels', 'insert', newChan, { action: 'INSERT', new_data: newChan });
       },
 
       updateChatChannel: (id, updates) => {
@@ -970,57 +1020,41 @@ export const useAppStore = create<AppStoreState>()(
         const existing = chatChannels.find((c) => c.id === id);
         if (!existing) return;
 
-        const updatedChan: ChatChannel = {
-          ...existing,
-          ...updates,
-          updated_at: new Date().toISOString(),
-        };
-
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'chat_channels',
-          record_id: id,
-          action: 'UPDATE',
-          performed_by: currentUser?.id || 'admin',
-          performer_name: currentUser?.full_name || 'Staff Member',
-          old_data: existing,
-          new_data: updatedChan,
-          timestamp: new Date().toISOString(),
-        };
-
-        set({
-          chatChannels: chatChannels.map((c) => (c.id === id ? updatedChan : c)),
-          auditLogs: [newAudit, ...auditLogs],
-        });
-
-        // Background push to Supabase
-        supabaseSync.pushMutation('chat_channels', 'update', updatedChan);
+        const updatedChan = { ...existing, ...updates, updated_at: new Date().toISOString() };
+        const updatedChannels = chatChannels.map((c) => (c.id === id ? updatedChan : c));
+        const newAudit = createAuditLog(currentUser, 'chat_channels', id, 'UPDATE', existing, updates);
+        set({ chatChannels: updatedChannels, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('chat_channels', 'update', updatedChan, { action: 'UPDATE', old_data: existing, new_data: updates });
       },
 
-      deleteChatChannel: (id) => {
-        const { chatChannels, channelMessages, auditLogs, currentUser } = get();
+      archiveChatChannel: (id) => {
+        const { chatChannels, auditLogs, currentUser } = get();
         const existing = chatChannels.find((c) => c.id === id);
         if (!existing) return;
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'chat_channels',
-          record_id: id,
-          action: 'DELETE',
-          performed_by: currentUser?.id || 'admin',
-          performer_name: currentUser?.full_name || 'Staff Member',
-          old_data: existing,
-          timestamp: new Date().toISOString(),
-        };
+        const updatedChannels = chatChannels.map((c) =>
+          c.id === id ? { ...c, is_archived: true, is_active: false, updated_at: new Date().toISOString() } : c
+        );
+        const newAudit = createAuditLog(currentUser, 'chat_channels', id, 'ARCHIVE', existing, { is_archived: true, is_active: false });
+        set({ chatChannels: updatedChannels, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('chat_channels', 'archive', { id, is_archived: true, is_active: false }, { action: 'ARCHIVE', old_data: existing });
+      },
 
-        set({
-          chatChannels: chatChannels.filter((c) => c.id !== id),
-          channelMessages: channelMessages.filter((m) => m.channel_id !== id),
-          auditLogs: [newAudit, ...auditLogs],
-        });
+      restoreChatChannel: (id) => {
+        const { chatChannels, auditLogs, currentUser } = get();
+        const existing = chatChannels.find((c) => c.id === id);
+        if (!existing) return;
 
-        // Background push to Supabase
-        supabaseSync.pushMutation('chat_channels', 'delete', { id });
+        const updatedChannels = chatChannels.map((c) =>
+          c.id === id ? { ...c, is_archived: false, is_active: true, updated_at: new Date().toISOString() } : c
+        );
+        const newAudit = createAuditLog(currentUser, 'chat_channels', id, 'RESTORE', existing, { is_archived: false, is_active: true });
+        set({ chatChannels: updatedChannels, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('chat_channels', 'restore', { id, is_archived: false, is_active: true }, { action: 'RESTORE', old_data: existing });
+      },
+
+      deleteChatChannel: (id) => {
+        get().archiveChatChannel(id);
       },
 
       sendChannelMessage: (msgData) => {
@@ -1029,11 +1063,11 @@ export const useAppStore = create<AppStoreState>()(
         const newMsg: ChannelMessage = {
           ...msgData,
           id: newId,
+          is_hidden: false,
+          is_archived: false,
           created_at: new Date().toISOString(),
         };
         set({ channelMessages: [...channelMessages, newMsg] });
-
-        // Background push to Supabase
         supabaseSync.pushMutation('channel_messages', 'insert', newMsg);
       },
 
@@ -1049,19 +1083,9 @@ export const useAppStore = create<AppStoreState>()(
           v.id === vehicleId ? { ...v, custom_vehicle_id: customId, updated_at: new Date().toISOString() } : v
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'vehicles',
-          record_id: vehicleId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { custom_vehicle_id: existing.custom_vehicle_id },
-          new_data: { custom_vehicle_id: customId },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { custom_vehicle_id: existing.custom_vehicle_id }, { custom_vehicle_id: customId });
         set({ vehicles: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'update', { id: vehicleId, custom_vehicle_id: customId }, { action: 'UPDATE', old_data: existing });
       },
 
       updateVehicle: (vehicleId, vehicleData) => {
@@ -1075,24 +1099,13 @@ export const useAppStore = create<AppStoreState>()(
             : v
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'vehicles',
-          record_id: vehicleId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: existing,
-          new_data: vehicleData,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', existing, vehicleData);
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
         supabaseSync.pushMutation('vehicles', 'update', {
           id: vehicleId,
           ...vehicleData,
           updated_at: new Date().toISOString(),
-        });
+        }, { action: 'UPDATE', old_data: existing });
       },
 
       requestVehicleStatus: (vehicleId, pendingStatus, reason, forceImmediate) => {
@@ -1113,21 +1126,11 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'vehicles',
-          record_id: vehicleId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: {
-            current_status: shouldBypass ? pendingStatus : undefined,
-            pending_status: shouldBypass ? null : pendingStatus,
-            status_change_reason: reason,
-          },
-          timestamp: new Date().toISOString(),
-        };
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', null, {
+          current_status: shouldBypass ? pendingStatus : undefined,
+          pending_status: shouldBypass ? null : pendingStatus,
+          status_change_reason: reason,
+        });
 
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
       },
@@ -1149,18 +1152,7 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'vehicles',
-          record_id: vehicleId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { current_status: vehicle.current_status, pending_status: vehicle.pending_status },
-          new_data: { current_status: vehicle.pending_status, pending_status: null },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { current_status: vehicle.current_status, pending_status: vehicle.pending_status }, { current_status: vehicle.pending_status, pending_status: null });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
       },
 
@@ -1180,18 +1172,7 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'vehicles',
-          record_id: vehicleId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { pending_status: vehicle.pending_status },
-          new_data: { pending_status: null },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { pending_status: vehicle.pending_status }, { pending_status: null });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
       },
 
@@ -1212,18 +1193,7 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'vehicles',
-          record_id: vehicleId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { vehicle_id: oldIotId },
-          new_data: { vehicle_id: newIotId, reason },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { vehicle_id: oldIotId }, { vehicle_id: newIotId, reason });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
       },
 
@@ -1246,19 +1216,34 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'vehicles',
-          record_id: vehicleId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { odometer_km: oldOdo },
-          new_data: { odometer_km: odometerKm },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { odometer_km: oldOdo }, { odometer_km: odometerKm });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
+      },
+
+      archiveVehicle: (vehicleId) => {
+        const { vehicles, auditLogs, currentUser } = get();
+        const existing = vehicles.find((v) => v.id === vehicleId);
+        const updated = vehicles.map((v) =>
+          v.id === vehicleId
+            ? { ...v, is_active: false, is_archived: true, current_status: 'Not Available' as const, updated_at: new Date().toISOString() }
+            : v
+        );
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'ARCHIVE', existing, { is_active: false, is_archived: true });
+        set({ vehicles: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'archive', { id: vehicleId, is_active: false, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreVehicle: (vehicleId) => {
+        const { vehicles, auditLogs, currentUser } = get();
+        const existing = vehicles.find((v) => v.id === vehicleId);
+        const updated = vehicles.map((v) =>
+          v.id === vehicleId
+            ? { ...v, is_active: true, is_archived: false, current_status: 'Available' as const, updated_at: new Date().toISOString() }
+            : v
+        );
+        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'RESTORE', existing, { is_active: true, is_archived: false });
+        set({ vehicles: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'restore', { id: vehicleId, is_active: true, is_archived: false }, { action: 'RESTORE', old_data: existing });
       },
 
       logInspection: (inspectionData) => {
@@ -1269,6 +1254,7 @@ export const useAppStore = create<AppStoreState>()(
         const newInspection: VehicleInspection = {
           ...inspectionData,
           id: newId,
+          is_archived: false,
           inspector_id: currentUser.id,
           inspector_name: currentUser.full_name,
           inspected_at: new Date().toISOString(),
@@ -1291,23 +1277,13 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'inspections',
-          record_id: newId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newInspection,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'vehicle_inspections', newId, 'INSERT', null, newInspection);
         set({
           inspections: [newInspection, ...inspections],
           vehicles: updatedVehicles,
           auditLogs: [newAudit, ...auditLogs],
         });
+        supabaseSync.pushMutation('vehicle_inspections', 'insert', newInspection, { action: 'INSERT', new_data: newInspection });
       },
 
       // ====================================================================
@@ -1319,10 +1295,11 @@ export const useAppStore = create<AppStoreState>()(
         const newPart: PartInventory = {
           ...partData,
           id: newPartId,
+          is_active: true,
+          is_archived: false,
           created_at: new Date().toISOString(),
         };
 
-        // All stock is held exclusively in "Store 1"
         const initialStockEntry: HubPartStock = {
           id: `hs-store1-${newPartId}`,
           hub_id: 'hub-store-01',
@@ -1330,26 +1307,17 @@ export const useAppStore = create<AppStoreState>()(
           physical_stock: 0,
           pending_allocated_stock: 0,
           min_threshold: partData.min_threshold || 5,
+          is_archived: false,
           updated_at: new Date().toISOString(),
         };
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'parts',
-          record_id: newPartId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newPart,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'parts', newPartId, 'INSERT', null, newPart);
         set({
           parts: [...parts, newPart],
           hubStock: [...hubStock, initialStockEntry],
           auditLogs: [newAudit, ...auditLogs],
         });
+        supabaseSync.pushMutation('parts', 'insert', newPart, { action: 'INSERT', new_data: newPart });
       },
 
       updatePart: (partId, partData) => {
@@ -1361,19 +1329,31 @@ export const useAppStore = create<AppStoreState>()(
           p.id === partId ? { ...p, ...partData } : p
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'parts',
-          record_id: partId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: existing,
-          new_data: partData,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'parts', partId, 'UPDATE', existing, partData);
         set({ parts: updatedParts, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('parts', 'update', { id: partId, ...partData }, { action: 'UPDATE', old_data: existing });
+      },
+
+      archivePart: (partId) => {
+        const { parts, auditLogs, currentUser } = get();
+        const existing = parts.find((p) => p.id === partId);
+        const updated = parts.map((p) =>
+          p.id === partId ? { ...p, is_active: false, is_archived: true } : p
+        );
+        const newAudit = createAuditLog(currentUser, 'parts', partId, 'ARCHIVE', existing, { is_active: false, is_archived: true });
+        set({ parts: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('parts', 'archive', { id: partId, is_active: false, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restorePart: (partId) => {
+        const { parts, auditLogs, currentUser } = get();
+        const existing = parts.find((p) => p.id === partId);
+        const updated = parts.map((p) =>
+          p.id === partId ? { ...p, is_active: true, is_archived: false } : p
+        );
+        const newAudit = createAuditLog(currentUser, 'parts', partId, 'RESTORE', existing, { is_active: true, is_archived: false });
+        set({ parts: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('parts', 'restore', { id: partId, is_active: true, is_archived: false }, { action: 'RESTORE', old_data: existing });
       },
 
       issuePartFromStore1: (partId, quantity, recipientName, reason, hubId, vehicleId) => {
@@ -1402,26 +1382,17 @@ export const useAppStore = create<AppStoreState>()(
           used_by_name: currentUser.full_name,
           recipient_name: recipientName,
           reason,
+          is_archived: false,
           created_at: new Date().toISOString(),
         };
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'part_usage_logs',
-          record_id: newUsageLog.id,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { physical_stock: store1Stock.physical_stock },
-          new_data: { physical_stock: Math.max(0, store1Stock.physical_stock - quantity), usage: newUsageLog },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'part_usage_logs', newUsageLog.id, 'INSERT', { physical_stock: store1Stock.physical_stock }, { physical_stock: Math.max(0, store1Stock.physical_stock - quantity), usage: newUsageLog });
         set({
           hubStock: updatedStock,
           partUsageLogs: [newUsageLog, ...partUsageLogs],
           auditLogs: [newAudit, ...auditLogs],
         });
+        supabaseSync.pushMutation('part_usage_logs', 'insert', newUsageLog, { action: 'INSERT', new_data: newUsageLog });
       },
 
       adjustPhysicalStock: (hubId, partId, newPhysicalStock, reason) => {
@@ -1444,24 +1415,15 @@ export const useAppStore = create<AppStoreState>()(
             physical_stock: newPhysicalStock,
             pending_allocated_stock: 0,
             min_threshold: 5,
+            is_archived: false,
             updated_at: new Date().toISOString(),
           };
           updatedStock = [...hubStock, newEntry];
         }
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'hub_part_stock',
-          record_id: `${targetHubId}-${partId}`,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { physical_stock: stock?.physical_stock ?? 0 },
-          new_data: { physical_stock: newPhysicalStock, reason },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'hub_part_stock', `${targetHubId}-${partId}`, 'UPDATE', { physical_stock: stock?.physical_stock ?? 0 }, { physical_stock: newPhysicalStock, reason });
         set({ hubStock: updatedStock, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('hub_part_stock', 'update', { hub_id: targetHubId, part_id: partId, physical_stock: newPhysicalStock }, { action: 'UPDATE', old_data: stock });
       },
 
       // ====================================================================
@@ -1486,6 +1448,7 @@ export const useAppStore = create<AppStoreState>()(
             quantity: p.quantity,
             unit_cost_snapshot: partDef?.unit_cost || 0,
             is_approved: isAuthorized,
+            is_archived: false,
             created_at: new Date().toISOString(),
           };
         });
@@ -1498,6 +1461,7 @@ export const useAppStore = create<AppStoreState>()(
           approved_by: isAuthorized ? currentUser.id : null,
           approved_at: isAuthorized ? new Date().toISOString() : null,
           approval_notes: isAuthorized ? 'Self-approved upon ticket creation by authorized manager' : null,
+          is_archived: false,
           created_at: new Date().toISOString(),
           parts: builtParts,
         };
@@ -1545,21 +1509,11 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'job_cards',
-          record_id: newJobCardId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: {
-            ticket_number: newTicketNumber,
-            vehicle_id: cardData.vehicle_id,
-            status: initialStatus,
-          },
-          timestamp: new Date().toISOString(),
-        };
+        const newAudit = createAuditLog(currentUser, 'job_cards', newJobCardId, 'INSERT', null, {
+          ticket_number: newTicketNumber,
+          vehicle_id: cardData.vehicle_id,
+          status: initialStatus,
+        });
 
         set({
           jobCards: [newJobCard, ...jobCards],
@@ -1567,6 +1521,7 @@ export const useAppStore = create<AppStoreState>()(
           vehicles: updatedVehicles,
           auditLogs: [newAudit, ...auditLogs],
         });
+        supabaseSync.pushMutation('job_cards', 'insert', newJobCard, { action: 'INSERT', new_data: newJobCard });
       },
 
       updateJobCard: (jobCardId, updates) => {
@@ -1578,19 +1533,9 @@ export const useAppStore = create<AppStoreState>()(
           j.id === jobCardId ? { ...j, ...updates } : j
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'job_cards',
-          record_id: jobCardId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: existing,
-          new_data: updates,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'job_cards', jobCardId, 'UPDATE', existing, updates);
         set({ jobCards: updatedJobCards, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('job_cards', 'update', { id: jobCardId, ...updates }, { action: 'UPDATE', old_data: existing });
       },
 
       approveJobCard: (jobCardId, approvalNotes) => {
@@ -1643,24 +1588,14 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'job_cards',
-          record_id: jobCardId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { status: 'PENDING' },
-          new_data: { status: 'APPROVED', approval_notes: approvalNotes },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'job_cards', jobCardId, 'UPDATE', { status: 'PENDING' }, { status: 'APPROVED', approval_notes: approvalNotes });
         set({
           jobCards: updatedJobCards,
           hubStock: updatedStock,
           vehicles: updatedVehicles,
           auditLogs: [newAudit, ...auditLogs],
         });
+        supabaseSync.pushMutation('job_cards', 'update', { id: jobCardId, status: 'APPROVED', approval_notes: approvalNotes }, { action: 'UPDATE', old_data: job });
       },
 
       rejectJobCard: (jobCardId, rejectionNotes) => {
@@ -1709,24 +1644,36 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'job_cards',
-          record_id: jobCardId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { status: 'PENDING' },
-          new_data: { status: 'REJECTED', rejection_notes: rejectionNotes },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'job_cards', jobCardId, 'UPDATE', { status: 'PENDING' }, { status: 'REJECTED', rejection_notes: rejectionNotes });
         set({
           jobCards: updatedJobCards,
           hubStock: updatedStock,
           vehicles: updatedVehicles,
           auditLogs: [newAudit, ...auditLogs],
         });
+        supabaseSync.pushMutation('job_cards', 'update', { id: jobCardId, status: 'REJECTED', approval_notes: rejectionNotes }, { action: 'UPDATE', old_data: job });
+      },
+
+      archiveJobCard: (jobCardId) => {
+        const { jobCards, auditLogs, currentUser } = get();
+        const existing = jobCards.find((j) => j.id === jobCardId);
+        const updated = jobCards.map((j) =>
+          j.id === jobCardId ? { ...j, is_archived: true } : j
+        );
+        const newAudit = createAuditLog(currentUser, 'job_cards', jobCardId, 'ARCHIVE', existing, { is_archived: true });
+        set({ jobCards: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('job_cards', 'archive', { id: jobCardId, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreJobCard: (jobCardId) => {
+        const { jobCards, auditLogs, currentUser } = get();
+        const existing = jobCards.find((j) => j.id === jobCardId);
+        const updated = jobCards.map((j) =>
+          j.id === jobCardId ? { ...j, is_archived: false } : j
+        );
+        const newAudit = createAuditLog(currentUser, 'job_cards', jobCardId, 'RESTORE', existing, { is_archived: false });
+        set({ jobCards: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('job_cards', 'restore', { id: jobCardId, is_archived: false }, { action: 'RESTORE', old_data: existing });
       },
 
       // ====================================================================
@@ -1741,6 +1688,7 @@ export const useAppStore = create<AppStoreState>()(
           version: '1.0',
           view_count: 1,
           acknowledged_by: [currentUser.id],
+          is_archived: false,
           revisions: [
             {
               version: '1.0',
@@ -1754,19 +1702,9 @@ export const useAppStore = create<AppStoreState>()(
           updated_at: new Date().toISOString(),
         };
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'sops',
-          record_id: newId,
-          action: 'INSERT',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: null,
-          new_data: newSOP,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'sops', newId, 'INSERT', null, newSOP);
         set({ sops: [newSOP, ...sops], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('sops', 'insert', newSOP, { action: 'INSERT', new_data: newSOP });
       },
 
       updateSOP: (sopId, updates, changeSummary) => {
@@ -1798,42 +1736,22 @@ export const useAppStore = create<AppStoreState>()(
           return s;
         });
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'sops',
-          record_id: sopId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { version: existing.version },
-          new_data: { version: nextVersion, changeSummary },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'sops', sopId, 'UPDATE', { version: existing.version }, { version: nextVersion, changeSummary });
         set({ sops: updatedSOPs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('sops', 'update', { id: sopId, version: nextVersion, ...updates, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing });
       },
 
       publishSOP: (sopId) => {
         const { sops, auditLogs, currentUser } = get();
         const updatedSOPs = sops.map((s) =>
           s.id === sopId
-            ? { ...s, status: 'PUBLISHED' as const, updated_at: new Date().toISOString() }
+            ? { ...s, status: 'PUBLISHED' as const, is_archived: false, updated_at: new Date().toISOString() }
             : s
         );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'sops',
-          record_id: sopId,
-          action: 'UPDATE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: { status: 'DRAFT' },
-          new_data: { status: 'PUBLISHED' },
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'sops', sopId, 'UPDATE', { status: 'DRAFT' }, { status: 'PUBLISHED' });
         set({ sops: updatedSOPs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('sops', 'update', { id: sopId, status: 'PUBLISHED', is_archived: false }, { action: 'UPDATE' });
       },
 
       acknowledgeSOP: (sopId, profileId) => {
@@ -1857,38 +1775,53 @@ export const useAppStore = create<AppStoreState>()(
         set({ sops: updatedSOPs });
       },
 
-      deleteSOP: (sopId) => {
+      archiveSOP: (sopId) => {
         const { sops, auditLogs, currentUser } = get();
         const existing = sops.find((s) => s.id === sopId);
         if (!existing) return;
 
-        const updatedSOPs = sops.filter((s) => s.id !== sopId);
+        const updatedSOPs = sops.map((s) =>
+          s.id === sopId
+            ? { ...s, status: 'ARCHIVED' as const, is_archived: true, updated_at: new Date().toISOString() }
+            : s
+        );
 
-        const newAudit: AuditLog = {
-          id: `audit-${Date.now()}`,
-          table_name: 'sops',
-          record_id: sopId,
-          action: 'SOFT_DELETE',
-          performed_by: currentUser.id,
-          performer_name: currentUser.full_name,
-          old_data: existing,
-          new_data: null,
-          timestamp: new Date().toISOString(),
-        };
-
+        const newAudit = createAuditLog(currentUser, 'sops', sopId, 'ARCHIVE', existing, { status: 'ARCHIVED', is_archived: true });
         set({ sops: updatedSOPs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('sops', 'archive', { id: sopId, status: 'ARCHIVED', is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreSOP: (sopId) => {
+        const { sops, auditLogs, currentUser } = get();
+        const existing = sops.find((s) => s.id === sopId);
+        if (!existing) return;
+
+        const updatedSOPs = sops.map((s) =>
+          s.id === sopId
+            ? { ...s, status: 'PUBLISHED' as const, is_archived: false, updated_at: new Date().toISOString() }
+            : s
+        );
+
+        const newAudit = createAuditLog(currentUser, 'sops', sopId, 'RESTORE', existing, { status: 'PUBLISHED', is_archived: false });
+        set({ sops: updatedSOPs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('sops', 'restore', { id: sopId, status: 'PUBLISHED', is_archived: false }, { action: 'RESTORE', old_data: existing });
+      },
+
+      deleteSOP: (sopId) => {
+        get().archiveSOP(sopId);
       },
 
       // ====================================================================
       // 9. TEAM NOTES & SCRATCHPAD WITH DISPOSAL LIFECYCLE
       // ====================================================================
       createNote: (noteData) => {
-        const { teamNotes, currentUser } = get();
+        const { teamNotes, auditLogs, currentUser } = get();
         const newId = `note-${Date.now()}`;
         const newNote: TeamNote = {
           ...noteData,
           id: newId,
           status: 'ACTIVE',
+          is_archived: false,
           author_id: currentUser.id,
           author_name: currentUser.full_name,
           author_role: currentUser.roles?.[0]?.label || 'Operations Staff',
@@ -1898,41 +1831,48 @@ export const useAppStore = create<AppStoreState>()(
           updated_at: new Date().toISOString(),
         };
 
-        set({ teamNotes: [newNote, ...teamNotes] });
-        supabaseSync.pushMutation('team_notes', 'insert', newNote);
+        const newAudit = createAuditLog(currentUser, 'team_notes', newId, 'INSERT', null, newNote);
+        set({ teamNotes: [newNote, ...teamNotes], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('team_notes', 'insert', newNote, { action: 'INSERT', new_data: newNote });
       },
 
       updateNote: (noteId, noteData) => {
-        const { teamNotes } = get();
+        const { teamNotes, auditLogs, currentUser } = get();
+        const existing = teamNotes.find((n) => n.id === noteId);
         const updatedNotes = teamNotes.map((n) =>
           n.id === noteId
             ? { ...n, ...noteData, updated_at: new Date().toISOString() }
             : n
         );
-        set({ teamNotes: updatedNotes });
+        const newAudit = createAuditLog(currentUser, 'team_notes', noteId, 'UPDATE', existing, noteData);
+        set({ teamNotes: updatedNotes, auditLogs: [newAudit, ...auditLogs] });
         supabaseSync.pushMutation('team_notes', 'update', {
           id: noteId,
           ...noteData,
           updated_at: new Date().toISOString(),
-        });
+        }, { action: 'UPDATE', old_data: existing });
       },
 
       archiveNote: (noteId) => {
-        const { teamNotes } = get();
+        const { teamNotes, auditLogs, currentUser } = get();
+        const existing = teamNotes.find((n) => n.id === noteId);
         const updated = teamNotes.map((n) =>
-          n.id === noteId ? { ...n, status: 'ARCHIVED' as const, is_pinned: false, updated_at: new Date().toISOString() } : n
+          n.id === noteId ? { ...n, status: 'ARCHIVED' as const, is_archived: true, is_pinned: false, updated_at: new Date().toISOString() } : n
         );
-        set({ teamNotes: updated });
-        supabaseSync.pushMutation('team_notes', 'update', {
+        const newAudit = createAuditLog(currentUser, 'team_notes', noteId, 'ARCHIVE', existing, { status: 'ARCHIVED', is_archived: true });
+        set({ teamNotes: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('team_notes', 'archive', {
           id: noteId,
           status: 'ARCHIVED',
+          is_archived: true,
           is_pinned: false,
           updated_at: new Date().toISOString(),
-        });
+        }, { action: 'ARCHIVE', old_data: existing });
       },
 
       resolveNote: (noteId) => {
-        const { teamNotes, currentUser } = get();
+        const { teamNotes, auditLogs, currentUser } = get();
+        const existing = teamNotes.find((n) => n.id === noteId);
         const updated = teamNotes.map((n) =>
           n.id === noteId
             ? {
@@ -1945,7 +1885,8 @@ export const useAppStore = create<AppStoreState>()(
               }
             : n
         );
-        set({ teamNotes: updated });
+        const newAudit = createAuditLog(currentUser, 'team_notes', noteId, 'UPDATE', existing, { status: 'RESOLVED' });
+        set({ teamNotes: updated, auditLogs: [newAudit, ...auditLogs] });
         supabaseSync.pushMutation('team_notes', 'update', {
           id: noteId,
           status: 'RESOLVED',
@@ -1953,61 +1894,96 @@ export const useAppStore = create<AppStoreState>()(
           resolved_at: new Date().toISOString(),
           resolved_by_name: currentUser.full_name,
           updated_at: new Date().toISOString(),
-        });
+        }, { action: 'UPDATE', old_data: existing });
       },
 
       restoreNote: (noteId) => {
-        const { teamNotes } = get();
+        const { teamNotes, auditLogs, currentUser } = get();
+        const existing = teamNotes.find((n) => n.id === noteId);
         const updated = teamNotes.map((n) =>
-          n.id === noteId ? { ...n, status: 'ACTIVE' as const, updated_at: new Date().toISOString() } : n
+          n.id === noteId ? { ...n, status: 'ACTIVE' as const, is_archived: false, updated_at: new Date().toISOString() } : n
         );
-        set({ teamNotes: updated });
-        supabaseSync.pushMutation('team_notes', 'update', {
+        const newAudit = createAuditLog(currentUser, 'team_notes', noteId, 'RESTORE', existing, { status: 'ACTIVE', is_archived: false });
+        set({ teamNotes: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('team_notes', 'restore', {
           id: noteId,
           status: 'ACTIVE',
+          is_archived: false,
           updated_at: new Date().toISOString(),
-        });
+        }, { action: 'RESTORE', old_data: existing });
       },
 
       deleteNote: (noteId) => {
-        const { teamNotes } = get();
-        set({ teamNotes: teamNotes.filter((n) => n.id !== noteId) });
-        supabaseSync.pushMutation('team_notes', 'delete', { id: noteId });
+        get().archiveNote(noteId);
       },
 
       bulkDisposeOldNotes: () => {
-        const { teamNotes } = get();
-        // Remove notes that are RESOLVED or ARCHIVED
-        set({ teamNotes: teamNotes.filter((n) => n.status === 'ACTIVE') });
+        const { teamNotes, auditLogs, currentUser } = get();
+        const updated = teamNotes.map((n) =>
+          n.status === 'RESOLVED' || n.status === 'ARCHIVED'
+            ? { ...n, status: 'ARCHIVED' as const, is_archived: true, updated_at: new Date().toISOString() }
+            : n
+        );
+        const newAudit = createAuditLog(currentUser, 'team_notes', 'bulk', 'ARCHIVE', null, { action: 'bulkDispose' });
+        set({ teamNotes: updated, auditLogs: [newAudit, ...auditLogs] });
       },
 
       togglePinNote: (noteId) => {
-        const { teamNotes } = get();
+        const { teamNotes, auditLogs, currentUser } = get();
+        const existing = teamNotes.find((n) => n.id === noteId);
         const updatedNotes = teamNotes.map((n) =>
           n.id === noteId ? { ...n, is_pinned: !n.is_pinned, updated_at: new Date().toISOString() } : n
         );
-        set({ teamNotes: updatedNotes });
+        const newAudit = createAuditLog(currentUser, 'team_notes', noteId, 'UPDATE', { is_pinned: existing?.is_pinned }, { is_pinned: !existing?.is_pinned });
+        set({ teamNotes: updatedNotes, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('team_notes', 'update', { id: noteId, is_pinned: !existing?.is_pinned });
       },
 
       // ====================================================================
       // 10. BLOCKED USERS
       // ====================================================================
       addBlockedUser: (userData) => {
-        const { blockedUsers } = get();
+        const { blockedUsers, auditLogs, currentUser } = get();
         const newId = `blk-${Date.now()}`;
         const newBlocked: BlockedUser = {
           ...userData,
           id: newId,
+          is_archived: false,
         };
-        set({ blockedUsers: [newBlocked, ...blockedUsers] });
-        supabaseSync.pushMutation('blocked_users', 'insert', newBlocked);
+        const newAudit = createAuditLog(currentUser, 'blocked_users', newId, 'INSERT', null, newBlocked);
+        set({ blockedUsers: [newBlocked, ...blockedUsers], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('blocked_users', 'insert', newBlocked, { action: 'INSERT', new_data: newBlocked });
       },
 
       updateBlockedUser: (id, updates) => {
-        const { blockedUsers } = get();
+        const { blockedUsers, auditLogs, currentUser } = get();
+        const existing = blockedUsers.find((b) => b.id === id);
         const updated = blockedUsers.map((b) => (b.id === id ? { ...b, ...updates } : b));
-        set({ blockedUsers: updated });
-        supabaseSync.pushMutation('blocked_users', 'update', { id, ...updates });
+        const newAudit = createAuditLog(currentUser, 'blocked_users', id, 'UPDATE', existing, updates);
+        set({ blockedUsers: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('blocked_users', 'update', { id, ...updates }, { action: 'UPDATE', old_data: existing });
+      },
+
+      archiveBlockedUser: (id) => {
+        const { blockedUsers, auditLogs, currentUser } = get();
+        const existing = blockedUsers.find((b) => b.id === id);
+        const updated = blockedUsers.map((b) =>
+          b.id === id ? { ...b, is_archived: true } : b
+        );
+        const newAudit = createAuditLog(currentUser, 'blocked_users', id, 'ARCHIVE', existing, { is_archived: true });
+        set({ blockedUsers: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('blocked_users', 'archive', { id, is_archived: true }, { action: 'ARCHIVE', old_data: existing });
+      },
+
+      restoreBlockedUser: (id) => {
+        const { blockedUsers, auditLogs, currentUser } = get();
+        const existing = blockedUsers.find((b) => b.id === id);
+        const updated = blockedUsers.map((b) =>
+          b.id === id ? { ...b, is_archived: false } : b
+        );
+        const newAudit = createAuditLog(currentUser, 'blocked_users', id, 'RESTORE', existing, { is_archived: false });
+        set({ blockedUsers: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('blocked_users', 'restore', { id, is_archived: false }, { action: 'RESTORE', old_data: existing });
       },
 
       // State Reset to Real Mumbai Baseline

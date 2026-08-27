@@ -1,30 +1,33 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useAppStore } from "@/lib/store/appStore";
 import { useRBAC } from "@/hooks/useRBAC";
-import { ChatChannel, ChannelMessage } from "@/types";
-import { formatDate, cn } from "@/lib/utils";
+import { ChatChannel, ChannelMessage, RoleCode } from "@/types";
+import { formatDate, formatRelativeTime, cn } from "@/lib/utils";
 import {
   MessageSquare,
   Hash,
   Lock,
   Plus,
   Send,
-  Users,
   Paperclip,
-  X,
+  Users,
+  Settings,
   Shield,
   Trash2,
-  FileText,
-  Settings,
-  Search,
+  X,
   Check,
-  UserCheck,
+  Search,
+  CheckSquare,
+  Square,
   UserPlus,
   Globe,
   AlertTriangle,
+  Archive,
+  RotateCcw,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -34,7 +37,8 @@ export function TeamChannels() {
   const sendChannelMessage = useAppStore((s) => s.sendChannelMessage);
   const createChatChannel = useAppStore((s) => s.createChatChannel);
   const updateChatChannel = useAppStore((s) => s.updateChatChannel);
-  const deleteChatChannel = useAppStore((s) => s.deleteChatChannel);
+  const archiveChatChannel = useAppStore((s) => s.archiveChatChannel);
+  const restoreChatChannel = useAppStore((s) => s.restoreChatChannel);
   const currentUser = useAppStore((s) => s.currentUser);
   const staffProfiles = useAppStore((s) => s.staffProfiles || []);
   const { isOwner, isManager } = useRBAC();
@@ -44,34 +48,34 @@ export function TeamChannels() {
   );
   const [messageInput, setMessageInput] = useState("");
   const [attachedFiles, setAttachedFiles] = useState<string[]>([]);
+  const [showArchivedList, setShowArchivedList] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // New Channel Modal State
   const [newChannelModalOpen, setNewChannelModalOpen] = useState(false);
   const [newChanName, setNewChanName] = useState("");
   const [newChanDesc, setNewChanDesc] = useState("");
   const [newChanIsPrivate, setNewChanIsPrivate] = useState(false);
-  const [newAccessMode, setNewAccessMode] = useState<"ALL" | "ROLES" | "MEMBERS" | "BOTH">("ROLES");
-  const [newSelectedRoles, setNewSelectedRoles] = useState<string[]>(["MANAGER", "SUPER_ADMIN"]);
+  const [newAccessMode, setNewAccessMode] = useState<"roles" | "members" | "both">("roles");
+  const [newSelectedRoles, setNewSelectedRoles] = useState<string[]>(["MANAGER", "HUB_MANAGER"]);
   const [newSelectedMembers, setNewSelectedMembers] = useState<string[]>([]);
   const [newStaffSearch, setNewStaffSearch] = useState("");
 
-  // Edit Channel Modal State (Editable Access After Creation)
+  // Edit / Access Management Modal State
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingChannel, setEditingChannel] = useState<ChatChannel | null>(null);
   const [editChanName, setEditChanName] = useState("");
   const [editChanDesc, setEditChanDesc] = useState("");
   const [editChanIsPrivate, setEditChanIsPrivate] = useState(false);
-  const [editAccessMode, setEditAccessMode] = useState<"ALL" | "ROLES" | "MEMBERS" | "BOTH">("ROLES");
+  const [editAccessMode, setEditAccessMode] = useState<"roles" | "members" | "both">("roles");
   const [editSelectedRoles, setEditSelectedRoles] = useState<string[]>([]);
   const [editSelectedMembers, setEditSelectedMembers] = useState<string[]>([]);
   const [editStaffSearch, setEditStaffSearch] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Granular System & Operational Roles for Channel Entitlements
-  const availableRoles = [
+  // Standard roles list
+  const AVAILABLE_ROLES = [
     { key: "SUPER_ADMIN", label: "Super Admin (Owner)", desc: "Executive system governance" },
     { key: "MANAGER", label: "Operations Manager", desc: "Approvals & dispatch oversight" },
     { key: "HUB_MANAGER", label: "Hub Manager", desc: "Regional station management" },
@@ -81,8 +85,8 @@ export function TeamChannels() {
     { key: "OPERATOR", label: "General Operations", desc: "Fleet coordination & check-ins" },
   ];
 
-  // User-Permitted Channels
-  const visibleChannels = useMemo(() => {
+  // User-Permitted Channels (all matching RBAC)
+  const userPermittedChannels = useMemo(() => {
     return chatChannels.filter((c) => {
       if (!c.is_private) return true;
       if (isOwner) return true;
@@ -107,8 +111,16 @@ export function TeamChannels() {
     });
   }, [chatChannels, isOwner, currentUser]);
 
+  const activeChannels = useMemo(() => {
+    return userPermittedChannels.filter((c) => !c.is_archived);
+  }, [userPermittedChannels]);
+
+  const archivedChannels = useMemo(() => {
+    return userPermittedChannels.filter((c) => c.is_archived);
+  }, [userPermittedChannels]);
+
   // Active channel
-  const activeChannel = visibleChannels.find((c) => c.id === activeChannelId) || visibleChannels[0] || chatChannels[0];
+  const activeChannel = userPermittedChannels.find((c) => c.id === activeChannelId) || activeChannels[0] || userPermittedChannels[0];
 
   // Messages in active channel
   const currentMessages = useMemo(() => {
@@ -150,6 +162,10 @@ export function TeamChannels() {
     e.preventDefault();
     if (!messageInput.trim() && attachedFiles.length === 0) return;
     if (!activeChannel) return;
+    if (activeChannel.is_archived) {
+      toast.error("Cannot send messages to an archived channel. Restore the channel first.");
+      return;
+    }
 
     const formattedAttachments = attachedFiles.map((file, idx) => ({
       name: `Attachment_${idx + 1}`,
@@ -178,28 +194,34 @@ export function TeamChannels() {
       return;
     }
 
-    const cleanName = newChanName.trim().toLowerCase().replace(/\s+/g, "-");
-    createChatChannel({
+    const cleanName = newChanName.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "");
+
+    const newChannel: Omit<ChatChannel, "id" | "created_at"> = {
       name: cleanName,
       description: newChanDesc.trim() || undefined,
+      is_system: false,
       is_private: newChanIsPrivate,
-      allowed_roles: newChanIsPrivate ? newSelectedRoles : undefined,
-      allowed_members: newChanIsPrivate ? newSelectedMembers : undefined,
-      created_by: currentUser?.id,
-    });
+      allowed_roles: newChanIsPrivate && (newAccessMode === "roles" || newAccessMode === "both")
+        ? newSelectedRoles
+        : [],
+      allowed_members: newChanIsPrivate && (newAccessMode === "members" || newAccessMode === "both")
+        ? newSelectedMembers
+        : [],
+      created_by: currentUser?.id || "admin",
+    };
 
+    createChatChannel(newChannel);
     toast.success(`Created channel #${cleanName}`);
     setNewChannelModalOpen(false);
     setNewChanName("");
     setNewChanDesc("");
     setNewChanIsPrivate(false);
-    setNewAccessMode("ROLES");
-    setNewSelectedRoles(["MANAGER", "SUPER_ADMIN"]);
+    setNewSelectedRoles(["MANAGER", "HUB_MANAGER"]);
     setNewSelectedMembers([]);
     setNewStaffSearch("");
   };
 
-  // Open Edit Channel Modal
+  // Open Edit Modal
   const openEditModal = (channel: ChatChannel) => {
     setEditingChannel(channel);
     setEditChanName(channel.name);
@@ -207,24 +229,19 @@ export function TeamChannels() {
     setEditChanIsPrivate(Boolean(channel.is_private));
     setEditSelectedRoles(channel.allowed_roles || []);
     setEditSelectedMembers(channel.allowed_members || []);
+    const hasRoles = Boolean(channel.allowed_roles && channel.allowed_roles.length > 0);
+    const hasMembers = Boolean(channel.allowed_members && channel.allowed_members.length > 0);
+    if (hasRoles && hasMembers) setEditAccessMode("both");
+    else if (hasMembers) setEditAccessMode("members");
+    else setEditAccessMode("roles");
+
     setEditStaffSearch("");
-    setShowDeleteConfirm(false);
-
-    if (!channel.is_private) {
-      setEditAccessMode("ALL");
-    } else if (channel.allowed_roles?.length && channel.allowed_members?.length) {
-      setEditAccessMode("BOTH");
-    } else if (channel.allowed_members?.length) {
-      setEditAccessMode("MEMBERS");
-    } else {
-      setEditAccessMode("ROLES");
-    }
-
+    setShowArchiveConfirm(false);
     setEditModalOpen(true);
   };
 
-  // Save Channel Access Updates
-  const handleUpdateChannel = (e: React.FormEvent) => {
+  // Save Edit Channel
+  const handleSaveEditChannel = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingChannel) return;
     if (!editChanName.trim()) {
@@ -232,7 +249,8 @@ export function TeamChannels() {
       return;
     }
 
-    const cleanName = editChanName.trim().toLowerCase().replace(/\s+/g, "-");
+    const cleanName = editChanName.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-_]/g, "");
+
     updateChatChannel(editingChannel.id, {
       name: cleanName,
       description: editChanDesc.trim() || undefined,
@@ -246,25 +264,33 @@ export function TeamChannels() {
     setEditingChannel(null);
   };
 
-  // Delete Channel
-  const handleDeleteChannel = () => {
+  // Archive Channel (Soft-Delete)
+  const handleArchiveChannel = () => {
     if (!editingChannel) return;
     if (editingChannel.is_system) {
-      toast.error("System communication channels cannot be deleted.");
+      toast.error("System communication channels cannot be archived.");
       return;
     }
 
-    deleteChatChannel(editingChannel.id);
-    toast.success(`Channel #${editingChannel.name} deleted.`);
+    archiveChatChannel(editingChannel.id);
+    toast.success(`Channel #${editingChannel.name} archived (soft-deleted). All messages retained in audit ledger.`);
     setEditModalOpen(false);
     setEditingChannel(null);
-    setShowDeleteConfirm(false);
+    setShowArchiveConfirm(false);
 
-    // Switch to another available channel
-    const remaining = visibleChannels.filter((c) => c.id !== editingChannel.id);
+    // Switch to another available active channel
+    const remaining = activeChannels.filter((c) => c.id !== editingChannel.id);
     if (remaining.length > 0) {
       setActiveChannelId(remaining[0].id);
     }
+  };
+
+  // Restore Channel
+  const handleRestoreChannel = (channelId: string) => {
+    restoreChatChannel(channelId);
+    const chan = chatChannels.find((c) => c.id === channelId);
+    toast.success(`Channel #${chan?.name || "channel"} restored to active navigation.`);
+    setActiveChannelId(channelId);
   };
 
   // Filtered staff for member search
@@ -304,7 +330,7 @@ export function TeamChannels() {
             </h2>
           </div>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Real-time inter-department communication with granular role & member access controls
+            Real-time inter-department communication with granular role & member access controls and immutable audit logging
           </p>
         </div>
 
@@ -326,12 +352,12 @@ export function TeamChannels() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider">
-                Team Channels ({visibleChannels.length})
+                Active Channels ({activeChannels.length})
               </span>
             </div>
 
-            <div className="space-y-1 overflow-y-auto max-h-[480px]">
-              {visibleChannels.map((chan) => {
+            <div className="space-y-1 overflow-y-auto max-h-[380px]">
+              {activeChannels.map((chan) => {
                 const isActive = chan.id === activeChannel?.id;
                 const count = channelMessages.filter((m) => m.channel_id === chan.id).length;
                 const canEdit = canManageChannel(chan);
@@ -377,6 +403,53 @@ export function TeamChannels() {
                 );
               })}
             </div>
+
+            {/* Archived Channels Section */}
+            {archivedChannels.length > 0 && (
+              <div className="pt-2 border-t border-zinc-800/60">
+                <button
+                  type="button"
+                  onClick={() => setShowArchivedList(!showArchivedList)}
+                  className="w-full flex items-center justify-between text-[11px] font-bold text-zinc-500 hover:text-zinc-300 py-1"
+                >
+                  <span className="flex items-center gap-1.5">
+                    <Archive className="w-3 h-3 text-amber-400" />
+                    <span>Archived Channels ({archivedChannels.length})</span>
+                  </span>
+                  {showArchivedList ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                </button>
+
+                {showArchivedList && (
+                  <div className="space-y-1 mt-1.5 max-h-32 overflow-y-auto">
+                    {archivedChannels.map((chan) => (
+                      <div
+                        key={chan.id}
+                        className={cn(
+                          "w-full flex items-center justify-between p-2 rounded-lg text-xs transition",
+                          chan.id === activeChannel?.id ? "bg-amber-500/15 border border-amber-500/30 text-amber-300" : "bg-zinc-900/60 text-zinc-500 hover:text-zinc-300"
+                        )}
+                      >
+                        <button
+                          onClick={() => setActiveChannelId(chan.id)}
+                          className="truncate flex-1 text-left flex items-center gap-1.5"
+                        >
+                          <Archive className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{chan.name}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRestoreChannel(chan.id)}
+                          className="text-[10px] font-bold text-emerald-400 hover:underline shrink-0 ml-1"
+                          title="Restore channel"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* User status footer */}
@@ -396,12 +469,19 @@ export function TeamChannels() {
           {/* Channel Header */}
           <div className="p-4 border-b border-[#27272a] bg-[#141416] flex items-center justify-between">
             <div className="flex items-center gap-2 truncate mr-2">
-              {activeChannel?.is_private ? (
+              {activeChannel?.is_archived ? (
+                <Archive className="w-4 h-4 text-amber-400 shrink-0" />
+              ) : activeChannel?.is_private ? (
                 <Lock className="w-4 h-4 text-amber-400 shrink-0" />
               ) : (
                 <Hash className="w-4 h-4 text-blue-400 shrink-0" />
               )}
               <h3 className="font-bold text-zinc-100 text-sm truncate">{activeChannel?.name}</h3>
+              {activeChannel?.is_archived && (
+                <span className="px-2 py-0.2 rounded bg-amber-500/15 border border-amber-500/30 text-amber-400 text-[10px] font-bold">
+                  Archived (Read-Only)
+                </span>
+              )}
               {activeChannel?.description && (
                 <span className="text-xs text-zinc-500 hidden sm:inline truncate">
                   • {activeChannel.description}
@@ -425,19 +505,47 @@ export function TeamChannels() {
                 </div>
               )}
 
-              {/* Manage Access Button */}
-              {canManageChannel(activeChannel) && (
+              {/* Action Buttons */}
+              {activeChannel?.is_archived ? (
                 <button
-                  onClick={() => activeChannel && openEditModal(activeChannel)}
-                  className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold"
-                  title="Edit permissions, add/remove members or roles"
+                  onClick={() => handleRestoreChannel(activeChannel.id)}
+                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-black font-bold text-xs transition flex items-center gap-1"
                 >
-                  <Settings className="w-3.5 h-3.5 text-blue-400" />
-                  <span className="hidden sm:inline">Manage Access</span>
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Restore Channel</span>
                 </button>
+              ) : (
+                canManageChannel(activeChannel) && (
+                  <button
+                    onClick={() => activeChannel && openEditModal(activeChannel)}
+                    className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 hover:text-white transition flex items-center gap-1.5 text-xs font-semibold"
+                    title="Edit permissions, add/remove members or roles"
+                  >
+                    <Settings className="w-3.5 h-3.5 text-blue-400" />
+                    <span className="hidden sm:inline">Manage Access</span>
+                  </button>
+                )
               )}
             </div>
           </div>
+
+          {/* Archived Warning Banner */}
+          {activeChannel?.is_archived && (
+            <div className="p-3 bg-amber-500/10 border-b border-amber-500/30 flex items-center justify-between text-xs text-amber-300">
+              <span className="flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                <span>
+                  This channel is archived. Historical messages are preserved in the permanent audit ledger.
+                </span>
+              </span>
+              <button
+                onClick={() => handleRestoreChannel(activeChannel.id)}
+                className="text-xs font-bold underline hover:text-white shrink-0 ml-2"
+              >
+                Restore Channel
+              </button>
+            </div>
+          )}
 
           {/* Messages Stream */}
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -449,53 +557,63 @@ export function TeamChannels() {
               </div>
             ) : (
               currentMessages.map((msg) => {
-                const attachments = (msg as any).attachments || [];
-
+                const isMe = msg.sender_id === currentUser?.id;
                 return (
-                  <div key={msg.id} className="flex items-start gap-3 group text-xs">
-                    <div className="w-8 h-8 rounded-xl bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold flex items-center justify-center font-mono text-[11px] shrink-0">
+                  <div
+                    key={msg.id}
+                    className={cn(
+                      "flex items-start gap-3 text-xs max-w-2xl",
+                      isMe ? "ml-auto flex-row-reverse" : ""
+                    )}
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-[#2a2a2f] border border-[#3a3a42] text-zinc-300 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
                       {msg.sender_name.slice(0, 2).toUpperCase()}
                     </div>
 
-                    <div className="space-y-1 flex-1">
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1">
+                      <div
+                        className={cn(
+                          "flex items-center gap-2 text-[11px]",
+                          isMe ? "flex-row-reverse" : ""
+                        )}
+                      >
                         <span className="font-bold text-zinc-200">{msg.sender_name}</span>
-                        <span className="px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 font-mono text-[10px]">
-                          {msg.sender_role}
-                        </span>
                         <span className="text-[10px] text-zinc-500 font-mono">
-                          {formatDate(msg.created_at)}
+                          {formatRelativeTime(msg.created_at)}
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 font-mono">
+                          {msg.sender_role}
                         </span>
                       </div>
 
-                      <div className="p-3 rounded-2xl bg-[#141416] border border-[#27272a] text-zinc-200 leading-relaxed max-w-2xl space-y-2">
-                        {msg.message && <p>{msg.message}</p>}
+                      <div
+                        className={cn(
+                          "p-3 rounded-2xl leading-relaxed text-zinc-100",
+                          isMe
+                            ? "bg-blue-600 text-white rounded-tr-none"
+                            : "bg-[#202024] border border-[#2d2d34] rounded-tl-none"
+                        )}
+                      >
+                        <p>{msg.message}</p>
 
-                        {/* Media Attachments in Message */}
-                        {attachments.length > 0 && (
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
-                            {attachments.map((item: any, fIdx: number) => {
-                              const fileUrl = typeof item === "string" ? item : item?.url || "";
-                              const fileName = typeof item === "object" && item?.name ? item.name : `Document #${fIdx + 1}`;
-                              return (
+                        {msg.attachments && msg.attachments.length > 0 && (
+                          <div className="mt-2 space-y-1.5">
+                            {msg.attachments.map((att, idx) => (
+                              <div
+                                key={idx}
+                                className="p-2 rounded-xl bg-black/30 border border-white/10 flex items-center justify-between gap-2"
+                              >
+                                <span className="text-[11px] truncate">{att.name}</span>
                                 <a
-                                  key={fIdx}
-                                  href={fileUrl}
+                                  href={att.url}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="relative rounded-xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video flex items-center justify-center group/att"
+                                  className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[10px] font-bold"
                                 >
-                                  {fileUrl.startsWith("data:image") || fileUrl.startsWith("http") ? (
-                                    <img src={fileUrl} alt="Attached media" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="p-2 text-center text-[10px] text-zinc-400">
-                                      <FileText className="w-4 h-4 mx-auto text-blue-400 mb-1" />
-                                      <span>{fileName}</span>
-                                    </div>
-                                  )}
+                                  View
                                 </a>
-                              );
-                            })}
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -507,72 +625,82 @@ export function TeamChannels() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Message Input Box with Media Uploader */}
-          <div className="p-3.5 border-t border-[#27272a] bg-[#141416] space-y-2">
-            {attachedFiles.length > 0 && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1">
-                {attachedFiles.map((file, idx) => (
-                  <div key={idx} className="relative rounded-lg overflow-hidden border border-zinc-700 w-12 h-12 shrink-0 group">
-                    <img src={file} alt="Preview" className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setAttachedFiles((prev) => prev.filter((_, i) => i !== idx))}
-                      className="absolute inset-0 bg-black/60 text-rose-400 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+          {/* Input Bar */}
+          {!activeChannel?.is_archived ? (
+            <div className="p-3 border-t border-[#27272a] bg-[#141416]">
+              {attachedFiles.length > 0 && (
+                <div className="flex items-center gap-2 mb-2 p-2 rounded-xl bg-zinc-900 border border-zinc-800 overflow-x-auto text-xs text-zinc-300">
+                  <span className="font-bold text-[10px] uppercase text-zinc-500">
+                    {attachedFiles.length} file(s) ready:
+                  </span>
+                  {attachedFiles.map((_, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 text-[11px] font-mono">
+                      File #{i + 1}
+                    </span>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setAttachedFiles([])}
+                    className="ml-auto text-[10px] text-rose-400 hover:underline"
+                  >
+                    Clear All
+                  </button>
+                </div>
+              )}
 
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2.5 rounded-xl bg-[#18181b] hover:bg-zinc-800 border border-[#2a2a2f] text-zinc-400 hover:text-zinc-200 transition"
-                title="Attach media or files"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept="image/*,.pdf"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
+              <form onSubmit={handleSendMessage} className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileUpload}
+                  multiple
+                  accept="image/*,.pdf,.doc,.docx"
+                  className="hidden"
+                />
 
-              <input
-                type="text"
-                placeholder={`Message #${activeChannel?.name || "channel"}...`}
-                value={messageInput}
-                onChange={(e) => setMessageInput(e.target.value)}
-                className="flex-1 px-4 py-2.5 rounded-xl bg-[#18181b] border border-[#2a2a2f] text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
-              />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-400 hover:text-zinc-200 transition shrink-0"
+                  title="Attach screenshot or diagnostic document"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
 
-              <button
-                type="submit"
-                disabled={!messageInput.trim() && attachedFiles.length === 0}
-                className="px-4 py-2.5 bg-blue-600 disabled:opacity-40 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition flex items-center gap-1.5 shadow-sm"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span>Send</span>
-              </button>
-            </form>
-          </div>
+                <input
+                  type="text"
+                  placeholder={`Message #${activeChannel?.name || "channel"}...`}
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
+                />
+
+                <button
+                  type="submit"
+                  disabled={!messageInput.trim() && attachedFiles.length === 0}
+                  className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white font-bold text-xs transition flex items-center gap-1 shrink-0"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Send</span>
+                </button>
+              </form>
+            </div>
+          ) : (
+            <div className="p-3 border-t border-[#27272a] bg-[#141416] text-center text-xs text-zinc-500">
+              Channel is archived. Restoring the channel will re-enable messaging.
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Modal 1: Create Channel with Granular Access */}
+      {/* Modal: Create Channel */}
       {newChannelModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
-                <Hash className="w-4 h-4 text-blue-400" />
-                <span>Create Channel with Granular Access</span>
+                <Plus className="w-4 h-4 text-blue-400" />
+                <span>Create New Text Channel</span>
               </h3>
               <button
                 onClick={() => setNewChannelModalOpen(false)}
@@ -582,185 +710,244 @@ export function TeamChannels() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateChannel} className="space-y-3.5 text-xs">
+            <form onSubmit={handleCreateChannel} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Channel Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. battery-swaps or rapid-rsa"
-                  value={newChanName}
-                  onChange={(e) => setNewChanName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 font-bold focus:outline-none focus:border-blue-500"
-                />
+                <label className="text-zinc-400 font-semibold">Channel Handle / Name *</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-zinc-500 font-mono">#</span>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. hub-bandra-alerts"
+                    value={newChanName}
+                    onChange={(e) => setNewChanName(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 font-mono focus:outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Description</label>
-                <input
-                  type="text"
-                  placeholder="What is the purpose of this channel?"
+                <label className="text-zinc-400 font-semibold">Purpose & Description</label>
+                <textarea
+                  rows={2}
+                  placeholder="What is this channel dedicated to?"
                   value={newChanDesc}
                   onChange={(e) => setNewChanDesc(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isPrivateNew"
-                      checked={newChanIsPrivate}
-                      onChange={(e) => setNewChanIsPrivate(e.target.checked)}
-                      className="rounded text-blue-500 focus:ring-0"
-                    />
-                    <label htmlFor="isPrivateNew" className="text-xs text-zinc-200 font-bold cursor-pointer flex items-center gap-1.5">
-                      <Lock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Restricted / Private Channel Access</span>
-                    </label>
-                  </div>
-                  <span className="text-[10px] text-zinc-500">
-                    {newChanIsPrivate ? "Restricted" : "Open to All Staff"}
-                  </span>
-                </div>
-
-                {newChanIsPrivate && (
-                  <div className="pt-2 border-t border-zinc-800 space-y-3">
-                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="newAccessMode"
-                          checked={newAccessMode === "ROLES"}
-                          onChange={() => setNewAccessMode("ROLES")}
-                        />
-                        <span className="text-zinc-300 font-medium">By Roles</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="newAccessMode"
-                          checked={newAccessMode === "MEMBERS"}
-                          onChange={() => setNewAccessMode("MEMBERS")}
-                        />
-                        <span className="text-zinc-300 font-medium">Specific Members</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="newAccessMode"
-                          checked={newAccessMode === "BOTH"}
-                          onChange={() => setNewAccessMode("BOTH")}
-                        />
-                        <span className="text-zinc-300 font-medium">Roles + Members Combined</span>
-                      </label>
+              {/* Privacy Setting */}
+              <div className="space-y-2 pt-2 border-t border-[#27272a]">
+                <label className="text-zinc-400 font-semibold">Channel Visibility & Access Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewChanIsPrivate(false)}
+                    className={cn(
+                      "p-3 rounded-xl border text-left transition flex flex-col justify-between space-y-1",
+                      !newChanIsPrivate
+                        ? "bg-blue-600/20 border-blue-500 text-blue-200"
+                        : "bg-[#141416] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Globe className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Public Channel</span>
+                      </div>
+                      {!newChanIsPrivate && <Check className="w-3 h-3 text-blue-400" />}
                     </div>
+                    <span className="text-[10px] text-zinc-400">Open to all authenticated operational staff.</span>
+                  </button>
 
-                    {(newAccessMode === "ROLES" || newAccessMode === "BOTH") && (
-                      <div className="space-y-1.5">
-                        <span className="text-zinc-400 text-[11px] font-semibold">Allowed Department Roles:</span>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                          {availableRoles.map((role) => {
-                            const isChecked = newSelectedRoles.includes(role.key);
-                            return (
-                              <label
-                                key={role.key}
-                                className={cn(
-                                  "flex items-center justify-between p-2 rounded-lg border text-[11px] cursor-pointer transition",
-                                  isChecked
-                                    ? "bg-blue-600/20 border-blue-500/40 text-blue-300"
-                                    : "bg-[#18181b] border-zinc-800 text-zinc-400"
-                                )}
-                              >
-                                <div>
-                                  <div className="font-semibold">{role.label}</div>
-                                  <div className="text-[9px] text-zinc-500">{role.desc}</div>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setNewSelectedRoles((prev) => [...prev, role.key]);
-                                    } else {
-                                      setNewSelectedRoles((prev) => prev.filter((r) => r !== role.key));
-                                    }
-                                  }}
-                                  className="rounded text-blue-500"
-                                />
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
+                  <button
+                    type="button"
+                    onClick={() => setNewChanIsPrivate(true)}
+                    className={cn(
+                      "p-3 rounded-xl border text-left transition flex flex-col justify-between space-y-1",
+                      newChanIsPrivate
+                        ? "bg-amber-500/20 border-amber-500 text-amber-200"
+                        : "bg-[#141416] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
                     )}
-
-                    {(newAccessMode === "MEMBERS" || newAccessMode === "BOTH") && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-zinc-400 text-[11px] font-semibold">Allowed Staff Members:</span>
-                          <span className="text-[10px] text-blue-400">{newSelectedMembers.length} selected</span>
-                        </div>
-
-                        {/* Search Staff */}
-                        <div className="relative">
-                          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5" />
-                          <input
-                            type="text"
-                            placeholder="Search staff by name, email, or role..."
-                            value={newStaffSearch}
-                            onChange={(e) => setNewStaffSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#18181b] border border-zinc-800 text-zinc-200 text-xs focus:outline-none focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div className="max-h-40 overflow-y-auto space-y-1 pr-1">
-                          {filteredStaffNew.map((staff) => {
-                            const isChecked = newSelectedMembers.includes(staff.id);
-                            return (
-                              <label
-                                key={staff.id}
-                                className={cn(
-                                  "flex items-center justify-between p-2 rounded-lg border text-[11px] cursor-pointer transition",
-                                  isChecked
-                                    ? "bg-blue-600/20 border-blue-500/40 text-blue-300"
-                                    : "bg-[#18181b] border-zinc-800 text-zinc-400"
-                                )}
-                              >
-                                <div className="flex items-center gap-2 truncate mr-2">
-                                  <div className="w-6 h-6 rounded-full bg-zinc-800 text-zinc-300 font-bold flex items-center justify-center text-[10px]">
-                                    {staff.full_name.slice(0, 2).toUpperCase()}
-                                  </div>
-                                  <div className="truncate">
-                                    <div className="font-semibold text-zinc-200 truncate">{staff.full_name}</div>
-                                    <div className="text-[10px] text-zinc-500 font-mono truncate">
-                                      {staff.email || staff.phone} • {staff.roles?.[0]?.label || "Staff"}
-                                    </div>
-                                  </div>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setNewSelectedMembers((prev) => [...prev, staff.id]);
-                                    } else {
-                                      setNewSelectedMembers((prev) => prev.filter((id) => id !== staff.id));
-                                    }
-                                  }}
-                                  className="rounded text-blue-500 shrink-0"
-                                />
-                              </label>
-                            );
-                          })}
-                        </div>
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Restricted / Private</span>
                       </div>
-                    )}
-                  </div>
-                )}
+                      {newChanIsPrivate && <Check className="w-3 h-3 text-amber-400" />}
+                    </div>
+                    <span className="text-[10px] text-zinc-400">Restricted to specific roles or staff members.</span>
+                  </button>
+                </div>
               </div>
+
+              {/* If Private, Access Rule Selection */}
+              {newChanIsPrivate && (
+                <div className="space-y-3 p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] animate-in fade-in">
+                  <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
+                    <span className="font-bold text-zinc-300">Grant Access By:</span>
+                    <div className="flex items-center gap-1 bg-[#1c1c1f] p-0.5 rounded-lg border border-[#2a2a2f] text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setNewAccessMode("roles")}
+                        className={cn(
+                          "px-2 py-0.5 rounded font-semibold",
+                          newAccessMode === "roles" ? "bg-blue-600 text-white" : "text-zinc-400"
+                        )}
+                      >
+                        Roles
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewAccessMode("members")}
+                        className={cn(
+                          "px-2 py-0.5 rounded font-semibold",
+                          newAccessMode === "members" ? "bg-blue-600 text-white" : "text-zinc-400"
+                        )}
+                      >
+                        Members
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setNewAccessMode("both")}
+                        className={cn(
+                          "px-2 py-0.5 rounded font-semibold",
+                          newAccessMode === "both" ? "bg-blue-600 text-white" : "text-zinc-400"
+                        )}
+                      >
+                        Both
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 1. Permitted Roles Checklist */}
+                  {(newAccessMode === "roles" || newAccessMode === "both") && (
+                    <div className="space-y-2">
+                      <span className="text-zinc-400 font-semibold flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-blue-400" />
+                        <span>Permitted Operational Roles:</span>
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                        {AVAILABLE_ROLES.map((r) => {
+                          const isChecked = newSelectedRoles.includes(r.key);
+                          return (
+                            <label
+                              key={r.key}
+                              className={cn(
+                                "flex items-center justify-between p-2 rounded-lg border text-[11px] cursor-pointer transition",
+                                isChecked
+                                  ? "bg-blue-600/20 border-blue-500/50 text-blue-200"
+                                  : "bg-[#1c1c1f] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
+                              )}
+                            >
+                              <div className="truncate mr-2">
+                                <div className="font-bold truncate">{r.label}</div>
+                                <div className="text-[9px] text-zinc-500">{r.desc}</div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNewSelectedRoles((prev) => [...prev, r.key]);
+                                  } else {
+                                    setNewSelectedRoles((prev) => prev.filter((k) => k !== r.key));
+                                  }
+                                }}
+                                className="rounded text-blue-500 shrink-0"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Specific Members Whitelist */}
+                  {(newAccessMode === "members" || newAccessMode === "both") && (
+                    <div className="space-y-2 pt-2 border-t border-[#27272a]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-400 font-semibold flex items-center gap-1">
+                          <Users className="w-3 h-3 text-emerald-400" />
+                          <span>Specific Staff Members ({newSelectedMembers.length} selected):</span>
+                        </span>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => setNewSelectedMembers(staffProfiles.map((s) => s.id))}
+                            className="text-blue-400 hover:underline"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-zinc-600">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setNewSelectedMembers([])}
+                            className="text-zinc-400 hover:underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search className="w-3 h-3 text-zinc-500 absolute left-2.5 top-2" />
+                        <input
+                          type="text"
+                          placeholder="Search staff by name, email, or phone..."
+                          value={newStaffSearch}
+                          onChange={(e) => setNewStaffSearch(e.target.value)}
+                          className="w-full pl-7 pr-3 py-1 rounded-lg bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-200 text-[11px] focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {filteredStaffNew.map((staff) => {
+                          const isChecked = newSelectedMembers.includes(staff.id);
+                          return (
+                            <label
+                              key={staff.id}
+                              className={cn(
+                                "flex items-center justify-between p-1.5 rounded-lg border text-[11px] cursor-pointer transition",
+                                isChecked
+                                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-200"
+                                  : "bg-[#1c1c1f] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
+                              )}
+                            >
+                              <div className="flex items-center gap-2 truncate mr-2">
+                                <div className="w-5 h-5 rounded-full bg-zinc-800 text-[9px] font-bold flex items-center justify-center text-zinc-300 font-mono">
+                                  {staff.full_name.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="truncate">
+                                  <span className="font-semibold text-zinc-200 truncate">{staff.full_name}</span>
+                                  <div className="text-[9px] text-zinc-500 truncate font-mono">
+                                    {staff.phone} • {staff.roles?.[0]?.label || "Staff"}
+                                  </div>
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNewSelectedMembers((prev) => [...prev, staff.id]);
+                                  } else {
+                                    setNewSelectedMembers((prev) => prev.filter((id) => id !== staff.id));
+                                  }
+                                }}
+                                className="rounded text-blue-500 shrink-0"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#27272a]">
                 <button
@@ -782,17 +969,15 @@ export function TeamChannels() {
         </div>
       )}
 
-      {/* Modal 2: Edit Channel Access & Settings (Editable After Channel is Created) */}
+      {/* Modal: Manage Access & Settings (Editable Channels) */}
       {editModalOpen && editingChannel && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <div className="flex items-center gap-2">
+              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <Settings className="w-4 h-4 text-blue-400" />
-                <h3 className="text-base font-bold text-zinc-100">
-                  Manage Access & Settings: #{editingChannel.name}
-                </h3>
-              </div>
+                <span>Manage Access: #{editingChannel.name}</span>
+              </h3>
               <button
                 onClick={() => setEditModalOpen(false)}
                 className="text-zinc-500 hover:text-zinc-300 p-1"
@@ -801,239 +986,279 @@ export function TeamChannels() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdateChannel} className="space-y-3.5 text-xs">
+            <form onSubmit={handleSaveEditChannel} className="space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Channel Handle / Name *</label>
-                <input
-                  type="text"
-                  required
-                  value={editChanName}
-                  onChange={(e) => setEditChanName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 font-bold focus:outline-none focus:border-blue-500"
-                />
+                <label className="text-zinc-400 font-semibold">Channel Handle</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-zinc-500 font-mono">#</span>
+                  <input
+                    type="text"
+                    required
+                    disabled={editingChannel.is_system}
+                    value={editChanName}
+                    onChange={(e) => setEditChanName(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 font-mono focus:outline-none focus:border-blue-500 disabled:opacity-60"
+                  />
+                </div>
+                {editingChannel.is_system && (
+                  <p className="text-[10px] text-zinc-500">System channel handles cannot be renamed.</p>
+                )}
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Description</label>
-                <input
-                  type="text"
-                  placeholder="Channel description..."
+                <label className="text-zinc-400 font-semibold">Channel Description</label>
+                <textarea
+                  rows={2}
                   value={editChanDesc}
                   onChange={(e) => setEditChanDesc(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
                 />
               </div>
 
-              {/* Privacy & Granular Access Controls */}
-              <div className="p-3.5 rounded-xl bg-[#141416] border border-[#2a2a2f] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      id="isPrivateEdit"
-                      checked={editChanIsPrivate}
-                      onChange={(e) => setEditChanIsPrivate(e.target.checked)}
-                      className="rounded text-blue-500 focus:ring-0"
-                    />
-                    <label htmlFor="isPrivateEdit" className="text-xs text-zinc-200 font-bold cursor-pointer flex items-center gap-1.5">
-                      <Lock className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Restricted / Private Access</span>
-                    </label>
-                  </div>
-                  <span className="text-[10px] text-zinc-500">
-                    {editChanIsPrivate ? "Restricted Access" : "Public Access (All Staff)"}
-                  </span>
-                </div>
-
-                {editChanIsPrivate && (
-                  <div className="pt-2 border-t border-zinc-800 space-y-3">
-                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="editAccessMode"
-                          checked={editAccessMode === "ROLES"}
-                          onChange={() => setEditAccessMode("ROLES")}
-                        />
-                        <span className="text-zinc-300 font-medium">By Roles</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="editAccessMode"
-                          checked={editAccessMode === "MEMBERS"}
-                          onChange={() => setEditAccessMode("MEMBERS")}
-                        />
-                        <span className="text-zinc-300 font-medium">Specific Members</span>
-                      </label>
-                      <label className="flex items-center gap-1.5 cursor-pointer">
-                        <input
-                          type="radio"
-                          name="editAccessMode"
-                          checked={editAccessMode === "BOTH"}
-                          onChange={() => setEditAccessMode("BOTH")}
-                        />
-                        <span className="text-zinc-300 font-medium">Roles + Members Combined</span>
-                      </label>
+              {/* Privacy Setting */}
+              <div className="space-y-2 pt-2 border-t border-[#27272a]">
+                <label className="text-zinc-400 font-semibold">Channel Privacy Mode</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditChanIsPrivate(false)}
+                    className={cn(
+                      "p-3 rounded-xl border text-left transition flex flex-col justify-between space-y-1",
+                      !editChanIsPrivate
+                        ? "bg-blue-600/20 border-blue-500 text-blue-200"
+                        : "bg-[#141416] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Globe className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Public Channel</span>
+                      </div>
+                      {!editChanIsPrivate && <Check className="w-3 h-3 text-blue-400" />}
                     </div>
+                    <span className="text-[10px] text-zinc-400">All staff can view & post.</span>
+                  </button>
 
-                    {/* Roles Configuration */}
-                    {(editAccessMode === "ROLES" || editAccessMode === "BOTH") && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-zinc-400 text-[11px] font-semibold">Permitted Department Roles:</span>
-                          <span className="text-[10px] text-blue-400">{editSelectedRoles.length} roles active</span>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                          {availableRoles.map((role) => {
-                            const isChecked = editSelectedRoles.includes(role.key);
-                            return (
-                              <label
-                                key={role.key}
-                                className={cn(
-                                  "flex items-center justify-between p-2 rounded-lg border text-[11px] cursor-pointer transition",
-                                  isChecked
-                                    ? "bg-blue-600/20 border-blue-500/40 text-blue-300"
-                                    : "bg-[#18181b] border-zinc-800 text-zinc-400"
-                                )}
-                              >
-                                <div>
-                                  <div className="font-semibold">{role.label}</div>
-                                  <div className="text-[9px] text-zinc-500">{role.desc}</div>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditSelectedRoles((prev) => [...prev, role.key]);
-                                    } else {
-                                      setEditSelectedRoles((prev) => prev.filter((r) => r !== role.key));
-                                    }
-                                  }}
-                                  className="rounded text-blue-500"
-                                />
-                              </label>
-                            );
-                          })}
-                        </div>
-                      </div>
+                  <button
+                    type="button"
+                    onClick={() => setEditChanIsPrivate(true)}
+                    className={cn(
+                      "p-3 rounded-xl border text-left transition flex flex-col justify-between space-y-1",
+                      editChanIsPrivate
+                        ? "bg-amber-500/20 border-amber-500 text-amber-200"
+                        : "bg-[#141416] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
                     )}
-
-                    {/* Specific Members Configuration */}
-                    {(editAccessMode === "MEMBERS" || editAccessMode === "BOTH") && (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-zinc-400 text-[11px] font-semibold">Permitted Staff Members:</span>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditSelectedMembers(staffProfiles.map((s) => s.id))}
-                              className="text-[10px] text-blue-400 hover:underline"
-                            >
-                              Select All
-                            </button>
-                            <span className="text-zinc-600">•</span>
-                            <button
-                              type="button"
-                              onClick={() => setEditSelectedMembers([])}
-                              className="text-[10px] text-zinc-500 hover:underline"
-                            >
-                              Clear
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Search Staff */}
-                        <div className="relative">
-                          <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-2.5" />
-                          <input
-                            type="text"
-                            placeholder="Filter staff by name, email, or role..."
-                            value={editStaffSearch}
-                            onChange={(e) => setEditStaffSearch(e.target.value)}
-                            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-[#18181b] border border-zinc-800 text-zinc-200 text-xs focus:outline-none focus:border-blue-500"
-                          />
-                        </div>
-
-                        <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
-                          {filteredStaffEdit.map((staff) => {
-                            const isChecked = editSelectedMembers.includes(staff.id);
-                            return (
-                              <label
-                                key={staff.id}
-                                className={cn(
-                                  "flex items-center justify-between p-2 rounded-lg border text-[11px] cursor-pointer transition",
-                                  isChecked
-                                    ? "bg-blue-600/20 border-blue-500/40 text-blue-300"
-                                    : "bg-[#18181b] border-zinc-800 text-zinc-400"
-                                )}
-                              >
-                                <div className="flex items-center gap-2 truncate mr-2">
-                                  <div className="w-6 h-6 rounded-full bg-zinc-800 text-zinc-300 font-bold flex items-center justify-center text-[10px]">
-                                    {staff.full_name.slice(0, 2).toUpperCase()}
-                                  </div>
-                                  <div className="truncate">
-                                    <div className="font-semibold text-zinc-200 truncate">{staff.full_name}</div>
-                                    <div className="text-[10px] text-zinc-500 font-mono truncate">
-                                      {staff.email || staff.phone} • {staff.roles?.[0]?.label || "Staff"}
-                                    </div>
-                                  </div>
-                                </div>
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    if (e.target.checked) {
-                                      setEditSelectedMembers((prev) => [...prev, staff.id]);
-                                    } else {
-                                      setEditSelectedMembers((prev) => prev.filter((id) => id !== staff.id));
-                                    }
-                                  }}
-                                  className="rounded text-blue-500 shrink-0"
-                                />
-                              </label>
-                            );
-                          })}
-                        </div>
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <Lock className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Restricted / Private</span>
                       </div>
-                    )}
-                  </div>
-                )}
+                      {editChanIsPrivate && <Check className="w-3 h-3 text-amber-400" />}
+                    </div>
+                    <span className="text-[10px] text-zinc-400">Access limited to selected roles/members.</span>
+                  </button>
+                </div>
               </div>
 
-              {/* Danger Zone: Delete Channel */}
+              {/* If Private, Access Rule Selection */}
+              {editChanIsPrivate && (
+                <div className="space-y-3 p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] animate-in fade-in">
+                  <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
+                    <span className="font-bold text-zinc-300">Grant Access By:</span>
+                    <div className="flex items-center gap-1 bg-[#1c1c1f] p-0.5 rounded-lg border border-[#2a2a2f] text-[10px]">
+                      <button
+                        type="button"
+                        onClick={() => setEditAccessMode("roles")}
+                        className={cn(
+                          "px-2 py-0.5 rounded font-semibold",
+                          editAccessMode === "roles" ? "bg-blue-600 text-white" : "text-zinc-400"
+                        )}
+                      >
+                        Roles
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditAccessMode("members")}
+                        className={cn(
+                          "px-2 py-0.5 rounded font-semibold",
+                          editAccessMode === "members" ? "bg-blue-600 text-white" : "text-zinc-400"
+                        )}
+                      >
+                        Members
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditAccessMode("both")}
+                        className={cn(
+                          "px-2 py-0.5 rounded font-semibold",
+                          editAccessMode === "both" ? "bg-blue-600 text-white" : "text-zinc-400"
+                        )}
+                      >
+                        Both
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 1. Permitted Roles Checklist */}
+                  {(editAccessMode === "roles" || editAccessMode === "both") && (
+                    <div className="space-y-2">
+                      <span className="text-zinc-400 font-semibold flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-blue-400" />
+                        <span>Permitted Operational Roles ({editSelectedRoles.length} selected):</span>
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto pr-1">
+                        {AVAILABLE_ROLES.map((r) => {
+                          const isChecked = editSelectedRoles.includes(r.key);
+                          return (
+                            <label
+                              key={r.key}
+                              className={cn(
+                                "flex items-center justify-between p-2 rounded-lg border text-[11px] cursor-pointer transition",
+                                isChecked
+                                  ? "bg-blue-600/20 border-blue-500/50 text-blue-200"
+                                  : "bg-[#1c1c1f] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
+                              )}
+                            >
+                              <div className="truncate mr-2">
+                                <div className="font-bold truncate">{r.label}</div>
+                                <div className="text-[9px] text-zinc-500">{r.desc}</div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditSelectedRoles((prev) => [...prev, r.key]);
+                                  } else {
+                                    setEditSelectedRoles((prev) => prev.filter((k) => k !== r.key));
+                                  }
+                                }}
+                                className="rounded text-blue-500 shrink-0"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. Specific Members Whitelist */}
+                  {(editAccessMode === "members" || editAccessMode === "both") && (
+                    <div className="space-y-2 pt-2 border-t border-[#27272a]">
+                      <div className="flex items-center justify-between">
+                        <span className="text-zinc-400 font-semibold flex items-center gap-1">
+                          <Users className="w-3 h-3 text-emerald-400" />
+                          <span>Specific Staff Whitelist ({editSelectedMembers.length} selected):</span>
+                        </span>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          <button
+                            type="button"
+                            onClick={() => setEditSelectedMembers(staffProfiles.map((s) => s.id))}
+                            className="text-blue-400 hover:underline"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-zinc-600">•</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditSelectedMembers([])}
+                            className="text-zinc-400 hover:underline"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Search Bar */}
+                      <div className="relative">
+                        <Search className="w-3 h-3 text-zinc-500 absolute left-2.5 top-2" />
+                        <input
+                          type="text"
+                          placeholder="Filter staff by name, email, or phone..."
+                          value={editStaffSearch}
+                          onChange={(e) => setEditStaffSearch(e.target.value)}
+                          className="w-full pl-7 pr-3 py-1 rounded-lg bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-200 text-[11px] focus:outline-none focus:border-blue-500"
+                        />
+                      </div>
+
+                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1">
+                        {filteredStaffEdit.map((staff) => {
+                          const isChecked = editSelectedMembers.includes(staff.id);
+                          return (
+                            <label
+                              key={staff.id}
+                              className={cn(
+                                "flex items-center justify-between p-1.5 rounded-lg border text-[11px] cursor-pointer transition",
+                                isChecked
+                                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-200"
+                                  : "bg-[#1c1c1f] border-[#2a2a2f] text-zinc-400 hover:text-zinc-200"
+                              )}
+                            >
+                              <div className="flex items-center gap-2 truncate mr-2">
+                                <div className="w-5 h-5 rounded-full bg-zinc-800 text-[9px] font-bold flex items-center justify-center text-zinc-300 font-mono">
+                                  {staff.full_name.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div className="truncate">
+                                  <span className="font-semibold text-zinc-200 truncate">{staff.full_name}</span>
+                                  <div className="text-[9px] text-zinc-500 truncate font-mono">
+                                    {staff.phone} • {staff.roles?.[0]?.label || "Staff"}
+                                  </div>
+                                </div>
+                              </div>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setEditSelectedMembers((prev) => [...prev, staff.id]);
+                                  } else {
+                                    setEditSelectedMembers((prev) => prev.filter((id) => id !== staff.id));
+                                  }
+                                }}
+                                className="rounded text-blue-500 shrink-0"
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Soft-Delete / Archive Channel */}
               {!editingChannel.is_system && (
                 <div className="pt-2 border-t border-[#27272a]">
-                  {!showDeleteConfirm ? (
+                  {!showArchiveConfirm ? (
                     <button
                       type="button"
-                      onClick={() => setShowDeleteConfirm(true)}
-                      className="text-xs text-rose-400 hover:text-rose-300 flex items-center gap-1 transition"
+                      onClick={() => setShowArchiveConfirm(true)}
+                      className="text-xs text-amber-400 hover:text-amber-300 flex items-center gap-1 transition"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete this channel</span>
+                      <Archive className="w-3.5 h-3.5" />
+                      <span>Archive this channel</span>
                     </button>
                   ) : (
-                    <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-2">
-                      <div className="flex items-center gap-2 text-rose-400 font-bold text-xs">
-                        <AlertTriangle className="w-4 h-4" />
-                        <span>Confirm Channel Deletion</span>
+                    <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2">
+                      <div className="flex items-center gap-2 text-amber-400 font-bold text-xs">
+                        <Archive className="w-4 h-4" />
+                        <span>Archive Channel (Zero-Deletion Compliance)</span>
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        This action will permanently delete #{editingChannel.name} and all its messages.
+                        Archiving deactivates #{editingChannel.name} from active channel lists. In accordance with zero data deletion policies, all historic messages remain securely retained and this channel can be restored at any time.
                       </p>
                       <div className="flex items-center gap-2 pt-1">
                         <button
                           type="button"
-                          onClick={handleDeleteChannel}
-                          className="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-lg text-xs transition"
+                          onClick={handleArchiveChannel}
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-black font-bold rounded-lg text-xs transition"
                         >
-                          Yes, Delete Permanently
+                          Confirm Archival
                         </button>
                         <button
                           type="button"
-                          onClick={() => setShowDeleteConfirm(false)}
+                          onClick={() => setShowArchiveConfirm(false)}
                           className="px-3 py-1.5 bg-zinc-800 text-zinc-300 rounded-lg text-xs hover:bg-zinc-700 transition"
                         >
                           Cancel

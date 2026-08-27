@@ -250,15 +250,56 @@ class SupabaseSyncService {
     }
   }
 
-  // Background mutation push helper
-  public async pushMutation(table: string, action: 'insert' | 'update' | 'delete', record: any) {
+  // Background mutation push helper with strict non-deletable soft-delete & audit retention
+  public async pushMutation(
+    table: string,
+    action: 'insert' | 'update' | 'archive' | 'soft_delete' | 'restore' | 'delete',
+    record: any,
+    auditPayload?: {
+      action?: 'INSERT' | 'UPDATE' | 'SOFT_DELETE' | 'ARCHIVE' | 'RESTORE';
+      old_data?: any;
+      new_data?: any;
+      performed_by?: string;
+      performer_name?: string;
+    }
+  ) {
     try {
       if (action === 'insert') {
         await supabase.from(table).insert(record);
       } else if (action === 'update' && record.id) {
         await supabase.from(table).update(record).eq('id', record.id);
-      } else if (action === 'delete' && record.id) {
-        await supabase.from(table).delete().eq('id', record.id);
+      } else if ((action === 'delete' || action === 'archive' || action === 'soft_delete') && record.id) {
+        // Enforce ZERO physical deletion: update soft-delete & archive flags
+        const softDeletePayload = {
+          ...record,
+          is_archived: true,
+          is_active: false,
+          updated_at: new Date().toISOString(),
+        };
+        await supabase.from(table).update(softDeletePayload).eq('id', record.id);
+      } else if (action === 'restore' && record.id) {
+        const restorePayload = {
+          ...record,
+          is_archived: false,
+          is_active: true,
+          updated_at: new Date().toISOString(),
+        };
+        await supabase.from(table).update(restorePayload).eq('id', record.id);
+      }
+
+      // Sync audit trail entry if provided
+      if (auditPayload && record.id) {
+        await supabase.from('audit_logs').insert({
+          id: `audit-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+          table_name: table,
+          record_id: String(record.id),
+          action: auditPayload.action || (action === 'insert' ? 'INSERT' : action === 'delete' || action === 'archive' || action === 'soft_delete' ? 'ARCHIVE' : action === 'restore' ? 'RESTORE' : 'UPDATE'),
+          performed_by: auditPayload.performed_by || 'system',
+          performer_name: auditPayload.performer_name || 'Staff Member',
+          old_data: auditPayload.old_data || null,
+          new_data: auditPayload.new_data || record,
+          timestamp: new Date().toISOString(),
+        });
       }
     } catch (err) {
       console.warn(`Supabase background sync for ${table} pending DB connection`, err);

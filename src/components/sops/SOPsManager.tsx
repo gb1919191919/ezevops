@@ -22,7 +22,7 @@ import {
   FileText,
   Users,
   Lock,
-  Printer,
+  Printer, Archive, RotateCcw,
   ChevronRight,
   Sparkles,
   X,
@@ -52,7 +52,8 @@ export function SOPsManager() {
   const updateSOP = useAppStore((s) => s.updateSOP);
   const publishSOP = useAppStore((s) => s.publishSOP);
   const acknowledgeSOP = useAppStore((s) => s.acknowledgeSOP);
-  const deleteSOP = useAppStore((s) => s.deleteSOP);
+  const archiveSOP = useAppStore((s) => s.archiveSOP);
+  const restoreSOP = useAppStore((s) => s.restoreSOP);
   const currentUser = useAppStore((s) => s.currentUser);
   const customRoles = useAppStore((s) => s.customRoles);
   const { isOwner, isManager, activeRoles } = useRBAC();
@@ -68,7 +69,7 @@ export function SOPsManager() {
       if (!hasRoleAccess && !isAuthor) return false;
     }
 
-    if (selectedCategory !== 'ALL' && s.category !== selectedCategory) return false;
+    if (selectedCategory === 'ARCHIVED') { if (!s.is_archived && s.status !== 'ARCHIVED') return false; } else { if (s.is_archived || s.status === 'ARCHIVED') return false; if (selectedCategory !== 'ALL' && s.category !== selectedCategory) return false; }
     if (!searchTerm.trim()) return true;
 
     const q = searchTerm.toLowerCase();
@@ -92,6 +93,17 @@ export function SOPsManager() {
     setFormAccessRoles(['owner', 'manager', 'rsa', 'mechanic']);
     setFormChangeSummary('Initial release');
     setEditorModalOpen(true);
+  };
+
+  
+  const handleArchiveSOP = (sop: SOP) => {
+    archiveSOP(sop.id);
+    toast.success(`SOP ${sop.code} archived. Historical versions retained under zero-deletion policy.`);
+  };
+
+  const handleRestoreSOP = (sop: SOP) => {
+    restoreSOP(sop.id);
+    toast.success(`SOP ${sop.code} restored to published handbook.`);
   };
 
   const handleOpenEdit = (sop: SOP) => {
@@ -220,7 +232,19 @@ export function SOPsManager() {
               >
                 All ({sops.length})
               </button>
-              {categories.map((cat) => (
+              <button
+                onClick={() => setSelectedCategory('ARCHIVED')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg font-medium transition flex-shrink-0 flex items-center gap-1',
+                  selectedCategory === 'ARCHIVED'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold'
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-[#18181b]'
+                )}
+              >
+                <Archive className="w-3 h-3" />
+                <span>Archived ({sops.filter((s) => s.is_archived || s.status === 'ARCHIVED').length})</span>
+              </button>
+              {categories.filter((c) => c !== 'ARCHIVED').map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
@@ -333,14 +357,34 @@ export function SOPsManager() {
                     <Printer className="w-4 h-4 text-zinc-400" />
                   </button>
 
-                  {(isOwner || isManager) && (
-                    <button
-                      onClick={() => handleOpenEdit(currentSOP)}
-                      className="px-3 py-1.5 rounded-xl bg-[#141416] hover:bg-[#18181b] border border-[#2a2a2f] text-xs font-semibold text-zinc-200 transition flex items-center gap-1"
-                    >
-                      <Edit2 className="w-3.5 h-3.5 text-blue-400" />
-                      <span>Edit Revision</span>
-                    </button>
+                                    {(isOwner || isManager) && (
+                    <>
+                      {currentSOP.is_archived || currentSOP.status === 'ARCHIVED' ? (
+                        <button
+                          onClick={() => handleRestoreSOP(currentSOP)}
+                          className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-black font-bold text-xs transition flex items-center gap-1"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Restore SOP</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleArchiveSOP(currentSOP)}
+                          className="px-3 py-1.5 rounded-xl bg-[#141416] hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-500/30 border border-[#2a2a2f] text-xs font-semibold text-zinc-400 transition flex items-center gap-1"
+                          title="Archive SOP (Soft-Delete)"
+                        >
+                          <Archive className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Archive</span>
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleOpenEdit(currentSOP)}
+                        className="px-3 py-1.5 rounded-xl bg-[#141416] hover:bg-[#18181b] border border-[#2a2a2f] text-xs font-semibold text-zinc-200 transition flex items-center gap-1"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Edit Revision</span>
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

@@ -629,24 +629,14 @@ function NoteCard({
           )}
 
           {(isResolved || isArchived) && (
-            <>
-              <button
-                onClick={onRestore}
-                className="px-2 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-[10px] font-bold transition flex items-center gap-1"
-                title="Restore back to active scratchpad"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Restore</span>
-              </button>
-
-              <button
-                onClick={onDelete}
-                className="p-1 text-zinc-500 hover:text-rose-400 rounded-lg transition"
-                title="Permanently Delete Note"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </>
+            <button
+              onClick={onRestore}
+              className="px-2.5 py-1 rounded-lg bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border border-blue-500/30 text-[10px] font-bold transition flex items-center gap-1"
+              title="Restore back to active scratchpad"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Restore Note</span>
+            </button>
           )}
         </div>
       </div>

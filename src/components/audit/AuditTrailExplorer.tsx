@@ -44,11 +44,17 @@ export function AuditTrailExplorer() {
   const [activeTab, setActiveTab] = useState<'audit' | 'blocked'>('audit');
   const [searchTerm, setSearchTerm] = useState('');
   const [tableFilter, setTableFilter] = useState<string>('ALL');
+  const [actionFilter, setActionFilter] = useState<string>('ALL');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
   // Sorting
   const [sortField, setSortField] = useState<AuditSortField>('timestamp');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  // Dynamic list of tables in logs
+  const distinctTables = useMemo(() => {
+    return Array.from(new Set(auditLogs.map((l) => l.table_name))).sort();
+  }, [auditLogs]);
 
   // Resizable columns
   const { widths: auditWidths, startResizing: startAuditResizing } = useResizableColumns('audit-logs-table', {
@@ -82,6 +88,10 @@ export function AuditTrailExplorer() {
   const filteredLogs = useMemo(() => {
     const list = auditLogs.filter((log) => {
       if (tableFilter !== 'ALL' && log.table_name !== tableFilter) return false;
+      if (actionFilter !== 'ALL') {
+        if (actionFilter === 'ARCHIVE' && log.action !== 'ARCHIVE' && log.action !== 'SOFT_DELETE' && log.action !== 'DELETE') return false;
+        if (actionFilter !== 'ARCHIVE' && log.action !== actionFilter) return false;
+      }
       if (!searchTerm.trim()) return true;
       const q = searchTerm.toLowerCase();
       const matchesPerformer = (log.performer_name || '').toLowerCase().includes(q);
@@ -104,7 +114,7 @@ export function AuditTrailExplorer() {
       }
       return sortOrder === 'asc' ? comp : -comp;
     });
-  }, [auditLogs, tableFilter, searchTerm, sortField, sortOrder]);
+  }, [auditLogs, tableFilter, actionFilter, searchTerm, sortField, sortOrder]);
 
   const filteredBlocked = useMemo(() => {
     return blockedUsers.filter((b) => {
@@ -325,6 +335,25 @@ export function AuditTrailExplorer() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              {/* Action Filter */}
+              <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
+                <Shield className="w-3.5 h-3.5 text-purple-400" />
+                <select
+                  value={actionFilter}
+                  onChange={(e) => setActionFilter(e.target.value)}
+                  className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
+                >
+                  <option value="ALL" className="bg-zinc-900 text-zinc-200">
+                    All Actions ({auditLogs.length})
+                  </option>
+                  <option value="INSERT" className="bg-zinc-900 text-emerald-400 font-semibold">INSERT (Creations)</option>
+                  <option value="UPDATE" className="bg-zinc-900 text-blue-400 font-semibold">UPDATE (Modifications)</option>
+                  <option value="ARCHIVE" className="bg-zinc-900 text-rose-400 font-semibold">ARCHIVE (Soft-Deletes)</option>
+                  <option value="RESTORE" className="bg-zinc-900 text-purple-400 font-semibold">RESTORE (Un-archives)</option>
+                </select>
+              </div>
+
+              {/* Table Filter */}
               <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
                 <Filter className="w-3.5 h-3.5 text-blue-400" />
                 <select
@@ -333,14 +362,13 @@ export function AuditTrailExplorer() {
                   className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
                 >
                   <option value="ALL" className="bg-zinc-900 text-zinc-200">
-                    All Tables ({auditLogs.length})
+                    All Tables ({distinctTables.length})
                   </option>
-                  <option value="vehicles" className="bg-zinc-900 text-zinc-200">vehicles</option>
-                  <option value="hub_part_stock" className="bg-zinc-900 text-zinc-200">hub_part_stock</option>
-                  <option value="job_cards" className="bg-zinc-900 text-zinc-200">job_cards</option>
-                  <option value="refunds" className="bg-zinc-900 text-zinc-200">refunds</option>
-                  <option value="sops" className="bg-zinc-900 text-zinc-200">sops</option>
-                  <option value="tasks" className="bg-zinc-900 text-zinc-200">tasks</option>
+                  {distinctTables.map((tbl) => (
+                    <option key={tbl} value={tbl} className="bg-zinc-900 text-zinc-200">
+                      {tbl}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -471,7 +499,8 @@ export function AuditTrailExplorer() {
                               'px-2 py-0.5 rounded text-[10px] font-bold font-mono border',
                               log.action === 'INSERT' && 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
                               log.action === 'UPDATE' && 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-                              log.action === 'SOFT_DELETE' && 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                              (log.action === 'SOFT_DELETE' || log.action === 'ARCHIVE' || log.action === 'DELETE' || log.action === 'DELETE_ATTEMPT') && 'bg-rose-500/15 text-rose-400 border-rose-500/30',
+                              log.action === 'RESTORE' && 'bg-purple-500/15 text-purple-400 border-purple-500/30'
                             )}
                           >
                             {log.action}
