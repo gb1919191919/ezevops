@@ -1,0 +1,42 @@
+Sr No	Ride Date and Time	Phone No.	Refund Amount	Status	Requested By	Refund Type	Request details	Verification	Reason
+1	29th July	9871305639	26.25	Done	User	Base Charge	26.25	Done	Ashish didnt give bike because user creates disturbance at Public hub
+2	29th July	8171784227	26.25	Done	User	Base Charge	26.25	Done	Bike had issues
+3	27th July	7694085885	26.25	Done	Ankit Bhaiya	Base Charge	26.25	Done	
+4	27th July	7778088909	26.25	Done	Ankit Bhaiya	Base Charge	26.25	Done	
+5	2nd August	7304003536	420	Done	Zaffar			Done	Customer left scootie 7:20 am on Resume 
+6	2nd August 	9830022696	193	Done	Zaffar			Done	Customer left scootie 2:41 am on Pause (2087)
+7	2nd August 	9136079505	47.25	Done	Zaffar			Done	Customer left scootie 8:29 am on Pause (5596)
+8	2nd August 	9324773610	538	Done	Zaffar			Done	Customer left scootie 4:52 am on Resume (5729)
+9	2nd August 	9150617666	51	Done	Zaffar			Done	Customer sending details on WhatsApp
+10	3rd August 	8269675500	268	Done	Zaffar			Done	Customer got ride back with rim bent issue and left bike on Pause (9640)
+11	02.08.2026	8780083670	26.63	Done	Ankit Bhaiya	Base Charge	26.63	Done	
+12	16.07.2026	8780083670	14	Done	Ankit Bhaiya	Wrong Charge	Anugrah - Parking time was 50 mins, but charged extra	Done	
+13	17.07.2026	8780083670	8	Done	Ankit Bhaiya	Wrong Charge	Anugrah - Parking time was 30 mins, but charged extra	Done	
+14	05.08.2026	6284565258		 Declined	Ankit Bhaiya	Wrong Charge	Anugrah user forgot to end ride	Done	
+15	06.08.2026	7458983910	226	Done	Zaffar	Wrong Charge	Aurus Chpt 3 - Parking time was 23 min, but charged extra 	Done	Custom left scootie 23:08 on Resume (5349) 
+16	06.08.2026	9875556957	105	Done	Zaffar	Wrong Charge	NMIMS - Charged extra between 20:08 to 20:48 	Done	Customer paused the scooter but it dint pause 
+17	08.08.2026	9356002633	26.25	Done	Zaffar	Base Charge	Refund Base charge 	Done	
+18	08.08.2026	7037133606	26.25	Done	Zaffar	Base Charge	Refund Base charge 	Done	
+19	09.08.2026	9371262497	26.25	Done	Zaffar	Base Charge	Refund Base charge 	Done	
+20	09.08.2026	7073570147	26.25	Done	Zaffar	Base Charge	Refund Base charge 	Done	
+21		9374735336	171	Done	Zaffar	Wrong Charge	RSA waale time ka Refund 	Done	
+22		8866597953	132	Done	Zaffar	Wrong Charge	Standing in  Anugrah form 8 hours 	Done	
+23		7717379955	6	Done	Ankit Bhaiya	Wrong Charge	Sobo network issue, android access 	Done	
+24	14/02/8/26	7046211613	40	Done	Zaffar	Wrong Charge	RIm bent 	Done	
+25	15/08/26	9363476441	63.79	Done	Zaffar	Wrong Charge	Bike was not charging thus testing , nor changing status	Done	
+26	07/08/26	9770835092	497.46	Done	Zaffar	Wrong Charge	customer says was charged wrong 	Done	
+27	16/08/26	7408408070	200	Done	Zaffar	Wrong Charge	they were 3 rides in all Customer says he had paused but was charged more 	Done	
+28	16/08/26	9727616455	90	Done	Zaffar	Wrong Charge	Customer had left scooty, but ride dint end due to network issue 	Done	
+29	16/08/26	8899986900	68.35	Done	Zaffar	Wrong Charge	Scooty faulty need to refund 	Done	
+30	19/08/26	8905511966	59.45	Done	Ashish	Wrong Charge	Network Issue scooty not getting on	Done	
+31	20/08/26	8405000619	26.25	Done	Zaffar	Base Charge	Refund as booked without permission 	Done	
+32	20/08/26	9589315149		Done	Zaffar	Wrong Charge	I Took A Scooty on rent 12:53 A.M the Scooty is Showing Extra running time. For a long time the charge was showing ₹25 only  and suddenly price increased adter resume ride ans the pause time is not calculated	Done	
+33	18/08/26 8:34pm	6266720022		Done	Zaffar	Wrong Charge	I have put the vehicle in charge but i forgoted to switch off from phone so my balance was has been deducted	Done	
+34	23/08/26	9509926417	86.81	Done	Zaffar	Payout	Wants to Deactivate the account  	Done	
+35	15/08/26	7767000056	26.25	Done	Bhuvnesh	Base Charge	4 mins ride, maybe the scooter had some issue	Done	
+36	25/08/26	9871305639	26.906	Done	Bhuvnesh	Wrong Charge	5554 bike had damages and user replaced biked in 5mins	Done	
+37	25/08/26	8235058703	30.161	Done	Bhuvnesh	Wrong Charge	bike had issue	Done	
+38	26/08/26	9835490560	26.25	YTS	Ashish	Wrong Charge	Bike had issue not starting	YTS	Bike Not starting display Not getting on in App ride started 
+39	26/08/26	7058332474		YTS	Ashish	Wrong Charge	Bike had server issue not starting	YTS	Bike Not starting display Not getting On server issue
+40	27/08/26	9825011157		YTS	Ashish	Wrong Charge	Bike had server issue not starting	YTS	Bike Not starting display Not getting On server issue
+41	27/08/26	9724190000		YTS	Ashish	Wrong Charge	Bike Not pause In app showing paused because of App glitich 	YTS	

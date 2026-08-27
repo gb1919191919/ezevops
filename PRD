@@ -1,0 +1,496 @@
+Product Requirement Document (PRD): Fleet Operations Platform
+
+1. Project Overview & Architecture
+
+Purpose: Centralized internal operational platform for multi-hub electric vehicle (EV) fleet management, maintenance lifecycle tracking, multi-location spare parts inventory, approval workflows, multi-tiered task delegation, and non-destructive audit logging.
+
+Tech Stack:
+
+Frontend: Next.js 14+ (App Router), TypeScript, Tailwind CSS, shadcn/ui, Lucide Icons (Responsive layout for mobile field staff & desktop command center).
+
+Backend & Database: Supabase (PostgreSQL, Supabase Auth, Row-Level Security, Database Triggers/Stored Procedures, Storage Buckets for photo attachments).
+
+State Management & Fetching: TanStack React Query v5, Zustand, React Hook Form + Zod.
+
+2. Dynamic RBAC & Multi-Role Architecture
+
+Users can hold multiple roles simultaneously. Effective permissions are computed additively ($\text{Role}_A \cup \text{Role}_B$).
+
+2.1 Default System Roles
+
+Owner (Admin): Full system access, approval overrides, role configuration, master audits, and settings.
+
+Manager: Hub assignment, task allocation, job card approvals, spare part usage sign-offs, refund verification, and vehicle status management.
+
+RSA (Roadside Assistance): Field breakdown reporting, towing/battery swap logs, roadside repair execution, and field expense logging.
+
+Mechanic: Maintenance log entry, defect diagnosis, spare parts allocation requests, and digital vehicle checklist audits.
+
+2.2 Role-Permission Matrix
+
+Permission Key
+
+Description
+
+Owner
+
+Manager
+
+RSA
+
+Mechanic
+
+vehicle:view
+
+View vehicle master & complete history
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+vehicle:request_state
+
+Request state change (e.g., Mark for Repair)
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+vehicle:approve_state
+
+Commit and finalize vehicle state transition
+
+Yes
+
+Yes
+
+No
+
+No
+
+job:create
+
+Open job cards & log defects
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+job:complete
+
+Complete repair work and submit for review
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+job:approve
+
+Approve job card & commit inventory/status
+
+Yes
+
+Yes
+
+No
+
+No
+
+inventory:request
+
+Request parts against an active job card
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+inventory:approve
+
+Commit inventory deduction / stock transfer
+
+Yes
+
+Yes
+
+No
+
+No
+
+refund:create
+
+Log customer refund / penalty dispute
+
+Yes
+
+Yes
+
+No
+
+No
+
+refund:approve
+
+Approve and mark refund as settled
+
+Yes
+
+No
+
+No
+
+No
+
+task:manage
+
+Create Objectives & assign nested Tasks
+
+Yes
+
+Yes
+
+No
+
+No
+
+task:execute
+
+Update task status & submit resolution notes
+
+Yes
+
+Yes
+
+Yes
+
+Yes
+
+3. Database Schema (Supabase PostgreSQL)
+
+-- Extensions
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 1. Profiles & RBAC
+CREATE TABLE profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE RESTRICT,
+    full_name TEXT NOT NULL,
+    phone TEXT UNIQUE NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code TEXT UNIQUE NOT NULL, -- 'owner', 'manager', 'rsa', 'mechanic'
+    label TEXT NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE user_roles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    role_id UUID REFERENCES roles(id) ON DELETE RESTRICT,
+    assigned_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, role_id)
+);
+
+CREATE TABLE permissions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    code TEXT UNIQUE NOT NULL,
+    module TEXT NOT NULL,
+    description TEXT
+);
+
+CREATE TABLE role_permissions (
+    role_id UUID REFERENCES roles(id) ON DELETE RESTRICT,
+    permission_id UUID REFERENCES permissions(id) ON DELETE RESTRICT,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+-- 2. Hubs & Fleet Master
+CREATE TABLE hubs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL,
+    code TEXT UNIQUE NOT NULL,
+    address TEXT NOT NULL,
+    poc_name TEXT NOT NULL,
+    poc_phone TEXT NOT NULL,
+    day_guard_details TEXT,
+    night_guard_details TEXT,
+    charging_points_total INT DEFAULT 0,
+    charging_points_active INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TYPE vehicle_status_enum AS ENUM (
+    'AVAILABLE',
+    'IN_RIDE',
+    'MAINTENANCE_REQUIRED',
+    'UNDER_REPAIR',
+    'RSA_IN_TRANSIT',
+    'IMPOUNDED',
+    'DECOMMISSIONED'
+);
+
+CREATE TABLE vehicles (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    vin TEXT UNIQUE NOT NULL,
+    plate_number TEXT UNIQUE NOT NULL,
+    current_hub_id UUID REFERENCES hubs(id) ON DELETE RESTRICT,
+    key_number TEXT NOT NULL,
+    current_status vehicle_status_enum DEFAULT 'AVAILABLE',
+    pending_status vehicle_status_enum NULL, -- Staged status awaiting approval
+    status_change_reason TEXT,
+    soc_percentage INT CHECK (soc_percentage BETWEEN 0 AND 100),
+    iot_status TEXT DEFAULT 'ONLINE', -- 'ONLINE', 'OFFLINE', 'NO_GPS'
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. Inventory & Multi-Location Stock
+CREATE TABLE parts_inventory (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    sku TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    unit_cost NUMERIC(10, 2) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE hub_parts_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    hub_id UUID REFERENCES hubs(id) ON DELETE RESTRICT,
+    part_id UUID REFERENCES parts_inventory(id) ON DELETE RESTRICT,
+    physical_stock INT NOT NULL DEFAULT 0,
+    pending_allocated_stock INT NOT NULL DEFAULT 0, -- Staged in open job cards
+    min_threshold INT DEFAULT 5,
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(hub_id, part_id)
+);
+
+-- 4. Job Cards & Maintenance Engine
+CREATE TYPE approval_status_enum AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+
+CREATE TABLE job_cards (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    ticket_number SERIAL UNIQUE,
+    vehicle_id UUID REFERENCES vehicles(id) ON DELETE RESTRICT,
+    reported_by UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    assigned_mechanic_id UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    hub_id UUID REFERENCES hubs(id) ON DELETE RESTRICT,
+    issue_description TEXT NOT NULL,
+    solution_applied TEXT,
+    photos_url TEXT[], -- Supabase Storage paths
+    status approval_status_enum DEFAULT 'PENDING',
+    approved_by UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    approval_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    resolved_at TIMESTAMPTZ,
+    approved_at TIMESTAMPTZ
+);
+
+CREATE TABLE job_card_parts (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    job_card_id UUID REFERENCES job_cards(id) ON DELETE RESTRICT,
+    part_id UUID REFERENCES parts_inventory(id) ON DELETE RESTRICT,
+    quantity INT NOT NULL CHECK (quantity > 0),
+    unit_cost_snapshot NUMERIC(10, 2) NOT NULL,
+    is_approved BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Customer Financial Operations (Refunds & Disputes)
+CREATE TYPE refund_status_enum AS ENUM ('SUBMITTED', 'VERIFIED', 'SETTLED', 'REJECTED');
+
+CREATE TABLE refunds (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_phone TEXT NOT NULL,
+    ride_id TEXT NOT NULL,
+    ride_date DATE NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL,
+    reason TEXT NOT NULL,
+    proof_urls TEXT[],
+    status refund_status_enum DEFAULT 'SUBMITTED',
+    requested_by UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    approved_by UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    settlement_reference TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 6. Hierarchical Objective & Task Tracking (To-Do Engine)
+CREATE TABLE objectives (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    title TEXT NOT NULL,
+    description TEXT,
+    target_date DATE NOT NULL,
+    hub_id UUID REFERENCES hubs(id) ON DELETE RESTRICT,
+    created_by UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    is_completed BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TYPE task_priority_enum AS ENUM ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL');
+CREATE TYPE task_status_enum AS ENUM ('TODO', 'IN_PROGRESS', 'REVIEW', 'COMPLETED');
+
+CREATE TABLE tasks (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    objective_id UUID REFERENCES objectives(id) ON DELETE RESTRICT,
+    title TEXT NOT NULL,
+    description TEXT,
+    assigned_to UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    priority task_priority_enum DEFAULT 'MEDIUM',
+    status task_status_enum DEFAULT 'TODO',
+    vehicle_id UUID REFERENCES vehicles(id) ON DELETE RESTRICT, -- Optional link
+    due_date TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 7. Immutable Audit Trail (Zero Hard Deletes)
+CREATE TABLE audit_logs (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    table_name TEXT NOT NULL,
+    record_id UUID NOT NULL,
+    action TEXT NOT NULL, -- 'INSERT', 'UPDATE', 'SOFT_DELETE'
+    performed_by UUID REFERENCES profiles(id) ON DELETE RESTRICT,
+    old_data JSONB,
+    new_data JSONB,
+    timestamp TIMESTAMPTZ DEFAULT NOW()
+);
+
+
+4. Operational Invariants & Approval Logic
+
+4.1 Two-Phase Inventory Staging Rule
+
+Available Stock Calculation:
+
+
+$$\text{Available Stock} = \text{Physical Stock} - \text{Pending Allocated Stock}$$
+
+UI Pattern: Available (Physical)
+
+Example: 14 units on the shelf, 4 units logged by mechanic on pending job card $\rightarrow$ Displayed as 10 (14).
+
+State Lifecycle:
+
+Part Requested: Mechanic adds 4 brake pads to a Job Card $\rightarrow$ hub_parts_stock.pending_allocated_stock increments by 4. Physical stock remains 14. UI reads 10 (14).
+
+Job Card Approved: Manager clicks "Approve" $\rightarrow$ hub_parts_stock.physical_stock decrements by 4, pending_allocated_stock decrements by 4. UI reads 10 (10).
+
+4.2 Two-Phase Vehicle Status Staging Rule
+
+When a field technician reports a defect, they update pending_status = 'UNDER_REPAIR'.
+
+UI Pattern: Current Status (Pending: Staged Status) (e.g., AVAILABLE (Pending: UNDER_REPAIR)).
+
+Upon Manager/Owner approval: current_status updates to UNDER_REPAIR, and pending_status resets to NULL.
+
+4.3 Zero Hard Deletes & Audit Trigger
+
+Hard DELETE operations are strictly blocked via PostgreSQL triggers.
+
+Soft deletions set is_active = FALSE.
+
+Every mutation executes an AFTER UPDATE trigger creating a JSON diff record in audit_logs.
+
+-- Audit Trigger Function
+CREATE OR REPLACE FUNCTION process_audit_log()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO audit_logs (table_name, record_id, action, performed_by, old_data, new_data)
+    VALUES (
+        TG_TABLE_NAME,
+        COALESCE(NEW.id, OLD.id),
+        TG_OP,
+        auth.uid(),
+        to_jsonb(OLD),
+        to_jsonb(NEW)
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Attach triggers to core operational tables
+CREATE TRIGGER audit_vehicles AFTER UPDATE ON vehicles FOR EACH ROW EXECUTE FUNCTION process_audit_log();
+CREATE TRIGGER audit_job_cards AFTER UPDATE ON job_cards FOR EACH ROW EXECUTE FUNCTION process_audit_log();
+CREATE TRIGGER audit_hub_stock AFTER UPDATE ON hub_parts_stock FOR EACH ROW EXECUTE FUNCTION process_audit_log();
+CREATE TRIGGER audit_refunds AFTER UPDATE ON refunds FOR EACH ROW EXECUTE FUNCTION process_audit_log();
+
+
+5. UI/UX & Screen Breakdown
+
+5.1 Mobile Field Interface (RSA & Mechanics)
+
+Vehicle Scanner & Lookup: Search via plate number or QR to view live battery, key number, and full repair history.
+
+Maintenance Job Logger:
+
+Multi-step form: Select vehicle $\rightarrow$ checklist of issues $\rightarrow$ take/upload photos $\rightarrow$ multi-select spare parts from current hub stock $\rightarrow$ Submit.
+
+Field Task View: Filtered list of assigned tasks under active objectives with quick-toggle status (TODO $\rightarrow$ COMPLETED).
+
+5.2 Desktop Operations Dashboard (Managers & Owners)
+
+Approvals Desk (Priority Queue):
+
+Pending Job Cards (view issue, photos, parts requested, and total cost impact).
+
+Vehicle Status Transitions (approve/reject state changes).
+
+Refund Verification Queue (view ride ID, reason, amount, and proof).
+
+Hub Directory & Fleet Grid:
+
+Hub list with POC details, security contacts, active charging ports, and assigned vehicle counts.
+
+Vehicle Master Sheet: Filterable table with deep-dive modal showing chronological vehicle lifecycle logs.
+
+Objective & Task Management (Hierarchical To-Do):
+
+Set top-level Objective (e.g., "Hub 2 Fleet Overhaul - Target: Friday") $\rightarrow$ Create child tasks assigned to specific mechanics/RSAs.
+
+Inventory Master:
+
+Matrix of parts across all hubs showing Available (Physical) counts with red highlight triggers when available stock falls below min_threshold.
+
+6. AI Implementation Prompt (Copy-Paste Ready)
+
+Build a responsive Next.js 14+ (App Router) internal operations platform with Supabase (PostgreSQL, Auth, Storage) and Tailwind CSS + shadcn/ui.
+
+Key Requirements:
+1. Setup dynamic multi-role RBAC (Owner, Manager, RSA, Mechanic) supporting multiple roles per user.
+2. Implement two-phase staging for inventory and vehicle status:
+   - Inventory UI: Show "Available (Physical)" stock (e.g., 10 (14)). Available = Physical - Pending. Decrement physical stock only upon manager approval of job cards.
+   - Vehicle UI: Show "Current (Pending: Target)" status when a state change is submitted by field staff until signed off.
+3. Build complete interlinked vehicle history logs: Opening a vehicle detail view must display all historical job cards, parts consumed with unit costs, mechanics involved, and audit logs.
+4. Implement a hierarchical To-Do engine: Objectives (assigned to hubs) containing nested Tasks (assigned to personnel with priorities and optional vehicle links).
+5. Enforce zero hard deletes: Block SQL DELETE and log full JSON diffs on every update to an immutable audit_logs table.
+6. Provide a mobile-optimized view for RSA/Mechanics (ticket logging, camera uploads, task completion) and a desktop dashboard for Managers/Owners (Approvals Desk, Fleet Grid, Stock Matrix).
+

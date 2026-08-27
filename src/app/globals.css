@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Frappe Dark Canvas & Surfaces */
+    --background: 240 6% 7.1%;       /* #121214 */
+    --foreground: 240 5% 96%;        /* #f4f4f5 */
+
+    --card: 240 6% 12.5%;            /* #1e1e22 */
+    --card-foreground: 240 5% 96%;   /* #f4f4f5 */
+
+    --popover: 240 6% 9.8%;          /* #18181b */
+    --popover-foreground: 240 5% 96%;/* #f4f4f5 */
+
+    /* Frappe Blue Accent */
+    --primary: 229 95% 64%;          /* #4b6bfb */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 6% 12.5%;       /* #1e1e22 */
+    --secondary-foreground: 240 5% 90%; /* #e4e4e7 */
+
+    --muted: 240 6% 9.8%;            /* #18181b */
+    --muted-foreground: 240 5% 65%;  /* #a1a1aa */
+
+    --accent: 240 6% 16%;            /* #27272a */
+    --accent-foreground: 240 5% 96%;
+
+    --destructive: 0 84% 60%;        /* #f87171 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 17.5%;          /* #2a2a2f */
+    --input: 240 6% 8.2%;            /* #141416 */
+    --ring: 229 95% 64%;             /* #4b6bfb */
+
+    --radius: 0.75rem;
+
+    /* Custom Frappe Hex Tokens */
+    --frappe-canvas: #121214;
+    --frappe-sidebar: #18181b;
+    --frappe-header: #151518;
+    --frappe-surface: #1e1e22;
+    --frappe-surface-subtle: #1c1c1f;
+    --frappe-border: #2a2a2f;
+    --frappe-border-subtle: #27272a;
+    --frappe-input: #141416;
+    --frappe-ring: #323238;
+    --frappe-blue: #4b6bfb;
+    --frappe-emerald: #34d399;
+    --frappe-amber: #fbbf24;
+    --frappe-rose: #f87171;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-[#121214] text-zinc-100 antialiased selection:bg-blue-500/25 selection:text-blue-200;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+  }
+}
+
+/* Frappe Clean Low-Contrast Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #121214;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 9999px;
+  border: 1px solid #18181b;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Frappe Dark Surface Utilities */
+.frappe-card {
+  background-color: #1e1e22;
+  border: 1px solid #2a2a2f;
+  border-radius: 0.75rem;
+}
+
+.frappe-card-subtle {
+  background-color: #1c1c1f;
+  border: 1px solid #27272a;
+  border-radius: 0.75rem;
+}
+
+.frappe-input {
+  background-color: #141416;
+  border: 1px solid #2a2a2f;
+  color: #f4f4f5;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.frappe-input:focus {
+  outline: none;
+  border-color: #4b6bfb;
+  box-shadow: 0 0 0 1px #323238;
+}
+
+.frappe-table-head {
+  background-color: #18181b;
+  color: #a1a1aa;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid #27272a;
+}
+
+.frappe-table-row {
+  border-bottom: 1px solid #222226;
+  transition: background-color 0.15s ease;
+}
+.frappe-table-row:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
