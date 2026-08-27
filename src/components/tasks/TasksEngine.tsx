@@ -9,6 +9,9 @@ import { TaskDetailDrawer } from './TaskDetailDrawer';
 import { ViewSwitcher, ViewMode } from '../common/ViewSwitcher';
 import { exportToCSV, exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import { formatDate, cn } from '@/lib/utils';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
+import { ResizableTh } from '../common/ResizableTh';
+import { KpiCardContainer } from '../common/KpiCardContainer';
 import {
   CheckCircle2,
   Plus,
@@ -28,14 +31,38 @@ import {
   Flag,
   ListTodo,
   X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+type TaskSortField = 'title' | 'priority' | 'status' | 'due_date' | 'created_at';
+type SortOrder = 'asc' | 'desc';
 
 export function TasksEngine() {
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [selectedStatusFilter, setSelectedStatusFilter] = useState<string>('ALL');
+  const [priorityFilter, setPriorityFilter] = useState<string>('ALL');
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Sorting
+  const [sortField, setSortField] = useState<TaskSortField>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  // Resizable columns
+  const { widths, startResizing } = useResizableColumns('tasks-engine-table', {
+    title: 240,
+    parent: 180,
+    priority: 110,
+    assigned: 160,
+    vehicles: 130,
+    due: 120,
+    status: 120,
+    action: 90,
+  });
 
   // 1. Objective creation modal state
   const [objectiveModalOpen, setObjectiveModalOpen] = useState(false);
@@ -70,13 +97,13 @@ export function TasksEngine() {
     new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0]
   );
 
-  const objectives = useAppStore((s) => s.objectives);
-  const milestones = useAppStore((s) => s.milestones);
-  const tasks = useAppStore((s) => s.tasks);
-  const hubs = useAppStore((s) => s.hubs);
+  const objectives = useAppStore((s) => s.objectives || []);
+  const milestones = useAppStore((s) => s.milestones || []);
+  const tasks = useAppStore((s) => s.tasks || []);
+  const hubs = useAppStore((s) => s.hubs || []);
   const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
-  const vehicles = useAppStore((s) => s.vehicles);
-  const staffProfiles = useAppStore((s) => s.staffProfiles);
+  const vehicles = useAppStore((s) => s.vehicles || []);
+  const staffProfiles = useAppStore((s) => s.staffProfiles || []);
   const createObjective = useAppStore((s) => s.createObjective);
   const addMilestone = useAppStore((s) => s.addMilestone);
   const createTask = useAppStore((s) => s.createTask);
@@ -86,9 +113,18 @@ export function TasksEngine() {
 
   const isGlobalHub = selectedHubIds.includes('ALL') || selectedHubIds.length === 0;
 
-  // Filtered dataset
+  const handleSort = (field: TaskSortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  // Filtered & Sorted dataset
   const filteredTasks = useMemo(() => {
-    return tasks.filter((t) => {
+    const list = tasks.filter((t) => {
       const parentObj = objectives.find((o) => o.id === t.objective_id);
       if (!isGlobalHub && parentObj?.hub_id && !selectedHubIds.includes(parentObj.hub_id)) return false;
 
@@ -101,19 +137,59 @@ export function TasksEngine() {
       }
 
       if (selectedStatusFilter !== 'ALL' && t.status !== selectedStatusFilter) return false;
+      if (priorityFilter !== 'ALL' && t.priority !== priorityFilter) return false;
+      if (assigneeFilter !== 'ALL' && !(t.assigned_to || []).includes(assigneeFilter)) return false;
 
       if (!searchTerm.trim()) return true;
       const q = searchTerm.toLowerCase();
       const parentMs = milestones.find((m) => m.id === t.milestone_id);
 
       return (
-        t.title.toLowerCase().includes(q) ||
+        (t.title || '').toLowerCase().includes(q) ||
         (t.description || '').toLowerCase().includes(q) ||
         (parentObj?.title || '').toLowerCase().includes(q) ||
         (parentMs?.title || '').toLowerCase().includes(q)
       );
     });
-  }, [tasks, isGlobalHub, selectedHubIds, isOwner, isManager, currentUser, objectives, milestones, selectedStatusFilter, searchTerm]);
+
+    const priorityWeights: Record<string, number> = {
+      CRITICAL: 4,
+      HIGH: 3,
+      MEDIUM: 2,
+      LOW: 1,
+    };
+
+    return list.sort((a, b) => {
+      let comp = 0;
+      if (sortField === 'title') {
+        comp = (a.title || '').localeCompare(b.title || '');
+      } else if (sortField === 'priority') {
+        comp = (priorityWeights[a.priority] || 0) - (priorityWeights[b.priority] || 0);
+      } else if (sortField === 'status') {
+        comp = (a.status || '').localeCompare(b.status || '');
+      } else if (sortField === 'due_date') {
+        comp = new Date(a.due_date || 0).getTime() - new Date(b.due_date || 0).getTime();
+      } else if (sortField === 'created_at') {
+        comp = new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+      }
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+  }, [
+    tasks,
+    isGlobalHub,
+    selectedHubIds,
+    isOwner,
+    isManager,
+    currentUser,
+    objectives,
+    milestones,
+    selectedStatusFilter,
+    priorityFilter,
+    assigneeFilter,
+    searchTerm,
+    sortField,
+    sortOrder,
+  ]);
 
   // Objective creation
   const handleCreateObjective = (e: React.FormEvent) => {
@@ -294,41 +370,45 @@ export function TasksEngine() {
         </div>
       </div>
 
-      {/* Strategic Hierarchy Summary Grid (7.1) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-blue-500/20 space-y-1">
+      {/* Strategic Hierarchy Summary Grid with Customizable Layout */}
+      <KpiCardContainer
+        storageKey="tasks-kpis"
+        title="Objectives & Execution Pipeline"
+        subtitle="Tier 1 Strategic Objectives, Tier 2 Milestones, and Tier 3 Field Tasks"
+      >
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-blue-500/20 space-y-1">
           <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
-            <span>Tier 1: Parent Objectives</span>
-            <Target className="w-4 h-4 text-blue-400" />
+            <span className="kpi-label">Tier 1: Parent Objectives</span>
+            <Target className="kpi-icon w-4 h-4 text-blue-400" />
           </div>
-          <div className="font-mono font-black text-2xl text-blue-400">{objectives.length}</div>
+          <div className="kpi-val font-mono font-black text-2xl text-blue-400">{objectives.length}</div>
           <p className="text-[11px] text-zinc-500">Corporate & regional high-level goals</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-amber-500/20 space-y-1">
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-amber-500/20 space-y-1">
           <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
-            <span>Tier 2: Tracked Milestones</span>
-            <Flag className="w-4 h-4 text-amber-400" />
+            <span className="kpi-label">Tier 2: Tracked Milestones</span>
+            <Flag className="kpi-icon w-4 h-4 text-amber-400" />
           </div>
-          <div className="font-mono font-black text-2xl text-amber-400">{milestones.length}</div>
+          <div className="kpi-val font-mono font-black text-2xl text-amber-400">{milestones.length}</div>
           <p className="text-[11px] text-zinc-500">Phase gates & readiness checkpoints</p>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-emerald-500/20 space-y-1">
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-emerald-500/20 space-y-1">
           <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
-            <span>Tier 3: Field Task Work Orders</span>
-            <ListTodo className="w-4 h-4 text-emerald-400" />
+            <span className="kpi-label">Tier 3: Field Work Orders</span>
+            <ListTodo className="kpi-icon w-4 h-4 text-emerald-400" />
           </div>
-          <div className="font-mono font-black text-2xl text-emerald-400">{tasks.length}</div>
+          <div className="kpi-val font-mono font-black text-2xl text-emerald-400">{tasks.length}</div>
           <p className="text-[11px] text-zinc-500">
             {tasks.filter((t) => t.status === 'COMPLETED').length} Done • {tasks.filter((t) => t.status === 'IN_PROGRESS').length} Active
           </p>
         </div>
-      </div>
+      </KpiCardContainer>
 
-      {/* Control Bar: Search, Status Filter, Universal View Switcher & Export */}
+      {/* Control Bar: Search, Multi-Attribute Filters, Universal View Switcher & Export */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-[#1e1e22] p-3.5 rounded-2xl border border-[#2a2a2f] backdrop-blur-md">
-        <div className="relative flex-1 min-w-[240px]">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
           <input
             type="text"
@@ -340,6 +420,7 @@ export function TasksEngine() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+          {/* Status Filter */}
           <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
             <Filter className="w-3.5 h-3.5 text-emerald-400" />
             <select
@@ -347,12 +428,44 @@ export function TasksEngine() {
               onChange={(e) => setSelectedStatusFilter(e.target.value)}
               className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
             >
-              <option value="ALL" className="bg-[#1c1c1f]">All Statuses ({tasks.length})</option>
+              <option value="ALL" className="bg-[#1c1c1f]">All Statuses</option>
               <option value="TODO" className="bg-[#1c1c1f]">To Do</option>
               <option value="IN_PROGRESS" className="bg-[#1c1c1f]">In Progress</option>
               <option value="REVIEW" className="bg-[#1c1c1f]">Review</option>
               <option value="COMPLETED" className="bg-[#1c1c1f]">Completed</option>
               <option value="ABANDONED" className="bg-[#1c1c1f]">Abandoned</option>
+            </select>
+          </div>
+
+          {/* Priority Filter */}
+          <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
+            <select
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
+            >
+              <option value="ALL" className="bg-[#1c1c1f]">All Priorities</option>
+              <option value="CRITICAL" className="bg-[#1c1c1f]">Critical</option>
+              <option value="HIGH" className="bg-[#1c1c1f]">High</option>
+              <option value="MEDIUM" className="bg-[#1c1c1f]">Medium</option>
+              <option value="LOW" className="bg-[#1c1c1f]">Low</option>
+            </select>
+          </div>
+
+          {/* Assignee Filter */}
+          <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
+            <Users className="w-3.5 h-3.5 text-blue-400" />
+            <select
+              value={assigneeFilter}
+              onChange={(e) => setAssigneeFilter(e.target.value)}
+              className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
+            >
+              <option value="ALL" className="bg-[#1c1c1f]">All Staff</option>
+              {staffProfiles.map((s) => (
+                <option key={s.id} value={s.id} className="bg-[#1c1c1f]">
+                  {s.full_name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -377,21 +490,103 @@ export function TasksEngine() {
         </div>
       </div>
 
-      {/* VIEW 1: DENSE OPERATIONAL TABLE VIEW (7.1 & 7.2) */}
+      {/* VIEW 1: DENSE OPERATIONAL TABLE VIEW WITH RESIZABLE HEADERS & MULTI-SORTING */}
       {viewMode === 'table' && (
         <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="p-3.5 pl-4">Task Title & Scope</th>
-                  <th className="p-3.5">Parent Objective & Milestone</th>
-                  <th className="p-3.5">Priority</th>
-                  <th className="p-3.5">Assigned Field Staff</th>
-                  <th className="p-3.5">Vehicle Target</th>
-                  <th className="p-3.5">Due Date</th>
-                  <th className="p-3.5">Status</th>
-                  <th className="p-3.5 text-right pr-4">Action</th>
+                  <ResizableTh
+                    colKey="title"
+                    width={widths.title}
+                    onResizeStart={startResizing}
+                    onClick={() => handleSort('title')}
+                    className="p-3.5 pl-4 cursor-pointer hover:bg-zinc-800/60 transition"
+                  >
+                    <span>Task Title & Scope</span>
+                    {sortField === 'title' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-400" /> : <ArrowDown className="w-3 h-3 text-emerald-400" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                    )}
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="parent"
+                    width={widths.parent}
+                    onResizeStart={startResizing}
+                    className="p-3.5"
+                  >
+                    Parent Objective & Milestone
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="priority"
+                    width={widths.priority}
+                    onResizeStart={startResizing}
+                    onClick={() => handleSort('priority')}
+                    className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
+                  >
+                    <span>Priority</span>
+                    {sortField === 'priority' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-400" /> : <ArrowDown className="w-3 h-3 text-emerald-400" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                    )}
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="assigned"
+                    width={widths.assigned}
+                    onResizeStart={startResizing}
+                    className="p-3.5"
+                  >
+                    Assigned Field Staff
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="vehicles"
+                    width={widths.vehicles}
+                    onResizeStart={startResizing}
+                    className="p-3.5"
+                  >
+                    Vehicle Target
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="due"
+                    width={widths.due}
+                    onResizeStart={startResizing}
+                    onClick={() => handleSort('due_date')}
+                    className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
+                  >
+                    <span>Due Date</span>
+                    {sortField === 'due_date' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-400" /> : <ArrowDown className="w-3 h-3 text-emerald-400" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                    )}
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="status"
+                    width={widths.status}
+                    onResizeStart={startResizing}
+                    onClick={() => handleSort('status')}
+                    className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
+                  >
+                    <span>Status</span>
+                    {sortField === 'status' ? (
+                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-emerald-400" /> : <ArrowDown className="w-3 h-3 text-emerald-400" />
+                    ) : (
+                      <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                    )}
+                  </ResizableTh>
+
+                  <th style={{ width: `${widths.action || 90}px` }} className="p-3.5 text-right pr-4">
+                    Action
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#27272a] text-zinc-300">

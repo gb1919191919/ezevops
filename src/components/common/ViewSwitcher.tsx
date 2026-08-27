@@ -4,7 +4,7 @@ import React from 'react';
 import { Table, BarChart3, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-export type ViewMode = 'table' | 'report' | 'kanban';
+export type ViewMode = 'table' | 'report' | 'kanban' | 'grid';
 
 interface ViewSwitcherProps {
   currentView: ViewMode;
@@ -15,12 +15,13 @@ interface ViewSwitcherProps {
 export function ViewSwitcher({
   currentView,
   onViewChange,
-  modes = ['table', 'report', 'kanban'],
+  modes = ['table', 'report', 'kanban', 'grid'],
 }: ViewSwitcherProps) {
   const options = [
     { key: 'table', label: 'List View', icon: Table },
     { key: 'report', label: 'Report View', icon: BarChart3 },
     { key: 'kanban', label: 'Pipeline / Kanban', icon: LayoutGrid },
+    { key: 'grid', label: 'Grid Cards', icon: LayoutGrid },
   ].filter((opt) => modes.includes(opt.key as ViewMode));
 
   return (

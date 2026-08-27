@@ -1,9 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
 import { AuditLog, BlockedUser } from '@/types';
 import { formatDate, formatRelativeTime, formatPhone, formatCurrency, cn } from '@/lib/utils';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
+import { ResizableTh } from '../common/ResizableTh';
+import { KpiCardContainer } from '../common/KpiCardContainer';
+import { exportToCSV, exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import {
   History,
   Search,
@@ -19,20 +23,170 @@ import {
   Car,
   AlertTriangle,
   CheckCircle2,
+  FileSpreadsheet,
+  FileText,
+  X,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
-
 import { useRBAC } from '@/hooks/useRBAC';
+
+type AuditSortField = 'timestamp' | 'table_name' | 'action' | 'performer_name';
+type SortOrder = 'asc' | 'desc';
 
 export function AuditTrailExplorer() {
   const { isOwner } = useRBAC();
-  const auditLogs = useAppStore((s) => s.auditLogs);
-  const blockedUsers = useAppStore((s) => s.blockedUsers);
+  const auditLogs = useAppStore((s) => s.auditLogs || []);
+  const blockedUsers = useAppStore((s) => s.blockedUsers || []);
   const updateBlockedUser = useAppStore((s) => s.updateBlockedUser);
   const [activeTab, setActiveTab] = useState<'audit' | 'blocked'>('audit');
   const [searchTerm, setSearchTerm] = useState('');
   const [tableFilter, setTableFilter] = useState<string>('ALL');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
+  // Sorting
+  const [sortField, setSortField] = useState<AuditSortField>('timestamp');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+
+  // Resizable columns
+  const { widths: auditWidths, startResizing: startAuditResizing } = useResizableColumns('audit-logs-table', {
+    timestamp: 160,
+    table: 140,
+    action: 120,
+    performer: 160,
+    record: 180,
+    diff: 110,
+  });
+
+  const { widths: blockedWidths, startResizing: startBlockedResizing } = useResizableColumns('blocked-users-table', {
+    user: 160,
+    contact: 160,
+    vehicle: 120,
+    reason: 240,
+    fee: 120,
+    status: 130,
+    logged_by: 130,
+  });
+
+  const handleSort = (field: AuditSortField) => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('desc');
+    }
+  };
+
+  const filteredLogs = useMemo(() => {
+    const list = auditLogs.filter((log) => {
+      if (tableFilter !== 'ALL' && log.table_name !== tableFilter) return false;
+      if (!searchTerm.trim()) return true;
+      const q = searchTerm.toLowerCase();
+      const matchesPerformer = (log.performer_name || '').toLowerCase().includes(q);
+      const matchesTable = (log.table_name || '').toLowerCase().includes(q);
+      const matchesAction = (log.action || '').toLowerCase().includes(q);
+      const matchesRecord = (log.record_id || '').toLowerCase().includes(q);
+      return matchesPerformer || matchesTable || matchesAction || matchesRecord;
+    });
+
+    return list.sort((a, b) => {
+      let comp = 0;
+      if (sortField === 'timestamp') {
+        comp = new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+      } else if (sortField === 'table_name') {
+        comp = (a.table_name || '').localeCompare(b.table_name || '');
+      } else if (sortField === 'action') {
+        comp = (a.action || '').localeCompare(b.action || '');
+      } else if (sortField === 'performer_name') {
+        comp = (a.performer_name || '').localeCompare(b.performer_name || '');
+      }
+      return sortOrder === 'asc' ? comp : -comp;
+    });
+  }, [auditLogs, tableFilter, searchTerm, sortField, sortOrder]);
+
+  const filteredBlocked = useMemo(() => {
+    return blockedUsers.filter((b) => {
+      if (!searchTerm.trim()) return true;
+      const q = searchTerm.toLowerCase();
+      return (
+        (b.user_name || '').toLowerCase().includes(q) ||
+        (b.phone || '').includes(q) ||
+        (b.vehicle_no || '').includes(q) ||
+        (b.reason || '').toLowerCase().includes(q)
+      );
+    });
+  }, [blockedUsers, searchTerm]);
+
+  // Export handlers
+  const handleExportCSV = () => {
+    if (activeTab === 'audit') {
+      const data = filteredLogs.map((log) => ({
+        Timestamp: formatDate(log.timestamp),
+        'Table Target': log.table_name,
+        Action: log.action,
+        'Performed By': log.performer_name || 'System',
+        'Record ID': log.record_id,
+        'Previous Data Snapshot': JSON.stringify(log.old_data || {}),
+        'New Data Snapshot': JSON.stringify(log.new_data || {}),
+      }));
+      exportToCSV(data, 'ezev_audit_ledger');
+      toast.success('Exported audit trail to CSV');
+    } else {
+      const data = filteredBlocked.map((b) => ({
+        'User Name': b.user_name,
+        Phone: b.phone,
+        Email: b.user_email,
+        'Vehicle Key': b.vehicle_no,
+        'Incident Reason': b.reason,
+        'Penalty Fee (INR)': b.recovery_amount,
+        'Recovery Status': b.recovery_status,
+        'Logged By': b.employee_name || 'Admin',
+        Date: b.date,
+      }));
+      exportToCSV(data, 'ezev_blocked_users_penalties');
+      toast.success('Exported blocked accounts to CSV');
+    }
+  };
+
+  const handleExportPDF = () => {
+    if (activeTab === 'audit') {
+      const columns = [
+        { header: 'Timestamp', dataKey: 'time' },
+        { header: 'Table', dataKey: 'table' },
+        { header: 'Action', dataKey: 'action' },
+        { header: 'Performed By', dataKey: 'performer' },
+        { header: 'Record ID', dataKey: 'recId' },
+      ];
+      const data = filteredLogs.map((log) => ({
+        time: formatDate(log.timestamp),
+        table: log.table_name,
+        action: log.action,
+        performer: log.performer_name || 'System',
+        recId: log.record_id,
+      }));
+      exportToPDF('EzEv Mutation Audit Ledger', columns, data, 'ezev_audit_trail.pdf');
+      toast.success('Generated PDF Report');
+    } else {
+      const columns = [
+        { header: 'User', dataKey: 'user' },
+        { header: 'Phone', dataKey: 'phone' },
+        { header: 'EV Key', dataKey: 'key' },
+        { header: 'Penalty (INR)', dataKey: 'fee' },
+        { header: 'Status', dataKey: 'status' },
+      ];
+      const data = filteredBlocked.map((b) => ({
+        user: b.user_name,
+        phone: b.phone,
+        key: b.vehicle_no,
+        fee: formatCurrency(b.recovery_amount),
+        status: b.recovery_status,
+      }));
+      exportToPDF('EzEv Security & Penalties Register', columns, data, 'ezev_penalties_register.pdf');
+      toast.success('Generated PDF Report');
+    }
+  };
 
   if (!isOwner) {
     return (
@@ -49,28 +203,6 @@ export function AuditTrailExplorer() {
       </div>
     );
   }
-
-  const filteredLogs = auditLogs.filter((log) => {
-    if (tableFilter !== 'ALL' && log.table_name !== tableFilter) return false;
-    if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase();
-    const matchesPerformer = (log.performer_name || '').toLowerCase().includes(q);
-    const matchesTable = log.table_name.toLowerCase().includes(q);
-    const matchesAction = log.action.toLowerCase().includes(q);
-    const matchesRecord = log.record_id.toLowerCase().includes(q);
-    return matchesPerformer || matchesTable || matchesAction || matchesRecord;
-  });
-
-  const filteredBlocked = blockedUsers.filter((b) => {
-    if (!searchTerm.trim()) return true;
-    const q = searchTerm.toLowerCase();
-    return (
-      b.user_name.toLowerCase().includes(q) ||
-      b.phone.includes(q) ||
-      b.vehicle_no.includes(q) ||
-      b.reason.toLowerCase().includes(q)
-    );
-  });
 
   return (
     <div className="space-y-6">
@@ -93,6 +225,65 @@ export function AuditTrailExplorer() {
           </span>
         </div>
       </div>
+
+      {/* KPI Cards Container */}
+      <KpiCardContainer
+        storageKey="audit-kpis"
+        title="Security & Mutation Metrics"
+        subtitle="Cryptographic events, mutations, and blocked recovery counts"
+      >
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            Total Audit Events
+          </div>
+          <div className="kpi-val text-xl font-mono font-bold text-zinc-100 mt-1">
+            {auditLogs.length} Records
+          </div>
+          <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
+            Immutable database mutations
+          </span>
+        </div>
+
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-blue-400">
+            Updates & State Changes
+          </div>
+          <div className="kpi-val text-xl font-mono font-bold text-blue-400 mt-1">
+            {auditLogs.filter((l) => l.action === 'UPDATE').length} Events
+          </div>
+          <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
+            Entity modifications
+          </span>
+        </div>
+
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-rose-500/20">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-rose-400">
+            Blocked Users
+          </div>
+          <div className="kpi-val text-xl font-mono font-bold text-rose-400 mt-1">
+            {blockedUsers.length} Accounts
+          </div>
+          <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
+            {blockedUsers.filter((b) => b.recovery_status === 'Pending').length} Pending penalties
+          </span>
+        </div>
+
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-emerald-500/20">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+            Penalty Amount Due
+          </div>
+          <div className="kpi-val text-xl font-mono font-bold text-emerald-400 mt-1">
+            {formatCurrency(
+              blockedUsers
+                .filter((b) => b.recovery_status === 'Pending')
+                .reduce((sum, b) => sum + (b.recovery_amount || 0), 0)
+            )}
+          </div>
+          <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
+            Unrecovered damages
+          </span>
+        </div>
+      </KpiCardContainer>
 
       {/* Tabs */}
       <div className="flex items-center border-b border-[#2a2a2f] gap-4 text-xs font-semibold text-zinc-400">
@@ -133,50 +324,122 @@ export function AuditTrailExplorer() {
               />
             </div>
 
-            <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
-              <Filter className="w-3.5 h-3.5 text-blue-400" />
-              <select
-                value={tableFilter}
-                onChange={(e) => setTableFilter(e.target.value)}
-                className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
+                <Filter className="w-3.5 h-3.5 text-blue-400" />
+                <select
+                  value={tableFilter}
+                  onChange={(e) => setTableFilter(e.target.value)}
+                  className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
+                >
+                  <option value="ALL" className="bg-zinc-900 text-zinc-200">
+                    All Tables ({auditLogs.length})
+                  </option>
+                  <option value="vehicles" className="bg-zinc-900 text-zinc-200">vehicles</option>
+                  <option value="hub_part_stock" className="bg-zinc-900 text-zinc-200">hub_part_stock</option>
+                  <option value="job_cards" className="bg-zinc-900 text-zinc-200">job_cards</option>
+                  <option value="refunds" className="bg-zinc-900 text-zinc-200">refunds</option>
+                  <option value="sops" className="bg-zinc-900 text-zinc-200">sops</option>
+                  <option value="tasks" className="bg-zinc-900 text-zinc-200">tasks</option>
+                </select>
+              </div>
+
+              {/* Export */}
+              <button
+                onClick={handleExportCSV}
+                className="p-2 rounded-xl bg-[#141416] hover:bg-[#202025] border border-[#2a2a2f] text-zinc-300 hover:text-white transition"
+                title="Export Audit Logs to CSV"
               >
-                <option value="ALL" className="bg-zinc-900 text-zinc-200">
-                  All Tables ({auditLogs.length})
-                </option>
-                <option value="vehicles" className="bg-zinc-900 text-zinc-200">
-                  vehicles
-                </option>
-                <option value="hub_part_stock" className="bg-zinc-900 text-zinc-200">
-                  hub_part_stock
-                </option>
-                <option value="job_cards" className="bg-zinc-900 text-zinc-200">
-                  job_cards
-                </option>
-                <option value="refunds" className="bg-zinc-900 text-zinc-200">
-                  refunds
-                </option>
-                <option value="sops" className="bg-zinc-900 text-zinc-200">
-                  sops
-                </option>
-                <option value="tasks" className="bg-zinc-900 text-zinc-200">
-                  tasks
-                </option>
-              </select>
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="p-2 rounded-xl bg-[#141416] hover:bg-[#202025] border border-[#2a2a2f] text-zinc-300 hover:text-white transition"
+                title="Export Audit Logs to PDF"
+              >
+                <FileText className="w-4 h-4 text-rose-400" />
+              </button>
             </div>
           </div>
 
-          {/* Logs Table */}
+          {/* Logs Table with Resizable Headers & Sorting */}
           <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="p-3.5 pl-4">Timestamp</th>
-                    <th className="p-3.5">Table Target</th>
-                    <th className="p-3.5">Action</th>
-                    <th className="p-3.5">Performed By</th>
-                    <th className="p-3.5">Record ID</th>
-                    <th className="p-3.5 text-right pr-4">JSON Diff</th>
+                    <ResizableTh
+                      colKey="timestamp"
+                      width={auditWidths.timestamp}
+                      onResizeStart={startAuditResizing}
+                      onClick={() => handleSort('timestamp')}
+                      className="p-3.5 pl-4 cursor-pointer hover:bg-zinc-800/60 transition"
+                    >
+                      <span>Timestamp</span>
+                      {sortField === 'timestamp' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                      )}
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="table"
+                      width={auditWidths.table}
+                      onResizeStart={startAuditResizing}
+                      onClick={() => handleSort('table_name')}
+                      className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
+                    >
+                      <span>Table Target</span>
+                      {sortField === 'table_name' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                      )}
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="action"
+                      width={auditWidths.action}
+                      onResizeStart={startAuditResizing}
+                      onClick={() => handleSort('action')}
+                      className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
+                    >
+                      <span>Action</span>
+                      {sortField === 'action' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                      )}
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="performer"
+                      width={auditWidths.performer}
+                      onResizeStart={startAuditResizing}
+                      onClick={() => handleSort('performer_name')}
+                      className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
+                    >
+                      <span>Performed By</span>
+                      {sortField === 'performer_name' ? (
+                        sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
+                      ) : (
+                        <ArrowUpDown className="w-3 h-3 text-zinc-600" />
+                      )}
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="record"
+                      width={auditWidths.record}
+                      onResizeStart={startAuditResizing}
+                      className="p-3.5"
+                    >
+                      Record ID
+                    </ResizableTh>
+
+                    <th style={{ width: `${auditWidths.diff || 110}px` }} className="p-3.5 text-right pr-4">
+                      JSON Diff
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#27272a] text-zinc-300">
@@ -248,18 +511,98 @@ export function AuditTrailExplorer() {
       {/* TAB 2: Blocked Users & Penalties */}
       {activeTab === 'blocked' && (
         <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 bg-[#1e1e22] p-3.5 rounded-2xl border border-[#2a2a2f]">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="Search blocked users, phone, vehicle key..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCSV}
+                className="p-2 rounded-xl bg-[#141416] hover:bg-[#202025] border border-[#2a2a2f] text-zinc-300 hover:text-white transition"
+                title="Export Penalties to CSV"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="p-2 rounded-xl bg-[#141416] hover:bg-[#202025] border border-[#2a2a2f] text-zinc-300 hover:text-white transition"
+                title="Export Penalties to PDF"
+              >
+                <FileText className="w-4 h-4 text-rose-400" />
+              </button>
+            </div>
+          </div>
+
           <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="p-3.5 pl-4">Blocked User</th>
-                    <th className="p-3.5">Contact / Email</th>
-                    <th className="p-3.5">EV Key No</th>
-                    <th className="p-3.5">Incident & Reason</th>
-                    <th className="p-3.5">Penalty Fee</th>
-                    <th className="p-3.5">Recovery Status</th>
-                    <th className="p-3.5 text-right pr-4">Logged By</th>
+                    <ResizableTh
+                      colKey="user"
+                      width={blockedWidths.user}
+                      onResizeStart={startBlockedResizing}
+                      className="p-3.5 pl-4"
+                    >
+                      Blocked User
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="contact"
+                      width={blockedWidths.contact}
+                      onResizeStart={startBlockedResizing}
+                      className="p-3.5"
+                    >
+                      Contact / Email
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="vehicle"
+                      width={blockedWidths.vehicle}
+                      onResizeStart={startBlockedResizing}
+                      className="p-3.5"
+                    >
+                      EV Key No
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="reason"
+                      width={blockedWidths.reason}
+                      onResizeStart={startBlockedResizing}
+                      className="p-3.5"
+                    >
+                      Incident & Reason
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="fee"
+                      width={blockedWidths.fee}
+                      onResizeStart={startBlockedResizing}
+                      className="p-3.5"
+                    >
+                      Penalty Fee
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="status"
+                      width={blockedWidths.status}
+                      onResizeStart={startBlockedResizing}
+                      className="p-3.5"
+                    >
+                      Recovery Status
+                    </ResizableTh>
+
+                    <th style={{ width: `${blockedWidths.logged_by || 130}px` }} className="p-3.5 text-right pr-4">
+                      Logged By
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#27272a] text-zinc-300">
@@ -283,7 +626,7 @@ export function AuditTrailExplorer() {
                         </td>
 
                         <td className="p-3.5 font-mono font-bold text-zinc-200">
-                          Key: {blk.vehicle_no}
+                          Key: #{blk.vehicle_no}
                         </td>
 
                         <td className="p-3.5 max-w-md text-xs text-zinc-300 leading-relaxed">
@@ -299,21 +642,21 @@ export function AuditTrailExplorer() {
                             onClick={() => {
                               const nextStatus = blk.recovery_status === 'Pending' ? 'Recovered' : 'Pending';
                               updateBlockedUser(blk.id, { recovery_status: nextStatus });
-                              toast.success(`Recovery status set to ${nextStatus}`);
+                              toast.success(`Updated penalty recovery status to: ${nextStatus}`);
                             }}
                             className={cn(
-                              'px-2 py-0.5 rounded text-[10px] font-bold uppercase border transition',
-                              blk.recovery_status === 'Pending'
-                                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                                : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                              'px-2 py-0.5 rounded text-[10px] font-bold border transition cursor-pointer',
+                              blk.recovery_status === 'Recovered'
+                                ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                : 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20'
                             )}
                           >
                             {blk.recovery_status}
                           </button>
                         </td>
 
-                        <td className="p-3.5 text-right pr-4 text-zinc-400">
-                          {blk.employee_name}
+                        <td className="p-3.5 text-right pr-4 font-mono text-zinc-400">
+                          {blk.employee_name || 'Admin'}
                         </td>
                       </tr>
                     ))
@@ -325,58 +668,56 @@ export function AuditTrailExplorer() {
         </div>
       )}
 
-      {/* JSON Diff Modal */}
+      {/* JSON Diff Drawer */}
       {selectedLog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-2xl bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between border-b border-[#27272a] pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-base font-bold text-zinc-100">
-                    Mutation Diff: <span className="font-mono text-blue-400">{selectedLog.table_name}</span>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-2xl bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="p-5 border-b border-[#27272a] bg-[#141416] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileCode className="w-5 h-5 text-blue-400" />
+                <div>
+                  <h3 className="font-bold text-sm text-zinc-100">
+                    Audit Log Diff: {selectedLog.table_name} ({selectedLog.action})
                   </h3>
-                  <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-mono font-bold">
-                    {selectedLog.action}
+                  <span className="text-[10px] text-zinc-500 font-mono">
+                    ID: {selectedLog.id} • {formatDate(selectedLog.timestamp)}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Performed by <strong className="text-zinc-200">{selectedLog.performer_name || 'System'}</strong> on {formatDate(selectedLog.timestamp)}
-                </p>
               </div>
-
-              <button onClick={() => setSelectedLog(null)} className="text-zinc-500 hover:text-zinc-200">
-                ✕
+              <button
+                onClick={() => setSelectedLog(null)}
+                className="text-zinc-500 hover:text-zinc-300 p-1"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-              <div className="space-y-1">
-                <span className="text-rose-400 font-bold uppercase tracking-wider text-[10px]">
-                  Old Snapshot (Pre-mutation)
-                </span>
-                <pre className="p-3 rounded-xl bg-[#141416] border border-rose-950 text-rose-300 font-mono text-[11px] max-h-72 overflow-y-auto">
-                  {selectedLog.old_data
-                    ? JSON.stringify(selectedLog.old_data, null, 2)
-                    : '(null / initial record)'}
-                </pre>
-              </div>
+            <div className="p-5 space-y-4 overflow-y-auto text-xs font-mono">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="text-zinc-500 font-sans font-semibold">Previous State (Old Data)</span>
+                  <pre className="p-3 rounded-xl bg-[#141416] border border-[#27272a] text-zinc-400 overflow-x-auto text-[11px]">
+                    {selectedLog.old_data
+                      ? JSON.stringify(selectedLog.old_data, null, 2)
+                      : 'null (Initial Creation)'}
+                  </pre>
+                </div>
 
-              <div className="space-y-1">
-                <span className="text-emerald-400 font-bold uppercase tracking-wider text-[10px]">
-                  New Snapshot (Post-mutation)
-                </span>
-                <pre className="p-3 rounded-xl bg-[#141416] border border-emerald-950 text-emerald-300 font-mono text-[11px] max-h-72 overflow-y-auto">
-                  {selectedLog.new_data
-                    ? JSON.stringify(selectedLog.new_data, null, 2)
-                    : '(null)'}
-                </pre>
+                <div className="space-y-1">
+                  <span className="text-zinc-500 font-sans font-semibold">Mutated State (New Data)</span>
+                  <pre className="p-3 rounded-xl bg-[#141416] border border-[#27272a] text-emerald-400 overflow-x-auto text-[11px]">
+                    {selectedLog.new_data
+                      ? JSON.stringify(selectedLog.new_data, null, 2)
+                      : 'null (Deleted)'}
+                  </pre>
+                </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#27272a] flex justify-end">
+            <div className="p-4 bg-[#141416] border-t border-[#27272a] flex items-center justify-end">
               <button
                 onClick={() => setSelectedLog(null)}
-                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-xl transition"
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl text-xs font-semibold transition"
               >
                 Close Diff
               </button>

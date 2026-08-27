@@ -1,9 +1,13 @@
-import { useAppStore } from './store/appStore';
 import { toast } from 'sonner';
 
-interface HeaderDefinition {
+export interface HeaderDefinition {
   key: string;
   label: string;
+}
+
+export interface ColumnDefinition {
+  header: string;
+  dataKey: string;
 }
 
 /**
@@ -35,13 +39,25 @@ function escapeCSVValue(val: any): string {
 }
 
 /**
- * Export data array to CSV file download
+ * Export data array to CSV file download.
+ * Polymorphic: accepts either (filename, rows, headers) OR (rows, filename, headers).
  */
 export function exportToCSV(
-  filename: string,
-  rows: Record<string, any>[],
+  arg1: string | Record<string, any>[],
+  arg2?: string | Record<string, any>[],
   headers?: HeaderDefinition[]
 ) {
+  let filename = 'export';
+  let rows: Record<string, any>[] = [];
+
+  if (typeof arg1 === 'string') {
+    filename = arg1;
+    rows = Array.isArray(arg2) ? arg2 : [];
+  } else if (Array.isArray(arg1)) {
+    rows = arg1;
+    filename = typeof arg2 === 'string' ? arg2 : 'export';
+  }
+
   if (!rows || rows.length === 0) {
     toast.error('No data available to export.');
     return;
@@ -74,24 +90,66 @@ export function exportToCSV(
  * Export data array to Excel-compatible CSV file download
  */
 export function exportToExcel(
-  filename: string,
-  rows: Record<string, any>[],
+  arg1: string | Record<string, any>[],
+  arg2?: string | Record<string, any>[],
   headers?: HeaderDefinition[]
 ) {
-  exportToCSV(filename, rows, headers);
+  exportToCSV(arg1 as any, arg2 as any, headers);
 }
 
 /**
  * Generate a clean, styled, printable PDF / Print Document with EzEv branding
+ * Polymorphic: Supports standard signature, column object array signature, and subtitle variants.
  */
 export function exportToPDF(
   title: string,
-  subtitle: string,
-  headers: string[],
-  rows: (string | number)[][],
-  filename?: string
+  arg2: string | string[] | ColumnDefinition[],
+  arg3?: string[] | (string | number)[][] | Record<string, any>[],
+  arg4?: (string | number)[][] | Record<string, any>[] | string,
+  arg5?: string
 ) {
-  if (!rows || rows.length === 0) {
+  let subtitle = 'Operations Report & Audit Ledger';
+  let headerLabels: string[] = [];
+  let rowCells: (string | number)[][] = [];
+
+  // Case 1: Standard (title, subtitle, headers, rows, filename)
+  if (typeof arg2 === 'string' && Array.isArray(arg3) && Array.isArray(arg4)) {
+    subtitle = arg2;
+    headerLabels = (arg3 as string[]).map((h) => (typeof h === 'string' ? h : String((h as any).label || (h as any).header || '')));
+    const rawRows = arg4 as any[];
+
+    if (rawRows.length > 0 && Array.isArray(rawRows[0])) {
+      rowCells = rawRows;
+    } else {
+      rowCells = rawRows.map((r) => headerLabels.map((h) => r[h] ?? r[h.toLowerCase()] ?? ''));
+    }
+  }
+  // Case 2: (title, columns, rows, filename)
+  else if (Array.isArray(arg2) && Array.isArray(arg3)) {
+    const rawCols = arg2 as any[];
+    const rawRows = arg3 as any[];
+
+    // Extract headers and map keys
+    if (rawCols.length > 0 && typeof rawCols[0] === 'object' && ('header' in rawCols[0] || 'label' in rawCols[0])) {
+      headerLabels = rawCols.map((c) => c.header || c.label || c.key || '');
+      const keys = rawCols.map((c) => c.dataKey || c.key || c.header || '');
+
+      if (rawRows.length > 0 && Array.isArray(rawRows[0])) {
+        rowCells = rawRows;
+      } else {
+        rowCells = rawRows.map((r) => keys.map((k) => r[k] ?? ''));
+      }
+    } else {
+      headerLabels = rawCols.map((c) => String(c));
+      if (rawRows.length > 0 && Array.isArray(rawRows[0])) {
+        rowCells = rawRows;
+      } else {
+        rowCells = rawRows.map((r) => headerLabels.map((h) => r[h] ?? r[h.toLowerCase()] ?? ''));
+      }
+    }
+  }
+
+  if (!rowCells || rowCells.length === 0) {
     toast.error('No data available to export to PDF.');
     return;
   }
@@ -114,8 +172,8 @@ export function exportToPDF(
   const safeTitle = escapeHTML(title);
   const safeSubtitle = escapeHTML(subtitle);
 
-  const headerHtml = headers.map((h) => `<th>${escapeHTML(h)}</th>`).join('');
-  const rowsHtml = rows
+  const headerHtml = headerLabels.map((h) => `<th>${escapeHTML(h)}</th>`).join('');
+  const rowsHtml = rowCells
     .map(
       (r, idx) =>
         `<tr class="${idx % 2 === 1 ? 'even' : ''}">${r
@@ -170,31 +228,27 @@ export function exportToPDF(
             font-size: 10px;
             color: #64748b;
           }
-          .meta-box strong {
-            color: #0f172a;
-          }
           table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
-            font-size: 11px;
           }
           th {
             background-color: #f1f5f9;
-            color: #334155;
-            text-align: left;
-            padding: 8px 10px;
-            font-size: 10px;
+            color: #1e293b;
             font-weight: 700;
             text-transform: uppercase;
+            font-size: 9.5px;
             letter-spacing: 0.05em;
-            border-bottom: 1.5px solid #cbd5e1;
+            padding: 8px 10px;
+            border: 1px solid #cbd5e1;
+            text-align: left;
           }
           td {
-            padding: 8px 10px;
-            border-bottom: 1px solid #e2e8f0;
-            color: #1e293b;
-            vertical-align: top;
+            padding: 7px 10px;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+            font-size: 10.5px;
           }
           tr.even {
             background-color: #f8fafc;
@@ -205,28 +259,24 @@ export function exportToPDF(
             border-top: 1px solid #e2e8f0;
             display: flex;
             justify-content: space-between;
-            font-size: 9px;
+            font-size: 9.5px;
             color: #94a3b8;
           }
           @media print {
-            body {
-              padding: 0;
-            }
-            .no-print {
-              display: none;
-            }
+            body { padding: 0; }
+            .no-print { display: none; }
           }
         </style>
       </head>
       <body>
         <div class="header-banner">
           <div>
-            <h1 class="brand-title">EzEv <span>Operations Mumbai</span></h1>
-            <div class="doc-subtitle">${safeTitle} &bull; ${safeSubtitle}</div>
+            <h1 class="brand-title">Ez<span>Ev</span> Operations & Logistics</h1>
+            <div class="doc-subtitle">${safeTitle} • ${safeSubtitle}</div>
           </div>
           <div class="meta-box">
-            <div>Generated: <strong>${timestamp}</strong></div>
-            <div>Total Records: <strong>${rows.length}</strong></div>
+            <div><strong>Generated:</strong> ${timestamp}</div>
+            <div><strong>Scope:</strong> Mumbai Regional Fleet Network</div>
           </div>
         </div>
 
@@ -240,13 +290,15 @@ export function exportToPDF(
         </table>
 
         <div class="footer">
-          <div>EzEv Fleet Management System &bull; Confidential & Internal Operations</div>
-          <div>Page 1 of 1</div>
+          <div>EzEv Mumbai • Confidential Internal Operations System</div>
+          <div>Total Records: ${rowCells.length}</div>
         </div>
 
         <script>
           window.onload = function() {
-            window.print();
+            setTimeout(function() {
+              window.print();
+            }, 300);
           };
         </script>
       </body>
@@ -256,57 +308,50 @@ export function exportToPDF(
   printWindow.document.open();
   printWindow.document.write(html);
   printWindow.document.close();
-  toast.success('Generated printable PDF report!');
 }
 
 /**
- * Generate full database backup JSON containing all modules
+ * Export full state backup JSON
  */
 export function exportFullDatabaseBackup() {
-  try {
-    const state = useAppStore.getState();
-    const backupData = {
-      version: '1.0',
+  const { useAppStore } = require('./store/appStore');
+  const state = useAppStore.getState();
+  const backupData = {
+    metadata: {
       exported_at: new Date().toISOString(),
-      system: 'EzEv Ops Mumbai Fleet Command',
-      tables: {
-        hubs: state.hubs,
-        vehicles: state.vehicles,
-        inspections: state.inspections || [],
-        parts: state.parts,
-        hub_part_stock: state.hubStock,
-        job_cards: state.jobCards,
-        part_usage_logs: state.partUsageLogs,
-        refunds: state.refunds,
-        objectives: state.objectives,
-        milestones: state.milestones || [],
-        tasks: state.tasks,
-        sops: state.sops,
-        team_notes: state.teamNotes,
-        daily_shift_logs: state.dailyShiftLogs || [],
-        chat_channels: state.chatChannels || [],
-        channel_messages: state.channelMessages || [],
-        blocked_users: state.blockedUsers,
-        staff_profiles: state.staffProfiles,
-        custom_roles: state.customRoles,
-        audit_logs: state.auditLogs,
-      },
-    };
+      version: '1.0.0',
+      system: 'EzEv Mumbai Fleet Operations Platform',
+    },
+    hubs: state.hubs,
+    vehicles: state.vehicles,
+    parts: state.parts,
+    hubStock: state.hubStock,
+    jobCards: state.jobCards,
+    disputes: state.refunds,
+    objectives: state.objectives,
+    milestones: state.milestones,
+    tasks: state.tasks,
+    dailyShiftLogs: state.dailyShiftLogs,
+    chatChannels: state.chatChannels,
+    channelMessages: state.channelMessages,
+    sops: state.sops,
+    sopVersions: state.sopVersions,
+    blockedUsers: state.blockedUsers,
+    auditLogs: state.auditLogs,
+    staffProfiles: state.staffProfiles,
+  };
 
-    const jsonString = JSON.stringify(backupData, null, 2);
-    const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
+  const jsonContent = JSON.stringify(backupData, null, 2);
+  const blob = new Blob([jsonContent], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
 
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `ezev_ops_full_backup_${new Date().toISOString().slice(0, 10)}.json`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `ezev_full_database_backup_${new Date().toISOString().slice(0, 10)}.json`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 
-    toast.success('Full Database Backup JSON generated successfully!');
-  } catch (err: any) {
-    toast.error('Failed to generate database backup', { description: err.message });
-  }
+  toast.success('Full database snapshot backup downloaded!');
 }

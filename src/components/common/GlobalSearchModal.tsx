@@ -18,7 +18,6 @@ import {
   MessageSquare,
   ShieldAlert,
   ArrowRight,
-  CornerDownLeft,
   X,
   Sparkles,
 } from 'lucide-react';
@@ -49,16 +48,17 @@ export function GlobalSearchModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const vehicles = useAppStore((s) => s.vehicles);
-  const parts = useAppStore((s) => s.parts);
-  const jobCards = useAppStore((s) => s.jobCards);
-  const objectives = useAppStore((s) => s.objectives);
-  const tasks = useAppStore((s) => s.tasks);
-  const sops = useAppStore((s) => s.sops);
-  const refunds = useAppStore((s) => s.refunds);
-  const hubs = useAppStore((s) => s.hubs);
-  const staffProfiles = useAppStore((s) => s.staffProfiles);
-  const teamNotes = useAppStore((s) => s.teamNotes);
+  const vehicles = useAppStore((s) => s.vehicles || []);
+  const parts = useAppStore((s) => s.parts || []);
+  const jobCards = useAppStore((s) => s.jobCards || []);
+  const objectives = useAppStore((s) => s.objectives || []);
+  const milestones = useAppStore((s) => s.milestones || []);
+  const tasks = useAppStore((s) => s.tasks || []);
+  const sops = useAppStore((s) => s.sops || []);
+  const refunds = useAppStore((s) => s.refunds || []);
+  const hubs = useAppStore((s) => s.hubs || []);
+  const staffProfiles = useAppStore((s) => s.staffProfiles || []);
+  const teamNotes = useAppStore((s) => s.teamNotes || []);
   const dailyShiftLogs = useAppStore((s) => s.dailyShiftLogs || []);
   const chatChannels = useAppStore((s) => s.chatChannels || []);
   const blockedUsers = useAppStore((s) => s.blockedUsers || []);
@@ -93,7 +93,7 @@ export function GlobalSearchModal({
   }, [isOpen, onClose]);
 
   const results = useMemo<SearchResultItem[]>(() => {
-    const q = query.trim().toLowerCase();
+    const q = (query || '').trim().toLowerCase();
     if (!q) {
       // Return quick suggested links
       return [
@@ -153,18 +153,17 @@ export function GlobalSearchModal({
 
     // 1. Vehicles
     vehicles.forEach((v) => {
-      const match =
-        v.id.toLowerCase().includes(q) ||
-        v.vehicle_id.toLowerCase().includes(q) ||
-        (v.custom_vehicle_id && v.custom_vehicle_id.toLowerCase().includes(q)) ||
-        v.key_number.toLowerCase().includes(q) ||
-        v.vin.toLowerCase().includes(q) ||
-        v.model.toLowerCase().includes(q);
+      const vId = (v.id || '').toLowerCase();
+      const vIot = (v.vehicle_id || '').toLowerCase();
+      const vCustom = (v.custom_vehicle_id || '').toLowerCase();
+      const vKey = (v.key_number || '').toLowerCase();
+      const vVin = (v.vin || '').toLowerCase();
+      const vModel = (v.model || '').toLowerCase();
 
-      if (match) {
+      if (vId.includes(q) || vIot.includes(q) || vCustom.includes(q) || vKey.includes(q) || vVin.includes(q) || vModel.includes(q)) {
         items.push({
           id: `veh-${v.id}`,
-          title: `Key #${v.key_number} • ${v.model} (${v.custom_vehicle_id || v.id.toUpperCase()})`,
+          title: `Key #${v.key_number || 'N/A'} • ${v.model} (${v.custom_vehicle_id || v.id.toUpperCase()})`,
           subtitle: `IoT ID: ${v.vehicle_id} • Status: ${v.current_status} • Hub: ${v.hub?.name || v.current_hub_id}`,
           category: 'vehicles',
           categoryLabel: 'Fleet Vehicles',
@@ -181,22 +180,21 @@ export function GlobalSearchModal({
 
     // 2. Spare Parts
     parts.forEach((p) => {
-      const match =
-        p.name.toLowerCase().includes(q) ||
-        p.sku.toLowerCase().includes(q) ||
-        p.category.toLowerCase().includes(q) ||
-        (p.supplier && p.supplier.toLowerCase().includes(q));
+      const pName = (p.name || '').toLowerCase();
+      const pSku = (p.sku || '').toLowerCase();
+      const pCat = (p.category || '').toLowerCase();
+      const pSup = (p.supplier || '').toLowerCase();
 
-      if (match) {
+      if (pName.includes(q) || pSku.includes(q) || pCat.includes(q) || pSup.includes(q)) {
         items.push({
           id: `part-${p.id}`,
           title: `${p.name} (SKU: ${p.sku})`,
-          subtitle: `Category: ${p.category} • Cost: ${formatCurrency(p.unit_cost)} • Supplier: ${p.supplier || 'Pakshal Auto'}`,
+          subtitle: `Category: ${p.category} • Cost: ${formatCurrency(p.unit_cost || 0)} • Supplier: ${p.supplier || 'Pakshal Auto'}`,
           category: 'inventory',
           categoryLabel: 'Spare Parts',
           icon: Package,
           href: '/inventory',
-          badge: formatCurrency(p.unit_cost),
+          badge: formatCurrency(p.unit_cost || 0),
           badgeColor: 'text-purple-400 border-purple-500/30 bg-purple-500/10',
         });
       }
@@ -204,12 +202,11 @@ export function GlobalSearchModal({
 
     // 3. Job Cards
     jobCards.forEach((j) => {
-      const match =
-        j.ticket_number.toString().includes(q) ||
-        j.issue_description.toLowerCase().includes(q) ||
-        (j.solution_applied && j.solution_applied.toLowerCase().includes(q));
+      const jTicket = (j.ticket_number || '').toString();
+      const jDesc = (j.issue_description || '').toLowerCase();
+      const jSol = (j.solution_applied || '').toLowerCase();
 
-      if (match) {
+      if (jTicket.includes(q) || jDesc.includes(q) || jSol.includes(q)) {
         items.push({
           id: `job-${j.id}`,
           title: `Job Card #${j.ticket_number} — ${j.issue_description}`,
@@ -227,13 +224,16 @@ export function GlobalSearchModal({
       }
     });
 
-    // 4. Tasks & Objectives
+    // 4. Objectives & Milestones
     objectives.forEach((obj) => {
-      if (obj.title.toLowerCase().includes(q) || obj.description.toLowerCase().includes(q)) {
+      const oTitle = (obj.title || '').toLowerCase();
+      const oDesc = (obj.description || '').toLowerCase();
+
+      if (oTitle.includes(q) || oDesc.includes(q)) {
         items.push({
           id: `obj-${obj.id}`,
           title: `Objective: ${obj.title}`,
-          subtitle: `${obj.description} • Target: ${obj.target_date}`,
+          subtitle: `${obj.description || ''} • Target: ${obj.target_date || 'N/A'}`,
           category: 'tasks',
           categoryLabel: 'Objectives & Milestones',
           icon: CheckCircle2,
@@ -244,8 +244,32 @@ export function GlobalSearchModal({
       }
     });
 
+    milestones.forEach((m) => {
+      const mTitle = (m.title || '').toLowerCase();
+      const mDesc = (m.description || '').toLowerCase();
+
+      if (mTitle.includes(q) || mDesc.includes(q)) {
+        items.push({
+          id: `mls-${m.id}`,
+          title: `Milestone: ${m.title}`,
+          subtitle: `${m.description || 'Target milestone'} • Target: ${m.target_date || 'N/A'}`,
+          category: 'tasks',
+          categoryLabel: 'Milestones & OKRs',
+          icon: CheckCircle2,
+          href: '/tasks',
+          badge: m.is_completed ? 'Completed' : 'Pending',
+          badgeColor: m.is_completed
+            ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10'
+            : 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+        });
+      }
+    });
+
     tasks.forEach((t) => {
-      if (t.title.toLowerCase().includes(q) || (t.description && t.description.toLowerCase().includes(q))) {
+      const tTitle = (t.title || '').toLowerCase();
+      const tDesc = (t.description || '').toLowerCase();
+
+      if (tTitle.includes(q) || tDesc.includes(q)) {
         items.push({
           id: `task-${t.id}`,
           title: `Task: ${t.title}`,
@@ -265,16 +289,20 @@ export function GlobalSearchModal({
 
     // 5. SOPs
     sops.forEach((s) => {
-      if (s.title.toLowerCase().includes(q) || s.code.toLowerCase().includes(q) || s.summary.toLowerCase().includes(q)) {
+      const sTitle = (s.title || '').toLowerCase();
+      const sCode = (s.code || '').toLowerCase();
+      const sSumm = (s.summary || '').toLowerCase();
+
+      if (sTitle.includes(q) || sCode.includes(q) || sSumm.includes(q)) {
         items.push({
           id: `sop-${s.id}`,
           title: `[${s.code}] ${s.title}`,
-          subtitle: `${s.summary} • Category: ${s.category}`,
+          subtitle: `${s.summary || ''} • Category: ${s.category}`,
           category: 'sops',
           categoryLabel: 'SOPs & Manuals',
           icon: BookOpen,
           href: '/sops',
-          badge: `v${s.version}`,
+          badge: `v${s.version || '1.0'}`,
           badgeColor: 'text-indigo-400 border-indigo-500/30 bg-indigo-500/10',
         });
       }
@@ -282,10 +310,14 @@ export function GlobalSearchModal({
 
     // 6. Refunds & Disputes
     refunds.forEach((r) => {
-      if (r.ride_id.toLowerCase().includes(q) || r.user_phone.includes(q) || r.reason.toLowerCase().includes(q)) {
+      const rRide = (r.ride_id || '').toLowerCase();
+      const rPhone = r.user_phone || '';
+      const rReason = (r.reason || '').toLowerCase();
+
+      if (rRide.includes(q) || rPhone.includes(q) || rReason.includes(q)) {
         items.push({
           id: `ref-${r.id}`,
-          title: `Dispute: Ride #${r.ride_id} — ${formatCurrency(r.amount)}`,
+          title: `Dispute: Ride #${r.ride_id} — ${formatCurrency(r.amount || 0)}`,
           subtitle: `Phone: ${r.user_phone} • Reason: ${r.reason} • Status: ${r.status}`,
           category: 'refunds',
           categoryLabel: 'Customer Disputes',
@@ -299,7 +331,11 @@ export function GlobalSearchModal({
 
     // 7. Hubs
     hubs.forEach((h) => {
-      if (h.name.toLowerCase().includes(q) || h.code.toLowerCase().includes(q) || h.address.toLowerCase().includes(q)) {
+      const hName = (h.name || '').toLowerCase();
+      const hCode = (h.code || '').toLowerCase();
+      const hAddr = (h.address || '').toLowerCase();
+
+      if (hName.includes(q) || hCode.includes(q) || hAddr.includes(q)) {
         items.push({
           id: `hub-${h.id}`,
           title: `${h.name} (${h.code})`,
@@ -316,7 +352,11 @@ export function GlobalSearchModal({
 
     // 8. Staff Profiles
     staffProfiles.forEach((p) => {
-      if (p.full_name.toLowerCase().includes(q) || (p.email && p.email.toLowerCase().includes(q)) || p.phone.includes(q)) {
+      const pName = (p.full_name || '').toLowerCase();
+      const pEmail = (p.email || '').toLowerCase();
+      const pPhone = p.phone || '';
+
+      if (pName.includes(q) || pEmail.includes(q) || pPhone.includes(q)) {
         items.push({
           id: `staff-${p.id}`,
           title: `${p.full_name} (${p.roles?.map((r) => r.label).join(', ') || 'Staff'})`,
@@ -333,11 +373,15 @@ export function GlobalSearchModal({
 
     // 9. Team Notes
     teamNotes.forEach((n) => {
-      if (n.title.toLowerCase().includes(q) || n.content.toLowerCase().includes(q)) {
+      const nTitle = (n.title || '').toLowerCase();
+      const nContent = (n.content || '').toLowerCase();
+      const nAuthor = (n.author_name || '').toLowerCase();
+
+      if (nTitle.includes(q) || nContent.includes(q) || nAuthor.includes(q)) {
         items.push({
           id: `note-${n.id}`,
           title: n.title,
-          subtitle: `${n.content.slice(0, 80)}... • Author: ${n.author_name}`,
+          subtitle: `${(n.content || '').slice(0, 80)}... • Author: ${n.author_name}`,
           category: 'notes',
           categoryLabel: 'Team Notes',
           icon: StickyNote,
@@ -348,22 +392,22 @@ export function GlobalSearchModal({
       }
     });
 
-    // 10. Daily Shift Logs
+    // 10. Daily Activity & Shift Logs
     dailyShiftLogs.forEach((log) => {
-      if (
-        log.staff_name.toLowerCase().includes(q) ||
-        log.accomplishments.toLowerCase().includes(q) ||
-        (log.blockers && log.blockers.toLowerCase().includes(q))
-      ) {
+      const sName = (log.staff_name || (log as any).author_name || '').toLowerCase();
+      const acc = (log.accomplishments || '').toLowerCase();
+      const blk = (log.blockers || (log as any).roadblocks || '').toLowerCase();
+
+      if (sName.includes(q) || acc.includes(q) || blk.includes(q)) {
         items.push({
           id: `shift-${log.id}`,
-          title: `Shift Log: ${log.staff_name} (${log.shift_type})`,
-          subtitle: `${log.accomplishments.slice(0, 80)}... • Date: ${log.date}`,
+          title: `Daily Activity: ${log.staff_name || (log as any).author_name || 'Staff'} (${log.shift_type})`,
+          subtitle: `${acc.slice(0, 80)}... • Date: ${log.date || (log as any).shift_date || ''}`,
           category: 'shift_logs',
-          categoryLabel: 'Daily Shift Logs',
+          categoryLabel: 'Staff Activity Logs',
           icon: CalendarCheck,
           href: '/shift-logs',
-          badge: `${log.vehicles_serviced} Serviced`,
+          badge: `${log.vehicles_serviced || 0} Serviced`,
           badgeColor: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
         });
       }
@@ -371,7 +415,10 @@ export function GlobalSearchModal({
 
     // 11. Team Channels
     chatChannels.forEach((chan) => {
-      if (chan.name.toLowerCase().includes(q) || (chan.description && chan.description.toLowerCase().includes(q))) {
+      const cName = (chan.name || '').toLowerCase();
+      const cDesc = (chan.description || '').toLowerCase();
+
+      if (cName.includes(q) || cDesc.includes(q)) {
         items.push({
           id: `chan-${chan.id}`,
           title: `#${chan.name}`,
@@ -388,16 +435,16 @@ export function GlobalSearchModal({
 
     // 12. Blocked Users & Penalty Recoveries
     blockedUsers.forEach((blk) => {
-      if (
-        blk.user_name.toLowerCase().includes(q) ||
-        blk.phone.includes(q) ||
-        blk.vehicle_no.toLowerCase().includes(q) ||
-        blk.reason.toLowerCase().includes(q)
-      ) {
+      const bName = (blk.user_name || '').toLowerCase();
+      const bPhone = blk.phone || '';
+      const bVeh = (blk.vehicle_no || '').toLowerCase();
+      const bReason = (blk.reason || '').toLowerCase();
+
+      if (bName.includes(q) || bPhone.includes(q) || bVeh.includes(q) || bReason.includes(q)) {
         items.push({
           id: `blk-${blk.id}`,
           title: `Blocked: ${blk.user_name} (${blk.vehicle_no})`,
-          subtitle: `Phone: ${blk.phone} • Reason: ${blk.reason} • Recovery: ₹${blk.recovery_amount}`,
+          subtitle: `Phone: ${blk.phone} • Reason: ${blk.reason} • Recovery: ₹${blk.recovery_amount || 0}`,
           category: 'blocked_users',
           categoryLabel: 'Blocked Users',
           icon: ShieldAlert,
@@ -409,7 +456,23 @@ export function GlobalSearchModal({
     });
 
     return items;
-  }, [query, vehicles, parts, jobCards, objectives, tasks, sops, refunds, hubs, staffProfiles, teamNotes, dailyShiftLogs, chatChannels, blockedUsers]);
+  }, [
+    query,
+    vehicles,
+    parts,
+    jobCards,
+    objectives,
+    milestones,
+    tasks,
+    sops,
+    refunds,
+    hubs,
+    staffProfiles,
+    teamNotes,
+    dailyShiftLogs,
+    chatChannels,
+    blockedUsers,
+  ]);
 
   const handleSelect = (item: SearchResultItem) => {
     onClose();

@@ -3,10 +3,14 @@
 import React, { useState } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
 import { useRBAC } from '@/hooks/useRBAC';
-import { PartInventory, HubPartStock, PartUsageLog } from '@/types';
+import { PartInventory, HubPartStock, PartUsageLog, Vehicle } from '@/types';
 import { formatCurrency, formatDate, formatRelativeTime, cn } from '@/lib/utils';
 import { ViewSwitcher, ViewMode } from '../common/ViewSwitcher';
 import { exportToCSV, exportToExcel, exportToPDF } from '@/lib/exportUtils';
+import { useResizableColumns } from '@/hooks/useResizableColumns';
+import { ResizableTh } from '../common/ResizableTh';
+import { KpiCardContainer } from '../common/KpiCardContainer';
+import { VehicleDetailModal } from '../fleet/VehicleDetailModal';
 import {
   Package,
   Plus,
@@ -28,6 +32,7 @@ import {
   Tag,
   FileSpreadsheet,
   FileText,
+  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -37,6 +42,28 @@ export function InventoryMatrix() {
   const [activeTab, setActiveTab] = useState<'store1' | 'usage'>('store1');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [selectedPartForAudit, setSelectedPartForAudit] = useState<PartInventory | null>(null);
+  const [selectedVehicleForModal, setSelectedVehicleForModal] = useState<Vehicle | null>(null);
+
+  // Column Resizers
+  const { widths: store1Widths, startResizing: startStore1Resizing } = useResizableColumns('store1-inventory', {
+    name_sku: 230,
+    category: 120,
+    supplier: 150,
+    cost: 110,
+    stock: 150,
+    status: 130,
+    actions: 180,
+  });
+
+  const { widths: usageWidths, startResizing: startUsageResizing } = useResizableColumns('usage-inventory', {
+    timestamp: 160,
+    part: 210,
+    qty: 100,
+    recipient: 150,
+    destination: 220,
+    reason: 230,
+    auth: 130,
+  });
 
   // Add Part Modal
   const [addPartOpen, setAddPartOpen] = useState(false);
@@ -74,11 +101,11 @@ export function InventoryMatrix() {
   const [adjustCount, setAdjustCount] = useState<number>(10);
   const [adjustReason, setAdjustReason] = useState('');
 
-  const hubs = useAppStore((s) => s.hubs);
-  const parts = useAppStore((s) => s.parts);
-  const hubStock = useAppStore((s) => s.hubStock);
-  const partUsageLogs = useAppStore((s) => s.partUsageLogs);
-  const vehicles = useAppStore((s) => s.vehicles);
+  const hubs = useAppStore((s) => s.hubs || []);
+  const parts = useAppStore((s) => s.parts || []);
+  const hubStock = useAppStore((s) => s.hubStock || []);
+  const partUsageLogs = useAppStore((s) => s.partUsageLogs || []);
+  const vehicles = useAppStore((s) => s.vehicles || []);
   const addPart = useAppStore((s) => s.addPart);
   const updatePart = useAppStore((s) => s.updatePart);
   const issuePartFromStore1 = useAppStore((s) => s.issuePartFromStore1);
@@ -267,13 +294,17 @@ export function InventoryMatrix() {
         </div>
       </div>
 
-      {/* 5.1 Summary KPI Cards (Including 7-Day & 14-Day Consumption Value) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+      {/* 5.1 Summary KPI Cards with Customizable Layout */}
+      <KpiCardContainer
+        storageKey="inventory-kpis"
+        title="Store 1 Operational Metrics"
+        subtitle="Catalog size, 7/14-day consumption value, and threshold alerts"
+      >
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-zinc-400">
             Store 1 Catalog SKUs
           </div>
-          <div className="text-xl font-mono font-bold text-zinc-100 mt-1">
+          <div className="kpi-val text-xl font-mono font-bold text-zinc-100 mt-1">
             {totalStore1PartsCount} Spares
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
@@ -281,11 +312,11 @@ export function InventoryMatrix() {
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-emerald-400">
             7-Day Consumption Value
           </div>
-          <div className="text-xl font-mono font-bold text-emerald-400 mt-1">
+          <div className="kpi-val text-xl font-mono font-bold text-emerald-400 mt-1">
             ₹4,200
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
@@ -293,11 +324,11 @@ export function InventoryMatrix() {
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-blue-400">
             14-Day Consumption Value
           </div>
-          <div className="text-xl font-mono font-bold text-blue-400 mt-1">
+          <div className="kpi-val text-xl font-mono font-bold text-blue-400 mt-1">
             ₹9,650
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
@@ -305,18 +336,18 @@ export function InventoryMatrix() {
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-amber-500/20">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">
+        <div className="kpi-card p-4 rounded-2xl bg-[#1e1e22] border border-amber-500/20">
+          <div className="kpi-label text-[10px] font-bold uppercase tracking-wider text-amber-400">
             Low Stock Alerts
           </div>
-          <div className="text-xl font-mono font-bold text-amber-400 mt-1">
+          <div className="kpi-val text-xl font-mono font-bold text-amber-400 mt-1">
             {lowStockCount} Parts
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
             {lowStockCount === 0 ? 'All levels healthy' : 'Requires supplier order'}
           </span>
         </div>
-      </div>
+      </KpiCardContainer>
 
       {/* Sub Tabs: Store 1 Inventory vs Dispatched Usage Logs */}
       <div className="flex items-center border-b border-[#2a2a2f] gap-4 text-xs font-semibold text-zinc-400">
@@ -380,13 +411,63 @@ export function InventoryMatrix() {
               <table className="w-full text-left text-xs">
                 <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                   <tr>
-                    <th className="p-3.5 pl-4">Spare Part & SKU</th>
-                    <th className="p-3.5">Category</th>
-                    <th className="p-3.5">Supplier</th>
-                    <th className="p-3.5">Unit Cost</th>
-                    <th className="p-3.5">Store 1 Physical Stock</th>
-                    <th className="p-3.5">Threshold Status</th>
-                    <th className="p-3.5 text-right pr-4">Actions</th>
+                    <ResizableTh
+                      colKey="name_sku"
+                      width={store1Widths.name_sku}
+                      onResizeStart={startStore1Resizing}
+                      className="p-3.5 pl-4"
+                    >
+                      Spare Part & SKU
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="category"
+                      width={store1Widths.category}
+                      onResizeStart={startStore1Resizing}
+                      className="p-3.5"
+                    >
+                      Category
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="supplier"
+                      width={store1Widths.supplier}
+                      onResizeStart={startStore1Resizing}
+                      className="p-3.5"
+                    >
+                      Supplier
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="cost"
+                      width={store1Widths.cost}
+                      onResizeStart={startStore1Resizing}
+                      className="p-3.5"
+                    >
+                      Unit Cost
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="stock"
+                      width={store1Widths.stock}
+                      onResizeStart={startStore1Resizing}
+                      className="p-3.5"
+                    >
+                      Store 1 Physical Stock
+                    </ResizableTh>
+
+                    <ResizableTh
+                      colKey="status"
+                      width={store1Widths.status}
+                      onResizeStart={startStore1Resizing}
+                      className="p-3.5"
+                    >
+                      Threshold Status
+                    </ResizableTh>
+
+                    <th style={{ width: `${store1Widths.actions || 180}px` }} className="p-3.5 text-right pr-4">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#27272a] text-zinc-300">
@@ -515,13 +596,63 @@ export function InventoryMatrix() {
             <table className="w-full text-left text-xs">
               <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th className="p-3.5 pl-4">Timestamp</th>
-                  <th className="p-3.5">Spare Part</th>
-                  <th className="p-3.5">Quantity</th>
-                  <th className="p-3.5">Recipient / Mechanic</th>
-                  <th className="p-3.5">Destination Hub / Vehicle</th>
-                  <th className="p-3.5">Dispatch Reason</th>
-                  <th className="p-3.5 text-right pr-4">Authorized By</th>
+                  <ResizableTh
+                    colKey="timestamp"
+                    width={usageWidths.timestamp}
+                    onResizeStart={startUsageResizing}
+                    className="p-3.5 pl-4"
+                  >
+                    Timestamp
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="part"
+                    width={usageWidths.part}
+                    onResizeStart={startUsageResizing}
+                    className="p-3.5"
+                  >
+                    Spare Part
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="qty"
+                    width={usageWidths.qty}
+                    onResizeStart={startUsageResizing}
+                    className="p-3.5"
+                  >
+                    Quantity
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="recipient"
+                    width={usageWidths.recipient}
+                    onResizeStart={startUsageResizing}
+                    className="p-3.5"
+                  >
+                    Recipient / Mechanic
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="destination"
+                    width={usageWidths.destination}
+                    onResizeStart={startUsageResizing}
+                    className="p-3.5"
+                  >
+                    Destination Hub / Vehicle
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="reason"
+                    width={usageWidths.reason}
+                    onResizeStart={startUsageResizing}
+                    className="p-3.5"
+                  >
+                    Dispatch Reason
+                  </ResizableTh>
+
+                  <th style={{ width: `${usageWidths.auth || 130}px` }} className="p-3.5 text-right pr-4">
+                    Authorized By
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#27272a] text-zinc-300">
@@ -535,6 +666,13 @@ export function InventoryMatrix() {
                   partUsageLogs.map((log) => {
                     const part = parts.find((p) => p.id === log.part_id);
                     const hub = hubs.find((h) => h.id === log.hub_id);
+                    const matchedVeh = vehicles.find(
+                      (v) =>
+                        v.id === log.vehicle_id ||
+                        v.vehicle_id === log.vehicle_id ||
+                        v.key_number === log.vehicle_id ||
+                        v.custom_vehicle_id?.toLowerCase() === log.vehicle_id?.toLowerCase()
+                    );
 
                     return (
                       <tr key={log.id} className="hover:bg-zinc-800/40 transition">
@@ -557,10 +695,19 @@ export function InventoryMatrix() {
                         </td>
 
                         <td className="p-3.5">
-                          <div>{hub ? hub.name.split(' (')[0] : 'Store 1'}</div>
-                          {log.vehicle_id && (
-                            <span className="text-[10px] font-mono text-zinc-400">EV: {log.vehicle_id}</span>
-                          )}
+                          <div className="text-zinc-300 font-medium">{hub ? hub.name.split(' (')[0] : 'Store 1'}</div>
+                          {matchedVeh ? (
+                            <button
+                              onClick={() => setSelectedVehicleForModal(matchedVeh)}
+                              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-mono text-[10px] font-bold border border-blue-500/20 mt-1 transition"
+                              title="Inspect Vehicle Lifecycle"
+                            >
+                              <Car className="w-3 h-3 text-blue-400" />
+                              <span>Key #{matchedVeh.key_number} ({matchedVeh.custom_vehicle_id || matchedVeh.id.toUpperCase()})</span>
+                            </button>
+                          ) : log.vehicle_id ? (
+                            <span className="text-[10px] font-mono text-zinc-400 block mt-0.5">EV: {log.vehicle_id}</span>
+                          ) : null}
                         </td>
 
                         <td className="p-3.5 max-w-xs text-zinc-300">
@@ -1111,10 +1258,14 @@ export function InventoryMatrix() {
                               </td>
                               <td className="p-2.5">
                                 {veh ? (
-                                  <div>
-                                    <span className="font-mono font-bold text-zinc-100">Key #{veh.key_number}</span>
-                                    <span className="text-[10px] text-zinc-500 font-mono ml-1">({veh.custom_vehicle_id || veh.vehicle_id})</span>
-                                  </div>
+                                  <button
+                                    onClick={() => setSelectedVehicleForModal(veh)}
+                                    className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 font-mono text-[11px] font-bold border border-blue-500/20 transition"
+                                    title="View Vehicle Lifecycle"
+                                  >
+                                    <Car className="w-3 h-3 text-blue-400" />
+                                    <span>Key #{veh.key_number} ({veh.custom_vehicle_id || veh.id.toUpperCase()})</span>
+                                  </button>
                                 ) : (
                                   <span className="text-zinc-400">{hub?.name.split(' (')[0] || 'General Store'}</span>
                                 )}
@@ -1152,6 +1303,15 @@ export function InventoryMatrix() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Vehicle Detail Modal for Cross-Module Interlinking */}
+      {selectedVehicleForModal && (
+        <VehicleDetailModal
+          vehicle={selectedVehicleForModal}
+          isOpen={!!selectedVehicleForModal}
+          onClose={() => setSelectedVehicleForModal(null)}
+        />
       )}
     </div>
   );

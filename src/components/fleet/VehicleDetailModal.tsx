@@ -23,10 +23,11 @@ import { toast } from 'sonner';
 
 interface VehicleDetailModalProps {
   vehicle: Vehicle | null;
+  isOpen?: boolean;
   onClose: () => void;
 }
 
-export function VehicleDetailModal({ vehicle, onClose }: VehicleDetailModalProps) {
+export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'job_cards' | 'parts' | 'audit'>('overview');
 
   // Full Edit Modal State
@@ -45,15 +46,15 @@ export function VehicleDetailModal({ vehicle, onClose }: VehicleDetailModalProps
   const [selectedStatus, setSelectedStatus] = useState<VehicleStatus>('Available');
   const [statusReason, setStatusReason] = useState('');
 
-  const hubs = useAppStore((s) => s.hubs);
-  const jobCards = useAppStore((s) => s.jobCards);
-  const auditLogs = useAppStore((s) => s.auditLogs);
+  const hubs = useAppStore((s) => s.hubs || []);
+  const jobCards = useAppStore((s) => s.jobCards || []);
+  const auditLogs = useAppStore((s) => s.auditLogs || []);
   const updateVehicle = useAppStore((s) => s.updateVehicle);
   const requestVehicleStatus = useAppStore((s) => s.requestVehicleStatus);
   const approveVehicleStatus = useAppStore((s) => s.approveVehicleStatus);
   const { isOwner, isManager } = useRBAC();
 
-  if (!vehicle) return null;
+  if (!isOpen || !vehicle) return null;
 
   const currentHub = hubs.find((h) => h.id === vehicle.current_hub_id);
   const linkedJobCards = jobCards.filter((j) => j.vehicle_id === vehicle.id);

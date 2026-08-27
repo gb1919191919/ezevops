@@ -20,13 +20,15 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 
+import { KpiCardContainer } from '../common/KpiCardContainer';
+
 export function CommandDashboard() {
-  const vehicles = useAppStore((s) => s.vehicles);
-  const hubs = useAppStore((s) => s.hubs);
-  const jobCards = useAppStore((s) => s.jobCards);
-  const hubStock = useAppStore((s) => s.hubStock);
-  const parts = useAppStore((s) => s.parts);
-  const refunds = useAppStore((s) => s.refunds);
+  const vehicles = useAppStore((s) => s.vehicles || []);
+  const hubs = useAppStore((s) => s.hubs || []);
+  const jobCards = useAppStore((s) => s.jobCards || []);
+  const hubStock = useAppStore((s) => s.hubStock || []);
+  const parts = useAppStore((s) => s.parts || []);
+  const refunds = useAppStore((s) => s.refunds || []);
   const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
   const { isOwner, isManager } = useRBAC();
 
@@ -117,8 +119,12 @@ export function CommandDashboard() {
         </div>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* KPI Grid with Layout & Density Controls */}
+      <KpiCardContainer
+        storageKey="dashboard-kpis"
+        title="Operations Telemetry"
+        subtitle="Active fleet readiness, approvals, charging infrastructure, and inventory triggers"
+      >
         <StatCard
           title="Fleet Size"
           value={totalFleetCount}
@@ -159,7 +165,7 @@ export function CommandDashboard() {
             isPositive: lowStockAlerts.length === 0,
           }}
         />
-      </div>
+      </KpiCardContainer>
 
       {/* Main Split View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
