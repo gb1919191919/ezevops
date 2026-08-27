@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase/client';
 import { useAppStore } from '@/lib/store/appStore';
 import { Profile } from '@/types';
@@ -13,58 +13,12 @@ export function useSupabaseAuth() {
   const [authError, setAuthError] = useState<string | null>(null);
 
   const currentUser = useAppStore((s) => s.currentUser);
-  const staffProfiles = useAppStore((s) => s.staffProfiles);
   const setCurrentUser = useAppStore((s) => s.setCurrentUser);
   const setActiveRoles = useAppStore((s) => s.setActiveRoles);
 
-  // Sync Supabase authenticated session with app profile
-  useEffect(() => {
-    let mounted = true;
-
-    async function checkCurrentSession() {
-      try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        if (mounted) {
-          setSession(currentSession);
-          if (currentSession?.user?.email) {
-            await matchAndSyncProfile(currentSession.user.email);
-          } else {
-            setCurrentUser(null as any);
-            setActiveRoles([]);
-          }
-        }
-      } catch (err) {
-        console.error('Session verification error:', err);
-      } finally {
-        if (mounted) setIsChecking(false);
-      }
-    }
-
-    checkCurrentSession();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
-      if (!mounted) return;
-      setSession(newSession);
-
-      if (event === 'SIGNED_IN' && newSession?.user?.email) {
-        await matchAndSyncProfile(newSession.user.email);
-      } else if (event === 'SIGNED_OUT') {
-        setCurrentUser(null as any);
-        setActiveRoles([]);
-        setSession(null);
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  const matchAndSyncProfile = async (email: string) => {
+  const matchAndSyncProfile = useCallback(async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase();
+    const staffProfiles = useAppStore.getState().staffProfiles;
 
     // 1. Check if email matches Bhuvnesh Kumar (Super Admin / Owner)
     if (normalizedEmail === 'bhuvnesh3568@gmail.com' || normalizedEmail === 'bhuvnesh@ezev.in') {
@@ -138,7 +92,53 @@ export function useSupabaseAuth() {
       setCurrentUser(guestProfile);
       setActiveRoles(['manager']);
     }
-  };
+  }, [setCurrentUser, setActiveRoles]);
+
+  // Sync Supabase authenticated session with app profile
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkCurrentSession() {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        if (mounted) {
+          setSession(currentSession);
+          if (currentSession?.user?.email) {
+            await matchAndSyncProfile(currentSession.user.email);
+          } else {
+            setCurrentUser(null as any);
+            setActiveRoles([]);
+          }
+        }
+      } catch (err) {
+        console.error('Session verification error:', err);
+      } finally {
+        if (mounted) setIsChecking(false);
+      }
+    }
+
+    checkCurrentSession();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, newSession) => {
+      if (!mounted) return;
+      setSession(newSession);
+
+      if (event === 'SIGNED_IN' && newSession?.user?.email) {
+        await matchAndSyncProfile(newSession.user.email);
+      } else if (event === 'SIGNED_OUT') {
+        setCurrentUser(null as any);
+        setActiveRoles([]);
+        setSession(null);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [matchAndSyncProfile, setCurrentUser, setActiveRoles]);
 
   // Sign in via Magic Link / Email OTP
   const signInWithOtp = async (email: string) => {

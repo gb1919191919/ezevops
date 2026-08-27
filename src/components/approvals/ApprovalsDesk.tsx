@@ -41,22 +41,6 @@ export function ApprovalsDesk() {
     clearBadge('approvals');
   }, [clearBadge]);
 
-  if (!isOwner && !isManager) {
-    return (
-      <div className="p-8 rounded-2xl bg-[#1c1c1f] border border-[#2a2a2f] text-center space-y-4 max-w-lg mx-auto my-12">
-        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
-          <Shield className="w-6 h-6" />
-        </div>
-        <div>
-          <h2 className="text-lg font-bold text-zinc-100">Approvals Desk Restricted</h2>
-          <p className="text-xs text-zinc-400 mt-1">
-            Approving vehicle status overrides, maintenance job card releases, and customer refunds requires Operations Manager or Super Admin role.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   const stagedVehicles = vehicles.filter((v) => {
     if (v.pending_status === null) return false;
     if (!isGlobalHub && v.current_hub_id && !selectedHubIds.includes(v.current_hub_id)) return false;
@@ -87,6 +71,22 @@ export function ApprovalsDesk() {
       }, 0),
     [pendingJobCards]
   );
+
+  if (!isOwner && !isManager) {
+    return (
+      <div className="p-8 rounded-2xl bg-[#1c1c1f] border border-[#2a2a2f] text-center space-y-4 max-w-lg mx-auto my-12">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
+          <Shield className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-zinc-100">Approvals Desk Restricted</h2>
+          <p className="text-xs text-zinc-400 mt-1">
+            Approving vehicle status overrides, maintenance job card releases, and customer refunds requires Operations Manager or Super Admin role.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const triggerCelebration = () => {
     try {

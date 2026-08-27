@@ -95,7 +95,7 @@ export function JobCardsList() {
 
       return matchesTicket || matchesVehicleId || matchesCustomId || matchesKey || matchesDesc;
     });
-  }, [jobCards, isOwner, isManager, currentUser, statusFilter, datePreset, customStartDate, customEndDate, searchTerm, vehicles]);
+  }, [jobCards, isGlobalHub, selectedHubIds, isOwner, isManager, currentUser, statusFilter, datePreset, customStartDate, customEndDate, searchTerm, vehicles]);
 
   // Compute Total Cost of Spares in Filtered Set
   const totalFilteredSparesSpend = useMemo(() => {

@@ -1,15 +1,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import Image from 'next/image';
 import { useAppStore } from '@/lib/store/appStore';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { ChevronDown, Shield, LogOut, Mail, User, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, LogOut, CheckCircle2 } from 'lucide-react';
 
 export function UserProfileSelector() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const currentUser = useAppStore((s) => s.currentUser);
-  const activeRoles = useAppStore((s) => s.activeRoles);
   const { signOut } = useSupabaseAuth();
 
   useEffect(() => {
@@ -36,9 +36,12 @@ export function UserProfileSelector() {
         title="Authenticated Operator Account"
       >
         <div className="relative">
-          <img
+          <Image
             src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120'}
             alt={currentUser.full_name}
+            width={28}
+            height={28}
+            unoptimized
             className="w-7 h-7 rounded-lg object-cover ring-1 ring-zinc-700"
           />
           <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-zinc-950" />
@@ -60,9 +63,12 @@ export function UserProfileSelector() {
         <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#1c1c1f] border border-[#2a2a2f] shadow-2xl p-3.5 z-50 animate-in fade-in zoom-in-95 space-y-3">
           {/* User Details */}
           <div className="flex items-start gap-3 pb-3 border-b border-[#27272a]">
-            <img
+            <Image
               src={currentUser.avatar_url || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120'}
               alt={currentUser.full_name}
+              width={40}
+              height={40}
+              unoptimized
               className="w-10 h-10 rounded-xl object-cover ring-1 ring-zinc-700 flex-shrink-0"
             />
             <div className="min-w-0">
