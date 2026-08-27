@@ -21,6 +21,8 @@ import {
   ShieldCheck,
   BookOpen,
   StickyNote,
+  CalendarCheck,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,7 +30,8 @@ export function Sidebar() {
   const pathname = usePathname();
   const isCollapsed = useAppStore((s) => s.isSidebarCollapsed);
   const toggleCollapse = useAppStore((s) => s.toggleSidebarCollapse);
-  const { isOwner, isManager, isMechanic, isRSA } = useRBAC();
+  const clearedBadges = useAppStore((s) => s.clearedBadges || []);
+  const { isOwner, isManager } = useRBAC();
 
   const jobCards = useAppStore((s) => s.jobCards);
   const vehicles = useAppStore((s) => s.vehicles);
@@ -36,6 +39,8 @@ export function Sidebar() {
   const hubStock = useAppStore((s) => s.hubStock);
   const tasks = useAppStore((s) => s.tasks);
   const sops = useAppStore((s) => s.sops);
+  const dailyShiftLogs = useAppStore((s) => s.dailyShiftLogs || []);
+  const chatChannels = useAppStore((s) => s.chatChannels || []);
 
   const pendingApprovalsCount =
     jobCards.filter((j) => j.status === 'PENDING').length +
@@ -47,6 +52,11 @@ export function Sidebar() {
   ).length;
 
   const pendingTasksCount = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ABANDONED').length;
+
+  // 1.2 Sidebar Notification Badges State Synchronization (Clears when visited)
+  const showApprovalsBadge = !clearedBadges?.['approvals'] && pendingApprovalsCount > 0;
+  const showJobCardsBadge =
+    !clearedBadges?.['job_cards'] && jobCards.filter((j) => j.status === 'PENDING').length > 0;
 
   // Build filtered navigation sections based on verified user permissions
   const navSections = [
@@ -76,7 +86,7 @@ export function Sidebar() {
           name: 'Approvals Desk',
           href: '/approvals',
           icon: CheckSquare,
-          badge: pendingApprovalsCount > 0 ? `${pendingApprovalsCount}` : null,
+          badge: showApprovalsBadge ? `${pendingApprovalsCount}` : null,
           badgeVariant: 'danger',
           visible: isOwner || isManager,
         },
@@ -97,10 +107,9 @@ export function Sidebar() {
           name: 'Job Cards',
           href: '/job-cards',
           icon: Wrench,
-          badge:
-            jobCards.filter((j) => j.status === 'PENDING').length > 0
-              ? `${jobCards.filter((j) => j.status === 'PENDING').length}`
-              : null,
+          badge: showJobCardsBadge
+            ? `${jobCards.filter((j) => j.status === 'PENDING').length}`
+            : null,
           badgeVariant: 'warning',
           visible: true,
         },
@@ -119,6 +128,22 @@ export function Sidebar() {
       title: 'Knowledge & Collaboration',
       items: [
         {
+          name: 'Daily Shift Logs',
+          href: '/shift-logs',
+          icon: CalendarCheck,
+          badge: `${dailyShiftLogs.length}`,
+          badgeVariant: 'info',
+          visible: true,
+        },
+        {
+          name: 'Team Channels',
+          href: '/channels',
+          icon: MessageSquare,
+          badge: `${chatChannels.length}`,
+          badgeVariant: 'info',
+          visible: true,
+        },
+        {
           name: 'SOPs & Manuals',
           href: '/sops',
           icon: BookOpen,
@@ -127,7 +152,7 @@ export function Sidebar() {
           visible: true,
         },
         {
-          name: 'Team Notes & Scratchpad',
+          name: 'Team Notes',
           href: '/notes',
           icon: StickyNote,
           badge: null,

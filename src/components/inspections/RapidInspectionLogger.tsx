@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
 import { useRBAC } from '@/hooks/useRBAC';
 import { Vehicle, VehicleStatus } from '@/types';
 import { VehicleSearchCombobox } from '../common/VehicleSearchCombobox';
 import { VehicleStatusBadge } from '../common/StatusBadge';
-import { formatDate, formatRelativeTime, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import {
   ShieldCheck,
   Gauge,
@@ -18,7 +18,10 @@ import {
   X,
   History,
   FileCheck,
-  Sliders,
+  Camera,
+  Upload,
+  Image as ImageIcon,
+  Film,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,6 +30,8 @@ export function RapidInspectionLogger() {
   const [odometerKm, setOdometerKm] = useState<number | ''>('');
   const [targetStatus, setTargetStatus] = useState<VehicleStatus>('Available');
   const [notes, setNotes] = useState('');
+  const [mediaAttachments, setMediaAttachments] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 6-Point Checklist State
   const [checklist, setChecklist] = useState({
@@ -45,6 +50,25 @@ export function RapidInspectionLogger() {
   const currentUser = useAppStore((s) => s.currentUser);
   const { isOwner, isManager } = useRBAC();
 
+  // Check if any defect is flagged (4.1)
+  const hasDefects = Object.values(checklist).some((passed) => !passed);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        if (uploadEvent.target?.result) {
+          setMediaAttachments((prev) => [...prev, uploadEvent.target!.result as string]);
+          toast.success(`Attached defect evidence: ${file.name}`);
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handleAuditSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVehicle) {
@@ -53,6 +77,15 @@ export function RapidInspectionLogger() {
     }
     if (odometerKm === '' || Number(odometerKm) < 0) {
       toast.error('Please enter a valid current odometer reading in KM.');
+      return;
+    }
+
+    // 4.1 Mandatory Media Upload if Defect is Flagged
+    if (hasDefects && mediaAttachments.length === 0) {
+      toast.error('Defect Evidence Mandatory', {
+        description: 'You flagged safety defect(s). Please attach at least 1 photo or video evidence before submitting.',
+      });
+      fileInputRef.current?.click();
       return;
     }
 
@@ -66,7 +99,7 @@ export function RapidInspectionLogger() {
       lights_passed: checklist.lights_passed,
       stand_sensor_passed: checklist.stand_sensor_passed,
       bms_health_passed: checklist.bms_health_passed,
-      recommended_status: targetStatus,
+      recommended_status: hasDefects && targetStatus === 'Available' ? 'Needs Maintenance' : targetStatus,
       notes: notes.trim() || undefined,
     });
 
@@ -76,6 +109,15 @@ export function RapidInspectionLogger() {
     setSelectedVehicle(null);
     setOdometerKm('');
     setNotes('');
+    setMediaAttachments([]);
+    setChecklist({
+      brakes_passed: true,
+      throttle_passed: true,
+      tyres_passed: true,
+      lights_passed: true,
+      stand_sensor_passed: true,
+      bms_health_passed: true,
+    });
   };
 
   return (
@@ -88,7 +130,7 @@ export function RapidInspectionLogger() {
             Regular Vehicle Inspection & Safety Audit
           </h2>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Rapid 30-second field check to log odometer distance, 6-point safety checklist, and update vehicle operational health
+            Rapid 30-second field check to log odometer distance, 6-point safety checklist, and dynamic defect evidence capture
           </p>
         </div>
       </div>
@@ -121,10 +163,10 @@ export function RapidInspectionLogger() {
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-sm text-zinc-100">
-                      {selectedVehicle.vehicle_id}
+                      {selectedVehicle.custom_vehicle_id || selectedVehicle.id.toUpperCase()}
                     </span>
-                    <span className="font-mono text-xs text-zinc-300 px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700">
-                      Key: {selectedVehicle.key_number}
+                    <span className="font-mono text-xs text-blue-300 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 font-bold">
+                      Key: #{selectedVehicle.key_number}
                     </span>
                     <span className="text-xs font-semibold text-emerald-400">
                       {selectedVehicle.model}
@@ -159,6 +201,12 @@ export function RapidInspectionLogger() {
                     <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                       6-Point Rapid Safety Checklist (Tap to toggle Pass/Fail)
                     </span>
+                    {hasDefects && (
+                      <span className="text-[10px] font-mono font-bold text-rose-400 flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Defects Flagged (Photo Evidence Required)
+                      </span>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
@@ -175,12 +223,16 @@ export function RapidInspectionLogger() {
                         <button
                           type="button"
                           key={item.key}
-                          onClick={() =>
+                          onClick={() => {
+                            const updated = !isPassed;
                             setChecklist({
                               ...checklist,
-                              [item.key]: !checklist[item.key as keyof typeof checklist],
-                            })
-                          }
+                              [item.key]: updated,
+                            });
+                            if (!updated && targetStatus === 'Available') {
+                              setTargetStatus('Needs Maintenance');
+                            }
+                          }}
                           className={cn(
                             'p-2.5 rounded-xl border text-left transition flex items-center justify-between text-xs',
                             isPassed
@@ -202,6 +254,86 @@ export function RapidInspectionLogger() {
                     })}
                   </div>
                 </div>
+
+                {/* 4.1 Conditional Media Upload */}
+                {hasDefects ? (
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 space-y-3 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Camera className="w-4 h-4 text-rose-400" />
+                        <span className="font-bold text-xs text-rose-200">
+                          Mandatory Defect Photo / Video Proof *
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-rose-300 font-mono">Required for Submission</span>
+                    </div>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-3 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-black font-extrabold text-xs transition flex items-center gap-1.5"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                        <span>Upload Defect Photo / Video</span>
+                      </button>
+                      <span className="text-[11px] text-zinc-400">
+                        {mediaAttachments.length} evidence file(s) attached
+                      </span>
+                    </div>
+
+                    {mediaAttachments.length > 0 && (
+                      <div className="flex items-center gap-2 overflow-x-auto py-1">
+                        {mediaAttachments.map((media, idx) => (
+                          <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-rose-500/40 shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={media} alt="Defect" className="w-full h-full object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setMediaAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                              className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/80 text-white hover:text-rose-400"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="pt-2 border-t border-zinc-800">
+                    <div className="flex items-center justify-between text-xs text-zinc-500">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        All checklist items passed. Media upload is optional.
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-[11px] text-blue-400 hover:underline"
+                      >
+                        Attach Photo (Optional)
+                      </button>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </div>
+                )}
 
                 {/* Target Status Selection */}
                 <div className="space-y-1.5 pt-2 border-t border-zinc-800">
@@ -284,10 +416,10 @@ export function RapidInspectionLogger() {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1.5">
                           <span className="font-mono font-bold text-zinc-200">
-                            {v?.vehicle_id || insp.vehicle_id}
+                            {v?.custom_vehicle_id || v?.vehicle_id || insp.vehicle_id}
                           </span>
-                          <span className="font-mono text-[10px] text-zinc-400">
-                            (Key: {v?.key_number || 'N/A'})
+                          <span className="font-mono text-[10px] text-blue-300 font-bold">
+                            (Key: #{v?.key_number || 'N/A'})
                           </span>
                         </div>
                         <span className="text-emerald-400 font-mono font-bold">
@@ -297,7 +429,7 @@ export function RapidInspectionLogger() {
 
                       <div className="flex items-center justify-between text-[11px] text-zinc-400">
                         <span>Inspector: {insp.inspector_name}</span>
-                        <span>{formatRelativeTime(insp.inspected_at)}</span>
+                        <span>{formatDate(insp.inspected_at)}</span>
                       </div>
 
                       {insp.notes && (

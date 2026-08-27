@@ -10,7 +10,12 @@ import {
   JobCard,
   Refund,
   Objective,
+  Milestone,
   TaskItem,
+  TaskAttachment,
+  DailyShiftLog,
+  ChatChannel,
+  ChannelMessage,
   AuditLog,
   Profile,
   Role,
@@ -34,7 +39,11 @@ import {
   INITIAL_JOB_CARDS,
   INITIAL_REFUNDS,
   INITIAL_OBJECTIVES,
+  INITIAL_MILESTONES,
   INITIAL_TASKS,
+  INITIAL_DAILY_SHIFT_LOGS,
+  INITIAL_CHAT_CHANNELS,
+  INITIAL_CHANNEL_MESSAGES,
   INITIAL_AUDIT_LOGS,
   INITIAL_PROFILES,
   INITIAL_ROLES,
@@ -54,17 +63,25 @@ interface AppStoreState {
   currentUser: Profile;
   activeRoles: RoleCode[];
   activeHubId: string | 'ALL';
+  selectedHubIds: string[];
+  clearedBadges: Record<string, boolean>;
   customRoles: Role[];
   staffProfiles: Profile[];
   toggleRole: (role: RoleCode) => void;
   setActiveRoles: (roles: RoleCode[]) => void;
   setCurrentUser: (user: Profile) => void;
   setActiveHubId: (hubId: string | 'ALL') => void;
+  setSelectedHubIds: (hubIds: string[]) => void;
+  toggleHubSelection: (hubId: string) => void;
+  selectAllHubs: () => void;
+  clearAllHubs: () => void;
+  clearBadge: (key: string) => void;
 
   // Role & User Administration
   addCustomRole: (role: Omit<Role, 'id'>) => void;
   updateRolePermissions: (roleId: string, permissions: PermissionKey[]) => void;
   addStaffProfile: (profile: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateStaffProfile: (id: string, updates: Partial<Profile>) => void;
   updateStaffRoles: (profileId: string, roleIds: string[]) => void;
 
   // Core Entity Data
@@ -77,7 +94,11 @@ interface AppStoreState {
   jobCards: JobCard[];
   refunds: Refund[];
   objectives: Objective[];
+  milestones: Milestone[];
   tasks: TaskItem[];
+  dailyShiftLogs: DailyShiftLog[];
+  chatChannels: ChatChannel[];
+  channelMessages: ChannelMessage[];
   sops: SOP[];
   teamNotes: TeamNote[];
   blockedUsers: BlockedUser[];
@@ -108,17 +129,22 @@ interface AppStoreState {
     remarks?: string
   ) => void;
 
-  // 3. Objectives & Hierarchical Tasks Engine ('ABANDONED' status support)
+  // 3. Objectives & Hierarchical 3-Tier Tasks Engine
   createObjective: (objectiveData: Omit<Objective, 'id' | 'created_at' | 'is_completed'>) => void;
+  addMilestone: (milestoneData: Omit<Milestone, 'id' | 'created_at'>) => void;
+  updateMilestone: (id: string, updates: Partial<Milestone>) => void;
+  deleteMilestone: (id: string) => void;
   createTask: (taskData: Omit<TaskItem, 'id' | 'created_at' | 'updated_at' | 'remarks' | 'changelog'>) => void;
   updateTask: (taskId: string, updates: Partial<TaskItem>) => void;
   updateTaskStatus: (taskId: string, status: TaskStatus) => void;
   addTaskRemark: (taskId: string, comment: string) => void;
+  addTaskAttachment: (taskId: string, attachment: TaskAttachment) => void;
   updateTaskAssignees: (taskId: string, assigneeIds: string[]) => void;
   updateTaskDates: (taskId: string, startDate?: string, dueDate?: string) => void;
 
   // 4 & 5. Vehicle Mutations, Odometer, Edit & Rapid Inspection
   updateVehicle: (vehicleId: string, vehicleData: Partial<Omit<Vehicle, 'id' | 'created_at'>>) => void;
+  updateVehicleCustomId: (vehicleId: string, customId: string) => void;
   requestVehicleStatus: (vehicleId: string, pendingStatus: VehicleStatus, reason: string, forceImmediate?: boolean) => void;
   approveVehicleStatus: (vehicleId: string) => void;
   rejectVehicleStatus: (vehicleId: string) => void;
@@ -127,6 +153,14 @@ interface AppStoreState {
   logInspection: (
     inspectionData: Omit<VehicleInspection, 'id' | 'inspected_at' | 'inspector_id' | 'inspector_name'>
   ) => void;
+
+  // Daily Shift Logs (8.1)
+  addDailyShiftLog: (log: Omit<DailyShiftLog, 'id' | 'created_at' | 'updated_at'>) => void;
+  updateDailyShiftLog: (id: string, updates: Partial<DailyShiftLog>) => void;
+
+  // Role-Based Group Communications (8.2)
+  createChatChannel: (channel: Omit<ChatChannel, 'id' | 'created_at'>) => void;
+  sendChannelMessage: (msg: Omit<ChannelMessage, 'id' | 'created_at'>) => void;
 
   // 6. Spare Parts Catalog (Single "Store 1" Warehouse, Dispatch & Usage)
   addPart: (
@@ -191,6 +225,8 @@ export const useAppStore = create<AppStoreState>()(
       currentUser: null as any,
       activeRoles: [],
       activeHubId: 'ALL',
+      selectedHubIds: ['ALL'],
+      clearedBadges: {},
       customRoles: INITIAL_ROLES,
       staffProfiles: INITIAL_PROFILES,
 
@@ -219,7 +255,34 @@ export const useAppStore = create<AppStoreState>()(
 
       setActiveRoles: (roles) => set({ activeRoles: roles }),
       setCurrentUser: (user) => set({ currentUser: user }),
-      setActiveHubId: (hubId) => set({ activeHubId: hubId }),
+      setActiveHubId: (hubId) => set({ activeHubId: hubId, selectedHubIds: [hubId] }),
+      setSelectedHubIds: (hubIds) =>
+        set({
+          selectedHubIds: hubIds,
+          activeHubId: hubIds.length === 1 ? hubIds[0] : hubIds.includes('ALL') ? 'ALL' : hubIds[0] || 'ALL',
+        }),
+      toggleHubSelection: (hubId) =>
+        set((state) => {
+          let updated: string[];
+          if (hubId === 'ALL') {
+            updated = ['ALL'];
+          } else {
+            const withoutAll = state.selectedHubIds.filter((id) => id !== 'ALL');
+            if (withoutAll.includes(hubId)) {
+              updated = withoutAll.filter((id) => id !== hubId);
+              if (updated.length === 0) updated = ['ALL'];
+            } else {
+              updated = [...withoutAll, hubId];
+            }
+          }
+          return {
+            selectedHubIds: updated,
+            activeHubId: updated.length === 1 ? updated[0] : updated.includes('ALL') ? 'ALL' : updated[0] || 'ALL',
+          };
+        }),
+      selectAllHubs: () => set({ selectedHubIds: ['ALL'], activeHubId: 'ALL' }),
+      clearAllHubs: () => set({ selectedHubIds: [], activeHubId: 'ALL' }),
+      clearBadge: (key) => set((state) => ({ clearedBadges: { ...state.clearedBadges, [key]: true } })),
 
       // Role & Staff Admin
       addCustomRole: (roleData) =>
@@ -249,6 +312,13 @@ export const useAppStore = create<AppStoreState>()(
           return { staffProfiles: [...state.staffProfiles, newProfile] };
         }),
 
+      updateStaffProfile: (profileId, updates) =>
+        set((state) => ({
+          staffProfiles: state.staffProfiles.map((p) =>
+            p.id === profileId ? { ...p, ...updates, updated_at: new Date().toISOString() } : p
+          ),
+        })),
+
       updateStaffRoles: (profileId, roleIds) =>
         set((state) => ({
           staffProfiles: state.staffProfiles.map((p) => {
@@ -272,7 +342,11 @@ export const useAppStore = create<AppStoreState>()(
       jobCards: INITIAL_JOB_CARDS,
       refunds: INITIAL_REFUNDS,
       objectives: INITIAL_OBJECTIVES,
+      milestones: INITIAL_MILESTONES,
       tasks: INITIAL_TASKS,
+      dailyShiftLogs: INITIAL_DAILY_SHIFT_LOGS,
+      chatChannels: INITIAL_CHAT_CHANNELS,
+      channelMessages: INITIAL_CHANNEL_MESSAGES,
       sops: INITIAL_SOPS,
       teamNotes: INITIAL_NOTES,
       blockedUsers: INITIAL_BLOCKED_USERS,
@@ -799,9 +873,116 @@ export const useAppStore = create<AppStoreState>()(
         set({ tasks: updatedTasks });
       },
 
+      addMilestone: (milestoneData) => {
+        const { milestones } = get();
+        const newId = `mls-${Date.now()}`;
+        const newMilestone: Milestone = {
+          ...milestoneData,
+          id: newId,
+          created_at: new Date().toISOString(),
+        };
+        set({ milestones: [...milestones, newMilestone] });
+      },
+
+      updateMilestone: (id, updates) => {
+        const { milestones } = get();
+        set({
+          milestones: milestones.map((m) => (m.id === id ? { ...m, ...updates } : m)),
+        });
+      },
+
+      deleteMilestone: (id) => {
+        const { milestones } = get();
+        set({ milestones: milestones.filter((m) => m.id !== id) });
+      },
+
+      addTaskAttachment: (taskId, attachment) => {
+        const { tasks } = get();
+        set({
+          tasks: tasks.map((t) =>
+            t.id === taskId
+              ? {
+                  ...t,
+                  attachments: [...(t.attachments || []), attachment],
+                  updated_at: new Date().toISOString(),
+                }
+              : t
+          ),
+        });
+      },
+
+      // Daily Shift Logs (8.1)
+      addDailyShiftLog: (logData) => {
+        const { dailyShiftLogs } = get();
+        const newId = `shift-${Date.now()}`;
+        const newLog: DailyShiftLog = {
+          ...logData,
+          id: newId,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        set({ dailyShiftLogs: [newLog, ...dailyShiftLogs] });
+      },
+
+      updateDailyShiftLog: (id, updates) => {
+        const { dailyShiftLogs } = get();
+        set({
+          dailyShiftLogs: dailyShiftLogs.map((l) =>
+            l.id === id ? { ...l, ...updates, updated_at: new Date().toISOString() } : l
+          ),
+        });
+      },
+
+      // Role-Based Group Communications (8.2)
+      createChatChannel: (channelData) => {
+        const { chatChannels } = get();
+        const newId = `chan-${Date.now()}`;
+        const newChan: ChatChannel = {
+          ...channelData,
+          id: newId,
+          created_at: new Date().toISOString(),
+        };
+        set({ chatChannels: [...chatChannels, newChan] });
+      },
+
+      sendChannelMessage: (msgData) => {
+        const { channelMessages } = get();
+        const newId = `msg-${Date.now()}`;
+        const newMsg: ChannelMessage = {
+          ...msgData,
+          id: newId,
+          created_at: new Date().toISOString(),
+        };
+        set({ channelMessages: [...channelMessages, newMsg] });
+      },
+
       // ====================================================================
       // 4 & 5. VEHICLE MUTATIONS, EDIT & RAPID INSPECTIONS
       // ====================================================================
+      updateVehicleCustomId: (vehicleId, customId) => {
+        const { vehicles, auditLogs, currentUser } = get();
+        const existing = vehicles.find((v) => v.id === vehicleId);
+        if (!existing) return;
+
+        const updated = vehicles.map((v) =>
+          v.id === vehicleId ? { ...v, custom_vehicle_id: customId, updated_at: new Date().toISOString() } : v
+        );
+
+        const newAudit: AuditLog = {
+          id: `audit-${Date.now()}`,
+          table_name: 'vehicles',
+          record_id: vehicleId,
+          action: 'UPDATE',
+          performed_by: currentUser.id,
+          performer_name: currentUser.full_name,
+          old_data: { custom_vehicle_id: existing.custom_vehicle_id },
+          new_data: { custom_vehicle_id: customId },
+          timestamp: new Date().toISOString(),
+        };
+
+        set({ vehicles: updated, auditLogs: [newAudit, ...auditLogs] });
+      },
+
       updateVehicle: (vehicleId, vehicleData) => {
         const { vehicles, auditLogs, currentUser } = get();
         const existing = vehicles.find((v) => v.id === vehicleId);
@@ -1780,6 +1961,8 @@ export const useAppStore = create<AppStoreState>()(
         isSidebarCollapsed: state.isSidebarCollapsed,
         activeRoles: state.activeRoles,
         currentUser: state.currentUser,
+        selectedHubIds: state.selectedHubIds,
+        clearedBadges: state.clearedBadges,
         customRoles: state.customRoles,
         staffProfiles: state.staffProfiles,
         hubs: state.hubs,
@@ -1791,7 +1974,11 @@ export const useAppStore = create<AppStoreState>()(
         jobCards: state.jobCards,
         refunds: state.refunds,
         objectives: state.objectives,
+        milestones: state.milestones,
         tasks: state.tasks,
+        dailyShiftLogs: state.dailyShiftLogs,
+        chatChannels: state.chatChannels,
+        channelMessages: state.channelMessages,
         sops: state.sops,
         teamNotes: state.teamNotes,
         blockedUsers: state.blockedUsers,

@@ -19,6 +19,8 @@ import {
   Plus,
   Activity,
   Warehouse,
+  CheckCircle2,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export function CommandDashboard() {
@@ -26,31 +28,55 @@ export function CommandDashboard() {
   const hubs = useAppStore((s) => s.hubs);
   const jobCards = useAppStore((s) => s.jobCards);
   const hubStock = useAppStore((s) => s.hubStock);
+  const parts = useAppStore((s) => s.parts);
   const refunds = useAppStore((s) => s.refunds);
-  const inspections = useAppStore((s) => s.inspections);
+  const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
   const { isOwner, isManager } = useRBAC();
 
-  const activeVehicles = vehicles.filter((v) => v.is_active);
-  const availableVehicles = activeVehicles.filter((v) => v.current_status === 'Available');
-  const needsMaintVehicles = activeVehicles.filter((v) => v.current_status === 'Needs Maintenance');
-  const underRepairVehicles = activeVehicles.filter(
-    (v) => v.current_status === 'Under Repair' || v.pending_status === 'Under Repair'
-  );
-  const notAvailableVehicles = activeVehicles.filter((v) => v.current_status === 'Not Available');
+  const isGlobalHub = selectedHubIds.includes('ALL') || selectedHubIds.length === 0;
 
-  const pendingJobCards = jobCards.filter((j) => j.status === 'PENDING');
-  const stagedVehicles = activeVehicles.filter((v) => v.pending_status !== null);
+  // Reactively filter data based on selected hub(s)
+  const filteredVehicles = isGlobalHub
+    ? vehicles
+    : vehicles.filter((v) => selectedHubIds.includes(v.current_hub_id));
+
+  const filteredHubs = isGlobalHub
+    ? hubs
+    : hubs.filter((h) => selectedHubIds.includes(h.id));
+
+  const filteredJobCards = isGlobalHub
+    ? jobCards
+    : jobCards.filter((j) => selectedHubIds.includes(j.hub_id));
+
+  const filteredHubStock = isGlobalHub
+    ? hubStock
+    : hubStock.filter((s) => selectedHubIds.includes(s.hub_id));
+
+  // Fleet Status Exact Arithmetic Reconciliation (Total = Ready + Under Repair + Unavailable)
+  const totalFleetCount = filteredVehicles.length;
+  const readyCount = filteredVehicles.filter((v) => v.current_status === 'Available').length;
+  const underRepairCount = filteredVehicles.filter(
+    (v) => v.current_status === 'Under Repair' || (v.current_status === 'Needs Maintenance' && v.pending_status === 'Under Repair')
+  ).length;
+  const unavailableCount = Math.max(0, totalFleetCount - readyCount - underRepairCount);
+
+  const readyPct = totalFleetCount > 0 ? ((readyCount / totalFleetCount) * 100).toFixed(1) : '0.0';
+  const repairPct = totalFleetCount > 0 ? ((underRepairCount / totalFleetCount) * 100).toFixed(1) : '0.0';
+  const unavailPct = totalFleetCount > 0 ? ((unavailableCount / totalFleetCount) * 100).toFixed(1) : '0.0';
+
+  const pendingJobCards = filteredJobCards.filter((j) => j.status === 'PENDING');
+  const stagedVehicles = filteredVehicles.filter((v) => v.pending_status !== null);
   const pendingRefunds = refunds.filter((r) => r.status === 'SUBMITTED');
 
   const totalPendingApprovals =
-    pendingJobCards.length + stagedVehicles.length + pendingRefunds.length;
+    pendingJobCards.length + stagedVehicles.length + (isGlobalHub ? pendingRefunds.length : 0);
 
-  const lowStockAlerts = hubStock.filter(
+  const lowStockAlerts = filteredHubStock.filter(
     (s) => s.physical_stock - s.pending_allocated_stock < s.min_threshold
   );
 
-  const totalChargingPoints = hubs.reduce((acc, h) => acc + h.charging_points_total, 0);
-  const activeChargingPoints = hubs.reduce((acc, h) => acc + h.charging_points_active, 0);
+  const totalChargingPoints = filteredHubs.reduce((acc, h) => acc + h.charging_points_total, 0);
+  const activeChargingPoints = filteredHubs.reduce((acc, h) => acc + h.charging_points_active, 0);
   const chargingUtilization =
     totalChargingPoints > 0 ? Math.round((activeChargingPoints / totalChargingPoints) * 100) : 0;
 
@@ -60,11 +86,18 @@ export function CommandDashboard() {
       <div className="p-6 rounded-2xl bg-zinc-900/60 border border-zinc-800 backdrop-blur-md">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-100">
-              Fleet Operations Command
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-zinc-100">
+                Fleet Operations Command
+              </h1>
+              {!isGlobalHub && (
+                <span className="px-2 py-0.5 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 text-xs font-mono font-bold">
+                  {selectedHubIds.length} Hubs Active Filter
+                </span>
+              )}
+            </div>
             <p className="text-xs sm:text-sm text-zinc-400">
-              Operational overview across regional hubs, vehicle readiness, and maintenance queues
+              Real-time operational telemetry across {filteredHubs.length} regional hubs, vehicle readiness, and maintenance pipelines
             </p>
           </div>
 
@@ -91,11 +124,11 @@ export function CommandDashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Fleet Size"
-          value={activeVehicles.length}
-          subtitle={`${availableVehicles.length} Ready • ${underRepairVehicles.length} Repair`}
+          value={totalFleetCount}
+          subtitle={`${readyCount} Ready (${readyPct}%) • ${underRepairCount} Repair`}
           icon={Car}
           color="emerald"
-          trend={{ value: `${Math.round((availableVehicles.length / (activeVehicles.length || 1)) * 100)}% Ready`, isPositive: true }}
+          trend={{ value: `${readyPct}% Operational`, isPositive: Number(readyPct) >= 70 }}
         />
 
         <StatCard
@@ -105,32 +138,35 @@ export function CommandDashboard() {
           icon={CheckSquare}
           color="amber"
           badge={totalPendingApprovals > 0 ? `${totalPendingApprovals} Pending` : undefined}
-          trend={{ value: `${pendingRefunds.length} Refund Claims`, isPositive: false }}
+          trend={{ value: `${pendingRefunds.length} Disputes`, isPositive: false }}
         />
 
         <StatCard
-          title="Charging Bays"
+          title="Charging Infrastructure"
           value={`${activeChargingPoints} / ${totalChargingPoints}`}
           subtitle={`${chargingUtilization}% Active Ports`}
           icon={Zap}
           color="blue"
-          trend={{ value: `${hubs.length} Hubs`, isPositive: true }}
+          trend={{ value: `${filteredHubs.length} Hubs`, isPositive: true }}
         />
 
         <StatCard
           title="Low Stock Triggers"
           value={lowStockAlerts.length}
-          subtitle={`${hubStock.length} Tracked Parts`}
+          subtitle={`${parts.length} Tracked Parts in Store 1`}
           icon={Package}
           color="rose"
           badge={lowStockAlerts.length > 0 ? 'ALERT' : undefined}
-          trend={{ value: `${lowStockAlerts.length} Below Min`, isPositive: false }}
+          trend={{
+            value: lowStockAlerts.length === 0 ? 'All Healthy' : `${lowStockAlerts.length} Critical`,
+            isPositive: lowStockAlerts.length === 0,
+          }}
         />
       </div>
 
       {/* Main Split View */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left 2 Cols: Priority Approvals & Staged Fleet Queue */}
+        {/* Left 2 Cols: Priority Approvals & Reconciled Fleet Status */}
         <div className="lg:col-span-2 space-y-6">
           {/* Priority Approvals Box */}
           <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
@@ -152,7 +188,7 @@ export function CommandDashboard() {
 
             {totalPendingApprovals === 0 ? (
               <div className="p-8 text-center border border-zinc-800 rounded-xl bg-zinc-950/40 text-zinc-500 text-xs">
-                Approvals desk is completely clear.
+                Approvals desk is completely clear. All vehicle transitions and job cards are up to date.
               </div>
             ) : (
               <div className="space-y-2.5">
@@ -230,14 +266,19 @@ export function CommandDashboard() {
             )}
           </div>
 
-          {/* Fleet Status Breakdown Matrix */}
+          {/* Fleet Status Reconciliation Matrix (Exact 100% math) */}
           <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="w-5 h-5 text-emerald-400" />
-                <h3 className="font-bold text-base text-zinc-100">
-                  Fleet Operational State Breakdown
-                </h3>
+                <div>
+                  <h3 className="font-bold text-base text-zinc-100">
+                    Fleet Operational Readiness & Reconciliation
+                  </h3>
+                  <p className="text-[11px] text-zinc-400">
+                    Reconciled: Total Fleet ({totalFleetCount}) = Ready ({readyCount}) + Under Repair ({underRepairCount}) + Inactive ({unavailableCount})
+                  </p>
+                </div>
               </div>
               <Link
                 href="/fleet"
@@ -248,43 +289,67 @@ export function CommandDashboard() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1">
-                <span className="text-zinc-400 font-medium">Available</span>
-                <div className="font-mono font-black text-lg text-emerald-400">
-                  {availableVehicles.length}
+            {/* Distribution Bar */}
+            <div className="w-full h-3 rounded-full bg-zinc-950 overflow-hidden flex border border-zinc-800">
+              <div
+                style={{ width: `${readyPct}%` }}
+                className="bg-emerald-500 transition-all duration-500"
+                title={`Ready: ${readyCount} (${readyPct}%)`}
+              />
+              <div
+                style={{ width: `${repairPct}%` }}
+                className="bg-amber-500 transition-all duration-500"
+                title={`Under Repair: ${underRepairCount} (${repairPct}%)`}
+              />
+              <div
+                style={{ width: `${unavailPct}%` }}
+                className="bg-zinc-700 transition-all duration-500"
+                title={`Unavailable/Inactive: ${unavailableCount} (${unavailPct}%)`}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              <div className="p-3 rounded-xl bg-zinc-950 border border-emerald-500/20 text-xs space-y-1">
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span className="font-semibold text-emerald-300">Ready / Available</span>
+                  <span className="font-mono text-[10px] text-emerald-400">{readyPct}%</span>
+                </div>
+                <div className="font-mono font-black text-xl text-emerald-400">
+                  {readyCount} <span className="text-xs font-normal text-zinc-500">/ {totalFleetCount} EVs</span>
                 </div>
               </div>
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1">
-                <span className="text-zinc-400 font-medium">Needs Maint</span>
-                <div className="font-mono font-black text-lg text-amber-400">
-                  {needsMaintVehicles.length}
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-amber-500/20 text-xs space-y-1">
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span className="font-semibold text-amber-300">Under Repair / Maint</span>
+                  <span className="font-mono text-[10px] text-amber-400">{repairPct}%</span>
+                </div>
+                <div className="font-mono font-black text-xl text-amber-400">
+                  {underRepairCount} <span className="text-xs font-normal text-zinc-500">/ {totalFleetCount} EVs</span>
                 </div>
               </div>
+
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1">
-                <span className="text-zinc-400 font-medium">Under Repair</span>
-                <div className="font-mono font-black text-lg text-rose-400">
-                  {underRepairVehicles.length}
+                <div className="flex items-center justify-between text-zinc-400">
+                  <span className="font-semibold text-zinc-400">Unavailable / Inactive</span>
+                  <span className="font-mono text-[10px] text-zinc-500">{unavailPct}%</span>
                 </div>
-              </div>
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs space-y-1">
-                <span className="text-zinc-400 font-medium">Not Available</span>
-                <div className="font-mono font-black text-lg text-zinc-400">
-                  {notAvailableVehicles.length}
+                <div className="font-mono font-black text-xl text-zinc-300">
+                  {unavailableCount} <span className="text-xs font-normal text-zinc-500">/ {totalFleetCount} EVs</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Right 1 Col: Hubs & Low Stock Alerts */}
+        {/* Right 1 Col: Calibrated Low Stock & Hub Directory */}
         <div className="space-y-6">
-          {/* Low Stock Alerts Box */}
+          {/* Calibrated Low Stock Widget (No redundant empty cards) */}
           <div className="p-5 rounded-2xl bg-zinc-900/60 border border-zinc-800 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <AlertTriangle className="w-5 h-5 text-rose-400" />
-                <h3 className="font-bold text-base text-zinc-100">Low Stock Alerts</h3>
+                <Package className="w-5 h-5 text-rose-400" />
+                <h3 className="font-bold text-base text-zinc-100">Spare Parts Low Stock</h3>
               </div>
               <Link
                 href="/inventory"
@@ -296,13 +361,24 @@ export function CommandDashboard() {
             </div>
 
             {lowStockAlerts.length === 0 ? (
-              <div className="p-6 text-center border border-zinc-800 rounded-xl bg-zinc-950 text-zinc-500 text-xs">
-                All hub stock counts are above minimum thresholds.
+              <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800/80 flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="font-bold text-xs text-zinc-200">
+                    0 across {parts.length} tracked parts
+                  </div>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">
+                    All Store 1 warehouse and hub inventory levels are optimal.
+                  </p>
+                </div>
               </div>
             ) : (
               <div className="space-y-2">
                 {lowStockAlerts.slice(0, 3).map((stock) => {
                   const hub = hubs.find((h) => h.id === stock.hub_id);
+                  const part = parts.find((p) => p.id === stock.part_id);
                   const available = stock.physical_stock - stock.pending_allocated_stock;
                   return (
                     <div
@@ -310,10 +386,10 @@ export function CommandDashboard() {
                       className="p-3 rounded-xl bg-zinc-950 border border-rose-950 text-xs space-y-1"
                     >
                       <div className="flex items-center justify-between">
-                        <span className="font-bold text-zinc-200">
-                          {stock.part_id === 'p-04' ? 'Waterproof Throttle Grip' : 'Spare Component'}
+                        <span className="font-bold text-zinc-200 truncate pr-2">
+                          {part?.name || stock.part_id}
                         </span>
-                        <span className="font-mono font-bold text-rose-400">
+                        <span className="font-mono font-bold text-rose-400 shrink-0">
                           {available} left (Min: {stock.min_threshold})
                         </span>
                       </div>
@@ -342,7 +418,7 @@ export function CommandDashboard() {
             </div>
 
             <div className="space-y-2.5">
-              {hubs.slice(0, 4).map((h) => (
+              {filteredHubs.slice(0, 4).map((h) => (
                 <div
                   key={h.id}
                   className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs flex items-center justify-between"
@@ -359,7 +435,7 @@ export function CommandDashboard() {
 
                   <div className="text-right">
                     <span className="font-mono text-emerald-400 font-bold">
-                      {h.charging_points_active} Ports
+                      {h.charging_points_active} / {h.charging_points_total} Ports
                     </span>
                   </div>
                 </div>

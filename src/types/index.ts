@@ -139,6 +139,7 @@ export interface VehicleInspection {
 
 export interface Vehicle {
   id: string;
+  custom_vehicle_id?: string; // Editable Vehicle ID (e.g. 'VEH/01' or 'veh-01')
   vehicle_id: string; // 14-15 digit numerical string (IoT IMEI/ID, e.g., '860141073062442')
   vin: string; // Chassis/VIN string (e.g. 'MD625CK192847101')
   key_number: string; // 4-digit alphanumeric code (e.g. 'B001', 'K104')
@@ -152,6 +153,9 @@ export interface Vehicle {
   last_odometer_updated_by: string | null;
   last_inspected_at?: string | null;
   last_inspected_by?: string | null;
+  total_maintenance_spend?: number; // Total cumulative maintenance spend in INR
+  active_days_count?: number; // Active days over rolling 30-day window (e.g. 23)
+  uptime_percentage?: number; // Calculated availability score (e.g. 76.6)
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -278,6 +282,27 @@ export interface TaskChangelogEntry {
   changed_at: string;
 }
 
+export interface Milestone {
+  id: string;
+  objective_id: string;
+  title: string;
+  description?: string;
+  target_date?: string;
+  is_completed: boolean;
+  order_index?: number;
+  created_at?: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  file_name: string;
+  file_url: string; // Data URI, file path, or object storage URL
+  file_size_kb?: number;
+  file_type?: string;
+  uploaded_at: string;
+  uploaded_by?: string;
+}
+
 export interface Objective {
   id: string;
   title: string;
@@ -287,6 +312,7 @@ export interface Objective {
   hub_id: string;
   created_by: string;
   is_completed: boolean;
+  milestones?: Milestone[];
   remarks?: TaskRemark[];
   created_at: string;
   hub?: Hub;
@@ -297,16 +323,20 @@ export interface Objective {
 export interface TaskItem {
   id: string;
   objective_id: string;
+  milestone_id?: string | null;
   title: string;
   description?: string;
   assigned_to: string[];
   priority: TaskPriority;
   status: TaskStatus;
-  vehicle_id?: string | null;
+  vehicle_scope?: 'ALL' | 'SPECIFIC' | 'NONE';
+  vehicle_id?: string | null; // Primary vehicle if single
+  vehicle_ids?: string[]; // Multi-vehicle association
   start_date?: string | null;
   due_date?: string | null;
   completed_at?: string | null;
   created_by: string;
+  attachments?: TaskAttachment[];
   remarks?: TaskRemark[];
   changelog?: TaskChangelogEntry[];
   created_at: string;
@@ -314,6 +344,54 @@ export interface TaskItem {
   assignees?: Profile[];
   vehicle?: Vehicle;
   objective?: Objective;
+  milestone?: Milestone;
+}
+
+// ====================================================================
+// DAILY WORK LOG / SHIFT LOG MODEL (8.1)
+// ====================================================================
+export type ShiftType = 'MORNING' | 'EVENING' | 'NIGHT' | 'GENERAL';
+
+export interface DailyShiftLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  shift_type: ShiftType;
+  hub_id: string;
+  staff_name: string;
+  staff_role: string;
+  accomplishments: string;
+  vehicles_serviced: number;
+  customer_issues_resolved: number;
+  blockers?: string;
+  handover_notes?: string;
+  created_at: string;
+  updated_at?: string;
+}
+
+// ====================================================================
+// ROLE-BASED GROUP COMMUNICATIONS MODEL (8.2)
+// ====================================================================
+export interface ChatChannel {
+  id: string;
+  name: string;
+  description?: string;
+  is_system?: boolean; // true for Operations, Mechanics, Accounts
+  is_private?: boolean;
+  allowed_roles?: string[];
+  created_by?: string;
+  created_at: string;
+}
+
+export interface ChannelMessage {
+  id: string;
+  channel_id: string;
+  sender_id: string;
+  sender_name: string;
+  sender_role: string;
+  sender_avatar?: string;
+  message: string;
+  attachments?: { name: string; url: string; type: string }[];
+  created_at: string;
 }
 
 // ====================================================================

@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
-import { TaskItem, TaskPriority, TaskStatus, Profile } from '@/types';
+import { TaskItem, TaskPriority, TaskStatus, Profile, TaskAttachment } from '@/types';
 import { TaskPriorityBadge, TaskStatusBadge } from '../common/StatusBadge';
-import { formatDate, formatRelativeTime, cn } from '@/lib/utils';
+import { formatDate, cn } from '@/lib/utils';
 import {
   X,
   Calendar,
@@ -17,7 +17,13 @@ import {
   AlertTriangle,
   Car,
   CheckCircle2,
-  Ban,
+  Paperclip,
+  FileText,
+  FileSpreadsheet,
+  Image as ImageIcon,
+  Download,
+  Upload,
+  Layers,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -28,16 +34,22 @@ interface TaskDetailDrawerProps {
 
 export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
   const [remarkInput, setRemarkInput] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const currentUser = useAppStore((s) => s.currentUser);
   const vehicles = useAppStore((s) => s.vehicles);
   const staffProfiles = useAppStore((s) => s.staffProfiles);
+  const milestones = useAppStore((s) => s.milestones);
+  const objectives = useAppStore((s) => s.objectives);
   const updateTaskStatus = useAppStore((s) => s.updateTaskStatus);
   const updateTaskAssignees = useAppStore((s) => s.updateTaskAssignees);
   const addTaskRemark = useAppStore((s) => s.addTaskRemark);
+  const addTaskAttachment = useAppStore((s) => s.addTaskAttachment);
 
   if (!task) return null;
 
-  const vehicle = vehicles.find((v) => v.id === task.vehicle_id);
+  const milestone = milestones.find((m) => m.id === task.milestone_id);
+  const objective = objectives.find((o) => o.id === task.objective_id);
 
   const handleSendRemark = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,6 +81,39 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
     toast.success('Task assignees updated.');
   };
 
+  // 7.2 Multi-format file attachment handler
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const fileUrl = uploadEvent.target?.result as string;
+        addTaskAttachment(task.id, {
+          id: `att-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          file_name: file.name,
+          file_url: fileUrl,
+          file_type: file.type || 'application/octet-stream',
+          file_size_kb: Math.round(file.size / 1024),
+          uploaded_at: new Date().toISOString(),
+        });
+        toast.success(`Attached file: ${file.name}`);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const getFileIcon = (fileName: string) => {
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.pdf')) return <FileText className="w-4 h-4 text-rose-400" />;
+    if (lower.endsWith('.xlsx') || lower.endsWith('.csv') || lower.endsWith('.xls'))
+      return <FileSpreadsheet className="w-4 h-4 text-emerald-400" />;
+    if (lower.endsWith('.doc') || lower.endsWith('.docx'))
+      return <FileText className="w-4 h-4 text-blue-400" />;
+    return <ImageIcon className="w-4 h-4 text-purple-400" />;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/75 backdrop-blur-sm animate-in fade-in">
       <div className="w-full max-w-xl bg-zinc-950 border-l border-zinc-800 h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
@@ -87,6 +132,17 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
             >
               {task.title}
             </h2>
+            {objective && (
+              <div className="flex items-center gap-1.5 text-[11px] text-zinc-400">
+                <span className="font-semibold text-blue-400">{objective.title}</span>
+                {milestone && (
+                  <>
+                    <span>➔</span>
+                    <span className="text-zinc-300 font-medium">{milestone.title}</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
           <button
             onClick={onClose}
@@ -159,7 +215,7 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
             </div>
           </div>
 
-          {/* Dates & Linked Vehicle */}
+          {/* Dates & Vehicle Association (7.2) */}
           <div className="grid grid-cols-2 gap-3">
             <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
               <span className="text-zinc-500 font-semibold flex items-center gap-1 text-[10px] uppercase">
@@ -174,12 +230,79 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
             <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 space-y-1">
               <span className="text-zinc-500 font-semibold flex items-center gap-1 text-[10px] uppercase">
                 <Car className="w-3.5 h-3.5 text-emerald-400" />
-                Linked Vehicle
+                Vehicle Scope
               </span>
               <p className="font-mono font-bold text-zinc-200 truncate">
-                {vehicle ? `${vehicle.vehicle_id} (Key: ${vehicle.key_number})` : 'General Hub Task'}
+                {task.vehicle_scope === 'ALL'
+                  ? 'All Fleet Vehicles'
+                  : task.vehicle_ids && task.vehicle_ids.length > 0
+                  ? `${task.vehicle_ids.length} Specific EVs Selected`
+                  : 'General Operational Task'}
               </p>
             </div>
+          </div>
+
+          {/* 7.2 Multi-Format File Attachments Section */}
+          <div className="space-y-3 pt-2 border-t border-zinc-800">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-500 font-semibold uppercase tracking-wider text-[10px] flex items-center gap-1">
+                <Paperclip className="w-3.5 h-3.5 text-blue-400" />
+                <span>File Attachments & Documents ({task.attachments?.length || 0})</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="text-[11px] font-bold text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              >
+                <Upload className="w-3 h-3" />
+                <span>Upload File</span>
+              </button>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.xlsx,.xls,.csv,.doc,.docx,image/*"
+              multiple
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {!task.attachments || task.attachments.length === 0 ? (
+              <div className="p-4 text-center text-zinc-500 bg-zinc-900/40 rounded-xl border border-dashed border-zinc-800">
+                No attachments uploaded. Support for PDF, Excel, Word & Images.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {task.attachments.map((att) => (
+                  <div
+                    key={att.id}
+                    className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-between gap-3"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {getFileIcon(att.file_name)}
+                      <div className="truncate">
+                        <div className="font-medium text-zinc-200 truncate">{att.file_name}</div>
+                        <div className="text-[10px] text-zinc-500 font-mono">
+                          {att.file_size_kb ? `${att.file_size_kb} KB` : ''} • {formatDate(att.uploaded_at)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <a
+                      href={att.file_url}
+                      download={att.file_name}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white"
+                      title="Download / View Attachment"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Remarks Thread */}
@@ -205,10 +328,12 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-zinc-200">
                         {rem.author_name}{' '}
-                        {rem.author_role && <span className="text-zinc-500 font-normal text-[10px]">({rem.author_role})</span>}
+                        {rem.author_role && (
+                          <span className="text-zinc-500 font-normal text-[10px]">({rem.author_role})</span>
+                        )}
                       </span>
                       <span className="text-[10px] text-zinc-500 font-mono">
-                        {formatRelativeTime(rem.created_at)}
+                        {formatDate(rem.created_at)}
                       </span>
                     </div>
                     <p className="text-zinc-300 text-[11px]">{rem.comment}</p>
@@ -249,7 +374,10 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
                 <p className="text-zinc-500 text-[11px]">No modifications logged yet.</p>
               ) : (
                 task.changelog.map((ch) => (
-                  <div key={ch.id} className="p-2 rounded-lg bg-zinc-900/40 border border-zinc-800 text-[11px] flex items-center justify-between">
+                  <div
+                    key={ch.id}
+                    className="p-2 rounded-lg bg-zinc-900/40 border border-zinc-800 text-[11px] flex items-center justify-between"
+                  >
                     <div>
                       <strong className="text-zinc-300">{ch.performer_name}</strong>{' '}
                       <span className="text-zinc-500">changed {ch.field_changed} from</span>{' '}
@@ -257,7 +385,7 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
                       <code className="text-emerald-400">{ch.new_value}</code>
                     </div>
                     <span className="text-[10px] text-zinc-500 font-mono">
-                      {formatRelativeTime(ch.changed_at)}
+                      {formatDate(ch.changed_at)}
                     </span>
                   </div>
                 ))

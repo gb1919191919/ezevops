@@ -1,11 +1,9 @@
 'use client';
 
-import React from 'react';
-import confetti from 'canvas-confetti';
+import React, { useEffect, useMemo } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
 import { useRBAC } from '@/hooks/useRBAC';
-import { PermissionGate } from '../common/PermissionGate';
-import { VehicleStatusBadge, ApprovalBadge, RefundBadge } from '../common/StatusBadge';
+import { VehicleStatusBadge, RefundBadge } from '../common/StatusBadge';
 import { formatCurrency, formatDate, formatPhone, cn } from '@/lib/utils';
 import {
   CheckSquare,
@@ -13,20 +11,21 @@ import {
   Wrench,
   DollarSign,
   CheckCircle2,
-  XCircle,
   Clock,
-  Sparkles,
-  Package,
   Shield,
-  Layers,
+  XCircle,
+  Sparkles,
+  TrendingUp,
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
 
 export function ApprovalsDesk() {
   const vehicles = useAppStore((s) => s.vehicles);
+  const hubs = useAppStore((s) => s.hubs);
   const jobCards = useAppStore((s) => s.jobCards);
   const refunds = useAppStore((s) => s.refunds);
-  const hubs = useAppStore((s) => s.hubs);
+  const clearBadge = useAppStore((s) => s.clearBadge);
 
   const approveVehicleStatus = useAppStore((s) => s.approveVehicleStatus);
   const rejectVehicleStatus = useAppStore((s) => s.rejectVehicleStatus);
@@ -36,6 +35,11 @@ export function ApprovalsDesk() {
   const rejectRefund = useAppStore((s) => s.rejectRefund);
 
   const { isOwner, isManager } = useRBAC();
+
+  // Clear sidebar notification badge on visiting approvals desk (1.2)
+  useEffect(() => {
+    clearBadge('approvals');
+  }, [clearBadge]);
 
   if (!isOwner && !isManager) {
     return (
@@ -58,6 +62,21 @@ export function ApprovalsDesk() {
   const pendingRefunds = refunds.filter((r) => r.status === 'SUBMITTED');
 
   const totalPending = stagedVehicles.length + pendingJobCards.length + pendingRefunds.length;
+
+  // 6.1 Dispute & Job Card Financial Auto-Calculations
+  const totalPendingDisputeValue = useMemo(
+    () => pendingRefunds.reduce((sum, r) => sum + r.amount, 0),
+    [pendingRefunds]
+  );
+
+  const totalPendingSparesValue = useMemo(
+    () =>
+      pendingJobCards.reduce((sum, j) => {
+        const partsCost = (j.parts || []).reduce((pSum, p) => pSum + p.quantity * p.unit_cost_snapshot, 0);
+        return sum + partsCost;
+      }, 0),
+    [pendingJobCards]
+  );
 
   const triggerCelebration = () => {
     try {
@@ -96,7 +115,7 @@ export function ApprovalsDesk() {
   const handleVerifyRefund = (id: string) => {
     verifyRefund(id, 'Verified via Approvals Desk');
     triggerCelebration();
-    toast.success('Dispute verified and ready for Frappe settlement payout.');
+    toast.success('Dispute claim verified and approved for settlement.');
   };
 
   const handleRejectRefund = (id: string) => {
@@ -112,19 +131,53 @@ export function ApprovalsDesk() {
         <div>
           <h2 className="text-xl font-black text-zinc-100 tracking-tight flex items-center gap-2">
             <CheckSquare className="w-5 h-5 text-amber-400" />
-            Operations Approvals Desk
+            Operations Priority Approvals Desk
           </h2>
-          <p className="text-xs text-zinc-400">
-            Mandatory sign-off queue for staged vehicle states, maintenance tickets, and customer disputes
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Unified sign-off desk for staged vehicle transitions, maintenance parts allocation, and customer claims
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-300">
             <Clock className="w-3.5 h-3.5 text-amber-400" />
-            <span>Pending Action:</span>
+            <span>Total Queue:</span>
             <strong className="font-mono text-amber-300">{totalPending}</strong>
           </span>
+        </div>
+      </div>
+
+      {/* 6.1 Aggregate Financial Breakdown Counters */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-blue-500/20 space-y-1">
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
+            <span>Staged Vehicles</span>
+            <Car className="w-4 h-4 text-blue-400" />
+          </div>
+          <div className="font-mono font-black text-2xl text-blue-400">{stagedVehicles.length} Units</div>
+          <p className="text-[11px] text-zinc-500">Status transition sign-offs</p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-amber-500/20 space-y-1">
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
+            <span>Pending Spares Value</span>
+            <Wrench className="w-4 h-4 text-amber-400" />
+          </div>
+          <div className="font-mono font-black text-2xl text-amber-400">
+            {formatCurrency(totalPendingSparesValue)}
+          </div>
+          <p className="text-[11px] text-zinc-500">{pendingJobCards.length} Job Cards in review</p>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-purple-500/20 space-y-1">
+          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
+            <span>Pending Dispute Claims</span>
+            <DollarSign className="w-4 h-4 text-purple-400" />
+          </div>
+          <div className="font-mono font-black text-2xl text-purple-300">
+            {formatCurrency(totalPendingDisputeValue)}
+          </div>
+          <p className="text-[11px] text-zinc-500">{pendingRefunds.length} Claims awaiting verification</p>
         </div>
       </div>
 
@@ -168,13 +221,13 @@ export function ApprovalsDesk() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-mono font-bold text-sm text-zinc-100">
-                            {v.vehicle_id}
+                            {v.custom_vehicle_id || v.id.toUpperCase()}
                           </span>
-                          <span className="font-mono text-xs text-amber-300 px-1.5 py-0.2 rounded bg-amber-500/10 border border-amber-500/30">
-                            Key: {v.key_number}
+                          <span className="font-mono text-xs text-blue-300 font-bold px-1.5 py-0.2 rounded bg-blue-500/10 border border-blue-500/30">
+                            Key: #{v.key_number}
                           </span>
                         </div>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">{hub?.name.split(' (')[0]}</p>
+                        <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">{v.vehicle_id} • {hub?.name.split(' (')[0]}</p>
                       </div>
                     </div>
 
@@ -197,13 +250,13 @@ export function ApprovalsDesk() {
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         onClick={() => handleApproveVehicle(v.id)}
-                        className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-xl text-xs transition"
+                        className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-xl text-xs transition shadow-sm"
                       >
                         Approve
                       </button>
                       <button
                         onClick={() => handleRejectVehicle(v.id)}
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-rose-500/20 hover:text-rose-300 text-zinc-400 font-bold rounded-xl text-xs transition"
+                        className="px-3 py-2 bg-zinc-800 hover:bg-rose-500/20 hover:text-rose-300 text-zinc-400 font-bold rounded-xl text-xs transition"
                       >
                         Reject
                       </button>
@@ -250,7 +303,7 @@ export function ApprovalsDesk() {
                             #{j.ticket_number}
                           </span>
                           <span className="font-mono text-xs font-bold text-zinc-200">
-                            {vehicle?.vehicle_id} (Key: {vehicle?.key_number})
+                            Key #{vehicle?.key_number} ({vehicle?.custom_vehicle_id || vehicle?.vehicle_id})
                           </span>
                         </div>
                         <p className="text-[11px] text-zinc-400 mt-1 line-clamp-2">
@@ -269,13 +322,13 @@ export function ApprovalsDesk() {
                     <div className="flex items-center gap-2 pt-1">
                       <button
                         onClick={() => handleApproveJob(j.id)}
-                        className="flex-1 py-1.5 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-xl text-xs transition"
+                        className="flex-1 py-2 bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold rounded-xl text-xs transition shadow-sm"
                       >
                         Sign-off & Commit
                       </button>
                       <button
                         onClick={() => handleRejectJob(j.id)}
-                        className="px-3 py-1.5 bg-zinc-800 hover:bg-rose-500/20 hover:text-rose-300 text-zinc-400 font-bold rounded-xl text-xs transition"
+                        className="px-3 py-2 bg-zinc-800 hover:bg-rose-500/20 hover:text-rose-300 text-zinc-400 font-bold rounded-xl text-xs transition"
                       >
                         Reject
                       </button>
@@ -313,7 +366,7 @@ export function ApprovalsDesk() {
                       <span className="font-mono text-xs font-bold text-zinc-200">
                         {formatPhone(r.user_phone)}
                       </span>
-                      <p className="text-[11px] text-zinc-400 font-mono mt-0.5">{r.ride_id}</p>
+                      <p className="text-[11px] text-zinc-400 font-mono mt-0.5">Ride #{r.ride_id}</p>
                     </div>
                     <span className="font-mono font-black text-sm text-emerald-400">
                       {formatCurrency(r.amount)}
@@ -327,13 +380,13 @@ export function ApprovalsDesk() {
                   <div className="flex items-center gap-2 pt-1">
                     <button
                       onClick={() => handleVerifyRefund(r.id)}
-                      className="flex-1 py-1.5 bg-blue-500 hover:bg-blue-400 text-white font-extrabold rounded-xl text-xs transition"
+                      className="flex-1 py-2 bg-blue-500 hover:bg-blue-400 text-white font-extrabold rounded-xl text-xs transition shadow-sm"
                     >
                       Verify Claim
                     </button>
                     <button
                       onClick={() => handleRejectRefund(r.id)}
-                      className="px-3 py-1.5 bg-zinc-800 hover:bg-rose-500/20 hover:text-rose-300 text-zinc-400 font-bold rounded-xl text-xs transition"
+                      className="px-3 py-2 bg-zinc-800 hover:bg-rose-500/20 hover:text-rose-300 text-zinc-400 font-bold rounded-xl text-xs transition"
                     >
                       Decline
                     </button>

@@ -5,6 +5,7 @@ import { useAppStore } from '@/lib/store/appStore';
 import { useRBAC } from '@/hooks/useRBAC';
 import { INITIAL_PERMISSIONS } from '@/lib/store/initialData';
 import { supabaseUrl } from '@/lib/supabase/client';
+import { exportFullDatabaseBackup } from '@/lib/exportUtils';
 import { Role, Profile, PermissionKey } from '@/types';
 import { formatPhone, cn } from '@/lib/utils';
 import {
@@ -20,6 +21,10 @@ import {
   Lock,
   CheckCircle2,
   Code2,
+  Edit2,
+  Download,
+  X,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +39,14 @@ export function SettingsPage() {
   const [staffEmail, setStaffEmail] = useState('');
   const [staffRoleIds, setStaffRoleIds] = useState<string[]>(['role-04']);
 
+  // Edit Staff Modal (8.3)
+  const [editingStaff, setEditingStaff] = useState<Profile | null>(null);
+  const [editStaffName, setEditStaffName] = useState('');
+  const [editStaffPhone, setEditStaffPhone] = useState('');
+  const [editStaffEmail, setEditStaffEmail] = useState('');
+  const [editStaffRoleIds, setEditStaffRoleIds] = useState<string[]>([]);
+  const [editStaffActive, setEditStaffActive] = useState(true);
+
   // New Role Modal
   const [newRoleOpen, setNewRoleOpen] = useState(false);
   const [roleCode, setRoleCode] = useState('');
@@ -46,6 +59,7 @@ export function SettingsPage() {
   const addCustomRole = useAppStore((s) => s.addCustomRole);
   const updateRolePermissions = useAppStore((s) => s.updateRolePermissions);
   const addStaffProfile = useAppStore((s) => s.addStaffProfile);
+  const updateStaffProfile = useAppStore((s) => s.updateStaffProfile);
   const resetToDefaultData = useAppStore((s) => s.resetToDefaultData);
   const { isOwner, effectivePermissions } = useRBAC();
 
@@ -221,7 +235,7 @@ export function SettingsPage() {
                   <th className="p-3.5 pl-4">Staff Member</th>
                   <th className="p-3.5">Mobile Contact</th>
                   <th className="p-3.5">Assigned Roles</th>
-                  <th className="p-3.5 text-right pr-4">Status</th>
+                  <th className="p-3.5 text-right pr-4">Status & Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-800/60 text-zinc-300">
@@ -249,10 +263,27 @@ export function SettingsPage() {
                       </div>
                     </td>
 
-                    <td className="p-3.5 text-right pr-4">
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold text-[10px]">
-                        Active
+                    <td className="p-3.5 text-right pr-4 space-x-2">
+                      <span className={cn(
+                        'px-2 py-0.5 rounded-full font-bold text-[10px]',
+                        staff.is_active !== false ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-400' : 'bg-zinc-800 text-zinc-500'
+                      )}>
+                        {staff.is_active !== false ? 'Active' : 'Inactive'}
                       </span>
+                      <button
+                        onClick={() => {
+                          setEditingStaff(staff);
+                          setEditStaffName(staff.full_name);
+                          setEditStaffPhone(staff.phone);
+                          setEditStaffEmail(staff.email || '');
+                          setEditStaffRoleIds(staff.roles?.map((r) => r.id) || []);
+                          setEditStaffActive(staff.is_active !== false);
+                        }}
+                        className="px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition inline-flex items-center gap-1 text-[11px] font-semibold"
+                      >
+                        <Edit2 className="w-3 h-3 text-blue-400" />
+                        <span>Edit</span>
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -481,6 +512,14 @@ export function SettingsPage() {
               </button>
 
               <button
+                onClick={() => exportFullDatabaseBackup()}
+                className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold flex items-center gap-2 transition shadow-sm"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Download Full Database JSON Backup
+              </button>
+
+              <button
                 onClick={handleResetData}
                 className="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold flex items-center gap-2 transition"
               >
@@ -640,6 +679,140 @@ export function SettingsPage() {
                   className="px-4 py-2 bg-emerald-500 text-black font-bold rounded-xl hover:bg-emerald-400 transition"
                 >
                   Create Role
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Staff Modal (8.3) */}
+      {editingStaff && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-blue-400" />
+                <span>Edit Staff Profile</span>
+              </h3>
+              <button
+                onClick={() => setEditingStaff(null)}
+                className="text-zinc-500 hover:text-zinc-300 p-1"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!editStaffName.trim() || !editStaffPhone.trim()) {
+                  toast.error('Name and mobile number are required.');
+                  return;
+                }
+                const assignedRoles = customRoles.filter(
+                  (r) => editStaffRoleIds.includes(r.id) || editStaffRoleIds.includes(r.code)
+                );
+                updateStaffProfile(editingStaff.id, {
+                  full_name: editStaffName.trim(),
+                  phone: editStaffPhone.trim(),
+                  email: editStaffEmail.trim() || undefined,
+                  roles: assignedRoles,
+                  is_active: editStaffActive,
+                });
+                toast.success(`Updated staff profile for ${editStaffName}!`);
+                setEditingStaff(null);
+              }}
+              className="space-y-3 text-xs"
+            >
+              <div className="space-y-1">
+                <label className="text-zinc-400 font-semibold">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editStaffName}
+                  onChange={(e) => setEditStaffName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-100 font-bold focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-zinc-400 font-semibold">Mobile Number (+91) *</label>
+                <input
+                  type="text"
+                  required
+                  value={editStaffPhone}
+                  onChange={(e) => setEditStaffPhone(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-100 font-mono focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-zinc-400 font-semibold">Email Address (Optional)</label>
+                <input
+                  type="email"
+                  value={editStaffEmail}
+                  onChange={(e) => setEditStaffEmail(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-zinc-100 font-mono focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {/* Roles selection */}
+              <div className="space-y-1.5 pt-1">
+                <label className="text-zinc-400 font-semibold block">Assigned RBAC Roles</label>
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {customRoles.map((r) => {
+                    const isSelected = editStaffRoleIds.includes(r.id) || editStaffRoleIds.includes(r.code);
+                    return (
+                      <div
+                        key={r.id}
+                        onClick={() => {
+                          setEditStaffRoleIds((prev) =>
+                            isSelected ? prev.filter((id) => id !== r.id && id !== r.code) : [...prev, r.id]
+                          );
+                        }}
+                        className={cn(
+                          'flex items-center justify-between p-2 rounded-xl cursor-pointer text-xs transition',
+                          isSelected
+                            ? 'bg-blue-600/15 text-blue-200 font-bold border border-blue-500/30'
+                            : 'bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-200'
+                        )}
+                      >
+                        <span>{r.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-blue-400" />}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Active Toggle */}
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-zinc-900 border border-zinc-800">
+                <input
+                  type="checkbox"
+                  id="staffActive"
+                  checked={editStaffActive}
+                  onChange={(e) => setEditStaffActive(e.target.checked)}
+                  className="rounded text-emerald-500 focus:ring-0"
+                />
+                <label htmlFor="staffActive" className="text-xs text-zinc-300 font-semibold cursor-pointer">
+                  Active Staff Member (Can log in and perform field tasks)
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingStaff(null)}
+                  className="px-4 py-2 bg-zinc-800 text-zinc-300 rounded-xl hover:bg-zinc-700 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition shadow-sm"
+                >
+                  Save Profile Changes
                 </button>
               </div>
             </form>

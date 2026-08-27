@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col antialiased">
         {children}
-        <Toaster position="top-right" richColors theme="dark" />
+        <Toaster position="bottom-left" duration={2000} closeButton richColors theme="dark" />
       </main>
     );
   }
@@ -40,7 +40,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <MobileNav />
-        <Toaster position="top-right" richColors theme="dark" />
+        <Toaster position="bottom-left" duration={2000} closeButton richColors theme="dark" />
       </div>
     </AuthGuard>
   );

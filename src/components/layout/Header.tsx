@@ -8,22 +8,37 @@ import { HubSelector } from '../common/HubSelector';
 import { VehicleSearchCombobox } from '../common/VehicleSearchCombobox';
 import { UserProfileSelector } from '../common/UserProfileSelector';
 import { QuickNoteModal } from '../common/QuickNoteModal';
+import { GlobalSearchModal } from '../common/GlobalSearchModal';
 import {
   Zap,
   CheckSquare,
   PanelLeftClose,
   PanelLeftOpen,
   StickyNote,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export function Header() {
   const [isQuickNoteOpen, setIsQuickNoteOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const isSidebarCollapsed = useAppStore((s) => s.isSidebarCollapsed);
   const toggleSidebarCollapse = useAppStore((s) => s.toggleSidebarCollapse);
   const jobCards = useAppStore((s) => s.jobCards);
   const vehicles = useAppStore((s) => s.vehicles);
   const refunds = useAppStore((s) => s.refunds);
+
+  // Global Cmd+K trigger
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsSearchOpen((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const pendingJobCards = jobCards.filter((j) => j.status === 'PENDING').length;
   const pendingVehicleStatus = vehicles.filter((v) => v.pending_status !== null).length;
@@ -57,20 +72,31 @@ export function Header() {
                 EzEv <span className="text-blue-400 font-semibold">Ops</span>
               </span>
               <p className="text-[10px] text-zinc-400 font-mono -mt-0.5 hidden sm:block">
-                Mumbai Command & SOP Hub
+                Mumbai Command & Governance
               </p>
             </div>
           </Link>
 
-          {/* Global Hub Selector */}
+          {/* Global Multi-Hub Selector */}
           <div className="hidden md:block">
             <HubSelector />
           </div>
         </div>
 
-        {/* Center: Global 500-Vehicle High-Performance Search Combobox */}
-        <div className="hidden sm:block flex-1 max-w-md mx-4">
-          <VehicleSearchCombobox placeholder="Search 40+ EVs (any 3-4 digits of ID, Key, VIN)..." />
+        {/* Center: Universal Global Search Bar (Cmd + K) */}
+        <div className="flex-1 max-w-md mx-4">
+          <button
+            onClick={() => setIsSearchOpen(true)}
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-[#18181b] border border-[#2a2a2f] hover:border-zinc-600 text-zinc-400 hover:text-zinc-200 transition text-xs group"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="w-4 h-4 text-blue-400 group-hover:scale-105 transition-transform" />
+              <span className="truncate">Search tasks, vehicles, parts, job cards, SOPs...</span>
+            </div>
+            <kbd className="hidden sm:inline-flex items-center gap-0.5 px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-[10px] font-mono text-zinc-400 group-hover:text-zinc-200">
+              ⌘K
+            </kbd>
+          </button>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-2.5">
@@ -113,6 +139,12 @@ export function Header() {
       <QuickNoteModal
         isOpen={isQuickNoteOpen}
         onClose={() => setIsQuickNoteOpen(false)}
+      />
+
+      {/* Universal Global Search Palette (Cmd+K) */}
+      <GlobalSearchModal
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
       />
     </>
   );

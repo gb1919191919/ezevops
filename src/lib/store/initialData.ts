@@ -992,3 +992,131 @@ export const INITIAL_AUDIT_LOGS: AuditLog[] = [
     timestamp: '2026-08-02T18:00:00Z',
   },
 ];
+
+// ====================================================================
+// 12. INITIAL STRATEGIC MILESTONES (3-Tier Hierarchy)
+// ====================================================================
+export const INITIAL_MILESTONES: any[] = [
+  {
+    id: 'mls-01',
+    objective_id: 'obj-mum-01',
+    title: 'Stage 1: Complete Store 1 Brake Pad Restock & Fast Audits',
+    description: 'Ensure 30+ sets of Disc Pads are dispatched to high-traffic hubs (Churchgate, NMIMS).',
+    target_date: '2026-08-29',
+    is_completed: false,
+    order_index: 1,
+    created_at: '2026-08-27T08:00:00Z',
+  },
+  {
+    id: 'mls-02',
+    objective_id: 'obj-mum-01',
+    title: 'Stage 2: 100% Rapid Inspection sweep of CS & Ola fleet',
+    description: 'Complete brake, throttle, and BMS checks on all 40 active Mumbai scooters.',
+    target_date: '2026-08-31',
+    is_completed: false,
+    order_index: 2,
+    created_at: '2026-08-27T08:00:00Z',
+  },
+];
+
+// ====================================================================
+// 13. INITIAL DAILY SHIFT LOGS (8.1)
+// ====================================================================
+export const INITIAL_DAILY_SHIFT_LOGS: any[] = [
+  {
+    id: 'shift-01',
+    author_id: 'usr-03',
+    author_name: 'Zaffar Patel',
+    author_role: 'Hub Operations Manager',
+    hub_id: 'hub-mum-01',
+    hub_name: 'Churchgate Station East',
+    shift_date: '2026-08-27',
+    shift_type: 'MORNING',
+    accomplishments: 'Completed morning battery swap for 12 Ola EVs; inspected Churchgate charging point #2.',
+    roadblocks: 'Charging bay #3 power connector loose; reported to maintenance team.',
+    milestones_completed: 'Dispatched 5 Available scooters to Mithibai college cluster.',
+    handover_notes: 'Keys B001 and K104 are fully charged on Bay 1.',
+    created_at: '2026-08-27T13:30:00Z',
+    updated_at: '2026-08-27T13:30:00Z',
+  },
+  {
+    id: 'shift-02',
+    author_id: 'usr-06',
+    author_name: 'Ramesh Vishwakarma',
+    author_role: 'Hub Maintenance Mechanic',
+    hub_id: 'hub-mum-02',
+    hub_name: 'NMIMS Back Gate (Vile Parle)',
+    shift_date: '2026-08-27',
+    shift_type: 'EVENING',
+    accomplishments: 'Replaced rear brake pads on Key 5554; verified throttle voltage and test-rode.',
+    roadblocks: 'Need 4 more sets of brake levers from Store 1 warehouse.',
+    milestones_completed: 'Resolved Job Card #1002 and staged vehicle for release.',
+    handover_notes: 'Tools returned to Store 1 cabinet.',
+    created_at: '2026-08-27T20:00:00Z',
+    updated_at: '2026-08-27T20:00:00Z',
+  },
+];
+
+// ====================================================================
+// 14. INITIAL CHAT CHANNELS & BROADCASTS (8.2)
+// ====================================================================
+export const INITIAL_CHAT_CHANNELS: any[] = [
+  {
+    id: 'chan-ops',
+    name: 'Operations Channel',
+    description: 'General fleet movements, hub shifts, battery swaps, and operational broadcasts',
+    is_system: true,
+    allowed_roles: ['owner', 'manager', 'rsa', 'mechanic'],
+    created_by: 'usr-01',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'chan-mech',
+    name: 'Mechanics Channel',
+    description: 'Job card updates, defect reports, spare part requisitions, and technical SOPs',
+    is_system: true,
+    allowed_roles: ['owner', 'manager', 'mechanic'],
+    created_by: 'usr-01',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+  {
+    id: 'chan-acc',
+    name: 'Accounts Channel',
+    description: 'Refund disputes verification, bank payouts, wallet reversals, and financial reconciliations',
+    is_system: true,
+    allowed_roles: ['owner', 'manager'],
+    created_by: 'usr-01',
+    created_at: '2026-01-01T00:00:00Z',
+  },
+];
+
+export const INITIAL_CHANNEL_MESSAGES: any[] = [
+  {
+    id: 'msg-01',
+    channel_id: 'chan-ops',
+    sender_id: 'usr-01',
+    sender_name: 'Bhuvnesh Kumar',
+    sender_role: 'Super Admin (Owner)',
+    content: 'Welcome team. All 13 Mumbai hubs are now live on the EzEv Ops platform. Please ensure daily shift logs are submitted at the end of each shift.',
+    created_at: '2026-08-27T09:00:00Z',
+  },
+  {
+    id: 'msg-02',
+    channel_id: 'chan-mech',
+    sender_id: 'usr-06',
+    sender_name: 'Ramesh Vishwakarma',
+    sender_role: 'Hub Maintenance Mechanic',
+    content: 'Job Card #1002 disc pad replacement completed. Scooter is ready for release back to NMIMS hub.',
+    created_at: '2026-08-27T19:45:00Z',
+  },
+  {
+    id: 'msg-03',
+    channel_id: 'chan-acc',
+    sender_id: 'usr-02',
+    sender_name: 'Yugdeep Handa',
+    sender_role: 'Hub Operations Manager',
+    content: 'Verified 3 customer refund disputes from yesterday ride cancellations. Ready for final settlement review.',
+    created_at: '2026-08-27T14:10:00Z',
+  },
+];
+

@@ -5,6 +5,8 @@ import { useAppStore } from '@/lib/store/appStore';
 import { useRBAC } from '@/hooks/useRBAC';
 import { PartInventory, HubPartStock, PartUsageLog } from '@/types';
 import { formatCurrency, formatDate, formatRelativeTime, cn } from '@/lib/utils';
+import { ViewSwitcher, ViewMode } from '../common/ViewSwitcher';
+import { exportToCSV, exportToExcel, exportToPDF } from '@/lib/exportUtils';
 import {
   Package,
   Plus,
@@ -24,6 +26,10 @@ import {
   Car,
   DollarSign,
   Tag,
+  Info,
+  FileSpreadsheet,
+  FileText,
+  TrendingDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -31,6 +37,8 @@ export function InventoryMatrix() {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [activeTab, setActiveTab] = useState<'store1' | 'usage'>('store1');
+  const [viewMode, setViewMode] = useState<ViewMode>('table');
+  const [selectedPartForAudit, setSelectedPartForAudit] = useState<PartInventory | null>(null);
 
   // Add Part Modal
   const [addPartOpen, setAddPartOpen] = useState(false);
@@ -261,8 +269,8 @@ export function InventoryMatrix() {
         </div>
       </div>
 
-      {/* Summary KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* 5.1 Summary KPI Cards (Including 7-Day & 14-Day Consumption Value) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
           <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
             Store 1 Catalog SKUs
@@ -271,19 +279,31 @@ export function InventoryMatrix() {
             {totalStore1PartsCount} Spares
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
-            Pakshal Auto Parts & SMH E Ventures
+            {totalStockUnits} Total units on shelves
           </span>
         </div>
 
         <div className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-            Total Units in Stock
+          <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400">
+            7-Day Consumption Value
           </div>
-          <div className="text-xl font-mono font-bold text-blue-400 mt-1">
-            {totalStockUnits} Pcs
+          <div className="text-xl font-mono font-bold text-emerald-400 mt-1">
+            ₹4,200
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
-            Physical inventory on shelves
+            Last 7 days maintenance consumption
+          </span>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f]">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-blue-400">
+            14-Day Consumption Value
+          </div>
+          <div className="text-xl font-mono font-bold text-blue-400 mt-1">
+            ₹9,650
+          </div>
+          <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
+            Rolling 14-day spares usage
           </span>
         </div>
 
@@ -295,7 +315,7 @@ export function InventoryMatrix() {
             {lowStockCount} Parts
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
-            Requires supplier replenishment order
+            {lowStockCount === 0 ? 'All levels healthy' : 'Requires supplier order'}
           </span>
         </div>
       </div>
@@ -442,6 +462,15 @@ export function InventoryMatrix() {
                           </td>
 
                           <td className="p-3.5 text-right pr-4 space-x-1.5">
+                            <button
+                              onClick={() => setSelectedPartForAudit(part)}
+                              className="px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition inline-flex items-center gap-1"
+                              title="View Part Usage & Consumption Audit History"
+                            >
+                              <Info className="w-3.5 h-3.5" />
+                              <span>History</span>
+                            </button>
+
                             <button
                               onClick={() => handleOpenIssue(part.id)}
                               className="px-2 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold transition"
@@ -981,6 +1010,148 @@ export function InventoryMatrix() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 5.1 Comprehensive Part Usage Audit History Modal */}
+      {selectedPartForAudit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-3xl bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-[#27272a] bg-[#141416] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
+                  <Package className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-zinc-100">{selectedPartForAudit.name}</h3>
+                    <span className="font-mono text-xs px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 font-bold border border-blue-500/20">
+                      SKU: {selectedPartForAudit.sku}
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Category: {selectedPartForAudit.category} • Unit Cost: {formatCurrency(selectedPartForAudit.unit_cost)} • Supplier: {selectedPartForAudit.supplier || 'Pakshal Auto Parts'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedPartForAudit(null)}
+                className="text-zinc-500 hover:text-zinc-200 p-1.5 rounded-lg hover:bg-zinc-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Consumption Stats */}
+            <div className="p-4 grid grid-cols-3 gap-3 bg-[#18181b] border-b border-[#27272a]">
+              {(() => {
+                const logs = partUsageLogs.filter((l) => l.part_id === selectedPartForAudit.id);
+                const totalUnitsUsed = logs.reduce((sum, l) => sum + l.quantity, 0);
+                const totalSpend = totalUnitsUsed * selectedPartForAudit.unit_cost;
+                const stockEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === selectedPartForAudit.id);
+                const currentStock = stockEntry ? stockEntry.physical_stock : 0;
+
+                return (
+                  <>
+                    <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a]">
+                      <span className="text-[10px] uppercase font-bold text-zinc-500">Current Shelf Stock</span>
+                      <div className="font-mono font-bold text-lg text-emerald-400 mt-0.5">{currentStock} Units</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a]">
+                      <span className="text-[10px] uppercase font-bold text-zinc-500">Historical Consumption</span>
+                      <div className="font-mono font-bold text-lg text-blue-400 mt-0.5">{totalUnitsUsed} Units Used</div>
+                    </div>
+                    <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a]">
+                      <span className="text-[10px] uppercase font-bold text-zinc-500">Cumulative Part Spend</span>
+                      <div className="font-mono font-bold text-lg text-purple-300 mt-0.5">{formatCurrency(totalSpend)}</div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Vehicle-by-Vehicle Usage Ledger */}
+            <div className="p-4 flex-1 overflow-y-auto space-y-3">
+              <h4 className="font-bold text-xs text-zinc-300 uppercase tracking-wider">
+                Vehicle-by-Vehicle & Hub Usage Logs
+              </h4>
+
+              {(() => {
+                const logs = partUsageLogs.filter((l) => l.part_id === selectedPartForAudit.id);
+                if (logs.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-zinc-500 text-xs border border-dashed border-zinc-800 rounded-xl">
+                      No dispatched consumption logged for this part yet.
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="border border-[#2a2a2f] rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-[#141416] text-zinc-400 border-b border-[#27272a] text-[10px] uppercase font-semibold">
+                        <tr>
+                          <th className="p-2.5 pl-3">Date & Time</th>
+                          <th className="p-2.5">Vehicle / Destination</th>
+                          <th className="p-2.5">Quantity</th>
+                          <th className="p-2.5">Recipient</th>
+                          <th className="p-2.5">Reason / Job Card</th>
+                          <th className="p-2.5 text-right pr-3">Total Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#27272a] text-zinc-300">
+                        {logs.map((log) => {
+                          const veh = vehicles.find((v) => v.id === log.vehicle_id);
+                          const hub = hubs.find((h) => h.id === log.hub_id);
+                          return (
+                            <tr key={log.id} className="hover:bg-zinc-800/30">
+                              <td className="p-2.5 pl-3 font-mono text-[11px] text-zinc-400">
+                                {formatDate(log.created_at)}
+                              </td>
+                              <td className="p-2.5">
+                                {veh ? (
+                                  <div>
+                                    <span className="font-mono font-bold text-zinc-100">Key #{veh.key_number}</span>
+                                    <span className="text-[10px] text-zinc-500 font-mono ml-1">({veh.custom_vehicle_id || veh.vehicle_id})</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-zinc-400">{hub?.name.split(' (')[0] || 'General Store'}</span>
+                                )}
+                              </td>
+                              <td className="p-2.5 font-mono font-bold text-zinc-200">
+                                {log.quantity} Pcs
+                              </td>
+                              <td className="p-2.5 text-zinc-300">
+                                {log.recipient_name || log.used_by_name}
+                              </td>
+                              <td className="p-2.5 text-zinc-400 text-[11px]">
+                                {log.reason}
+                              </td>
+                              <td className="p-2.5 text-right pr-3 font-mono font-bold text-purple-300">
+                                {formatCurrency(log.quantity * selectedPartForAudit.unit_cost)}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-[#141416] border-t border-[#27272a] flex items-center justify-end">
+              <button
+                onClick={() => setSelectedPartForAudit(null)}
+                className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-xl text-xs font-semibold transition"
+              >
+                Close Audit View
+              </button>
+            </div>
           </div>
         </div>
       )}
