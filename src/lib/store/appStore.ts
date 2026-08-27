@@ -41,7 +41,8 @@ import {
   INITIAL_SOPS,
   INITIAL_NOTES,
   INITIAL_BLOCKED_USERS,
-} from './mockData';
+} from './initialData';
+import { supabaseSync } from '../supabase/syncService';
 
 interface AppStoreState {
   // Navigation & UI State
@@ -187,15 +188,18 @@ export const useAppStore = create<AppStoreState>()(
       setSidebarCollapse: (collapsed) => set({ isSidebarCollapsed: collapsed }),
 
       // Active User & RBAC
-      currentUser: INITIAL_PROFILES[0],
-      activeRoles: ['owner'],
+      currentUser: null as any,
+      activeRoles: [],
       activeHubId: 'ALL',
       customRoles: INITIAL_ROLES,
       staffProfiles: INITIAL_PROFILES,
 
       toggleRole: (role) => {
         const { currentUser, activeRoles } = get();
-        const isUserOwner = currentUser.roles?.some((r) => r.code === 'owner') || activeRoles.includes('owner');
+        const isUserOwner =
+          Boolean(currentUser?.roles?.some((r) => r.code === 'owner')) ||
+          currentUser?.email === 'bhuvnesh3568@gmail.com' ||
+          activeRoles.includes('owner');
         if (!isUserOwner) {
           console.warn('Role preview switching is restricted to Super Admin (Owner).');
           return;
@@ -213,16 +217,7 @@ export const useAppStore = create<AppStoreState>()(
         set({ activeRoles: updated });
       },
 
-      setActiveRoles: (roles) => {
-        const { currentUser, activeRoles } = get();
-        const isUserOwner = currentUser.roles?.some((r) => r.code === 'owner') || activeRoles.includes('owner');
-        if (!isUserOwner) {
-          console.warn('Role preview switching is restricted to Super Admin (Owner).');
-          return;
-        }
-        set({ activeRoles: roles });
-      },
-
+      setActiveRoles: (roles) => set({ activeRoles: roles }),
       setCurrentUser: (user) => set({ currentUser: user }),
       setActiveHubId: (hubId) => set({ activeHubId: hubId }),
 
@@ -321,6 +316,7 @@ export const useAppStore = create<AppStoreState>()(
           refunds: [newRefund, ...refunds],
           auditLogs: [newAudit, ...auditLogs],
         });
+        supabaseSync.pushMutation('refunds', 'insert', newRefund);
       },
 
       verifyRefund: (refundId, remarks) => {
@@ -352,6 +348,12 @@ export const useAppStore = create<AppStoreState>()(
         };
 
         set({ refunds: updatedRefunds, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'update', {
+          id: refundId,
+          status: 'VERIFIED',
+          internal_remarks: remarks || existing.internal_remarks,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       settleRefund: (refundId, frappeReference) => {
@@ -390,6 +392,15 @@ export const useAppStore = create<AppStoreState>()(
         };
 
         set({ refunds: updatedRefunds, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'update', {
+          id: refundId,
+          status: 'SETTLED',
+          frappe_reference: autoFrappeRef,
+          settled_at: new Date().toISOString(),
+          settled_by_name: currentUser.full_name,
+          approved_by: currentUser.id,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       rejectRefund: (refundId, reason) => {
@@ -421,6 +432,12 @@ export const useAppStore = create<AppStoreState>()(
         };
 
         set({ refunds: updatedRefunds, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'update', {
+          id: refundId,
+          status: 'REJECTED',
+          rejection_reason: reason,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       // ====================================================================
@@ -449,6 +466,7 @@ export const useAppStore = create<AppStoreState>()(
         };
 
         set({ hubs: [...hubs, newHub], auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('hubs', 'insert', newHub);
       },
 
       updateHub: (hubId, hubData) => {
@@ -475,6 +493,11 @@ export const useAppStore = create<AppStoreState>()(
         };
 
         set({ hubs: updatedHubs, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('hubs', 'update', {
+          id: hubId,
+          ...hubData,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       toggleChargerStatus: (hubId, portNumber, status, remarks) => {
@@ -803,6 +826,11 @@ export const useAppStore = create<AppStoreState>()(
         };
 
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'update', {
+          id: vehicleId,
+          ...vehicleData,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       requestVehicleStatus: (vehicleId, pendingStatus, reason, forceImmediate) => {
@@ -1609,6 +1637,7 @@ export const useAppStore = create<AppStoreState>()(
         };
 
         set({ teamNotes: [newNote, ...teamNotes] });
+        supabaseSync.pushMutation('team_notes', 'insert', newNote);
       },
 
       updateNote: (noteId, noteData) => {
@@ -1619,6 +1648,11 @@ export const useAppStore = create<AppStoreState>()(
             : n
         );
         set({ teamNotes: updatedNotes });
+        supabaseSync.pushMutation('team_notes', 'update', {
+          id: noteId,
+          ...noteData,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       archiveNote: (noteId) => {
@@ -1627,6 +1661,12 @@ export const useAppStore = create<AppStoreState>()(
           n.id === noteId ? { ...n, status: 'ARCHIVED' as const, is_pinned: false, updated_at: new Date().toISOString() } : n
         );
         set({ teamNotes: updated });
+        supabaseSync.pushMutation('team_notes', 'update', {
+          id: noteId,
+          status: 'ARCHIVED',
+          is_pinned: false,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       resolveNote: (noteId) => {
@@ -1644,6 +1684,14 @@ export const useAppStore = create<AppStoreState>()(
             : n
         );
         set({ teamNotes: updated });
+        supabaseSync.pushMutation('team_notes', 'update', {
+          id: noteId,
+          status: 'RESOLVED',
+          is_pinned: false,
+          resolved_at: new Date().toISOString(),
+          resolved_by_name: currentUser.full_name,
+          updated_at: new Date().toISOString(),
+        });
       },
 
       restoreNote: (noteId) => {
@@ -1652,11 +1700,17 @@ export const useAppStore = create<AppStoreState>()(
           n.id === noteId ? { ...n, status: 'ACTIVE' as const, updated_at: new Date().toISOString() } : n
         );
         set({ teamNotes: updated });
+        supabaseSync.pushMutation('team_notes', 'update', {
+          id: noteId,
+          status: 'ACTIVE',
+          updated_at: new Date().toISOString(),
+        });
       },
 
       deleteNote: (noteId) => {
         const { teamNotes } = get();
         set({ teamNotes: teamNotes.filter((n) => n.id !== noteId) });
+        supabaseSync.pushMutation('team_notes', 'delete', { id: noteId });
       },
 
       bulkDisposeOldNotes: () => {
@@ -1668,7 +1722,7 @@ export const useAppStore = create<AppStoreState>()(
       togglePinNote: (noteId) => {
         const { teamNotes } = get();
         const updatedNotes = teamNotes.map((n) =>
-          n.id === noteId ? { ...n, is_pinned: !n.is_pinned } : n
+          n.id === noteId ? { ...n, is_pinned: !n.is_pinned, updated_at: new Date().toISOString() } : n
         );
         set({ teamNotes: updatedNotes });
       },
@@ -1684,12 +1738,14 @@ export const useAppStore = create<AppStoreState>()(
           id: newId,
         };
         set({ blockedUsers: [newBlocked, ...blockedUsers] });
+        supabaseSync.pushMutation('blocked_users', 'insert', newBlocked);
       },
 
       updateBlockedUser: (id, updates) => {
         const { blockedUsers } = get();
         const updated = blockedUsers.map((b) => (b.id === id ? { ...b, ...updates } : b));
         set({ blockedUsers: updated });
+        supabaseSync.pushMutation('blocked_users', 'update', { id, ...updates });
       },
 
       // State Reset to Real Mumbai Baseline
@@ -1711,8 +1767,8 @@ export const useAppStore = create<AppStoreState>()(
           auditLogs: INITIAL_AUDIT_LOGS,
           customRoles: INITIAL_ROLES,
           staffProfiles: INITIAL_PROFILES,
-          activeRoles: ['owner'],
-          currentUser: INITIAL_PROFILES[0],
+          activeRoles: get().activeRoles,
+          currentUser: get().currentUser,
           isSidebarCollapsed: false,
         });
       },

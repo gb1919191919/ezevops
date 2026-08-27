@@ -22,7 +22,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useRBAC } from '@/hooks/useRBAC';
+
 export function AuditTrailExplorer() {
+  const { isOwner } = useRBAC();
   const auditLogs = useAppStore((s) => s.auditLogs);
   const blockedUsers = useAppStore((s) => s.blockedUsers);
   const updateBlockedUser = useAppStore((s) => s.updateBlockedUser);
@@ -30,6 +33,22 @@ export function AuditTrailExplorer() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tableFilter, setTableFilter] = useState<string>('ALL');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+
+  if (!isOwner) {
+    return (
+      <div className="p-8 rounded-2xl bg-[#1c1c1f] border border-[#2a2a2f] text-center space-y-4 max-w-lg mx-auto my-12">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
+          <Shield className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-zinc-100">Audit Trail Restricted</h2>
+          <p className="text-xs text-zinc-400 mt-1">
+            Access to cryptographic immutable audit logs and security records is restricted to Super Admin (Owner) accounts.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const filteredLogs = auditLogs.filter((log) => {
     if (tableFilter !== 'ALL' && log.table_name !== tableFilter) return false;

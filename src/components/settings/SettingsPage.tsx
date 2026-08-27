@@ -3,8 +3,7 @@
 import React, { useState } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
 import { useRBAC } from '@/hooks/useRBAC';
-import { ROLE_DEFINITIONS } from '@/lib/rbac';
-import { INITIAL_PERMISSIONS } from '@/lib/store/mockData';
+import { INITIAL_PERMISSIONS } from '@/lib/store/initialData';
 import { supabaseUrl } from '@/lib/supabase/client';
 import { Role, Profile, PermissionKey } from '@/types';
 import { formatPhone, cn } from '@/lib/utils';
@@ -48,7 +47,7 @@ export function SettingsPage() {
   const updateRolePermissions = useAppStore((s) => s.updateRolePermissions);
   const addStaffProfile = useAppStore((s) => s.addStaffProfile);
   const resetToDefaultData = useAppStore((s) => s.resetToDefaultData);
-  const { effectivePermissions } = useRBAC();
+  const { isOwner, effectivePermissions } = useRBAC();
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -63,6 +62,22 @@ export function SettingsPage() {
       toast.success('Application state reset to default Indian seed data.');
     }
   };
+
+  if (!isOwner) {
+    return (
+      <div className="p-8 rounded-2xl bg-[#1c1c1f] border border-[#2a2a2f] text-center space-y-4 max-w-lg mx-auto my-12">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 mx-auto">
+          <Shield className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-zinc-100">Super Admin Access Restricted</h2>
+          <p className="text-xs text-zinc-400 mt-1">
+            System configuration, database credentials, and staff role governance are restricted to Super Admin (Owner) accounts.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const handleCreateStaff = (e: React.FormEvent) => {
     e.preventDefault();
@@ -311,7 +326,7 @@ export function SettingsPage() {
 
       {/* Tab 3: Database & Supabase */}
       {activeTab === 'database' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="p-5 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -323,28 +338,28 @@ export function SettingsPage() {
               </span>
             </div>
 
-            <div className="space-y-2 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">
-                <div>
+                <div className="truncate mr-2">
                   <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
                     Supabase URL
                   </span>
-                  <p className="font-mono text-zinc-200 mt-0.5">{supabaseUrl}</p>
+                  <p className="font-mono text-zinc-200 mt-0.5 truncate">{supabaseUrl}</p>
                 </div>
                 <button
                   onClick={() => copyToClipboard(supabaseUrl, 'Supabase URL')}
-                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-100 transition"
+                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-100 transition shrink-0"
                 >
                   {copied === 'Supabase URL' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
 
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">
-                <div>
+                <div className="truncate mr-2">
                   <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
-                    Publishable Anon Key
+                    Publishable Key
                   </span>
-                  <p className="font-mono text-zinc-400 text-[11px] mt-0.5 truncate max-w-sm sm:max-w-md">
+                  <p className="font-mono text-zinc-400 text-[11px] mt-0.5 truncate">
                     sb_publishable_Zmbxm8Vjiqz8Zji9o_Jp8A_r6tqTlDI
                   </p>
                 </div>
@@ -355,11 +370,123 @@ export function SettingsPage() {
                       'Publishable Key'
                     )
                   }
-                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-100 transition"
+                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-100 transition shrink-0"
                 >
                   {copied === 'Publishable Key' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                 </button>
               </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">
+                <div className="truncate mr-2">
+                  <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
+                    Secret Key
+                  </span>
+                  <p className="font-mono text-zinc-400 text-[11px] mt-0.5 truncate">
+                    sb_secret_deAPQXRdEYMGvqZBXf6EWw_FYqMA5-h
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    copyToClipboard(
+                      'sb_secret_deAPQXRdEYMGvqZBXf6EWw_FYqMA5-h',
+                      'Secret Key'
+                    )
+                  }
+                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-100 transition shrink-0"
+                >
+                  {copied === 'Secret Key' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">
+                <div className="truncate mr-2">
+                  <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
+                    JWKS URL
+                  </span>
+                  <p className="font-mono text-zinc-400 text-[11px] mt-0.5 truncate">
+                    https://yliozdsnqnfjkpcuctwe.supabase.co/auth/v1/.well-known/jwks.json
+                  </p>
+                </div>
+                <button
+                  onClick={() =>
+                    copyToClipboard(
+                      'https://yliozdsnqnfjkpcuctwe.supabase.co/auth/v1/.well-known/jwks.json',
+                      'JWKS URL'
+                    )
+                  }
+                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-100 transition shrink-0"
+                >
+                  {copied === 'JWKS URL' ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Database Setup & Seed Controls */}
+          <div className="p-5 rounded-2xl bg-zinc-900/70 border border-zinc-800 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="w-4 h-4 text-indigo-400" />
+                <h3 className="font-bold text-sm text-zinc-100">Live Database Sync & Schema Setup</h3>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-400 leading-relaxed">
+              EzEv Ops runs directly with real Mumbai production datasets (13 Hubs including Central Store 1, 40 Vehicles with 15-digit IoT IDs, 28 Spare Parts, 41 Customer Refunds, and Blocked Users).
+            </p>
+
+            <div className="flex flex-wrap gap-3 pt-1">
+              <button
+                onClick={async () => {
+                  try {
+                    toast.info('Checking Supabase tables...');
+                    const res = await fetch('/api/supabase/status');
+                    const data = await res.json();
+                    if (data.connected) {
+                      toast.success('Connected to Supabase project!', {
+                        description: `Schema ready: ${data.schemaReady ? 'Yes' : 'Pending SQL schema execution'}`,
+                      });
+                    } else {
+                      toast.error('Could not connect to Supabase', { description: data.error });
+                    }
+                  } catch (e: any) {
+                    toast.error('Network error checking status', { description: e.message });
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold flex items-center gap-2 transition"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-zinc-400" />
+                Check Supabase Health
+              </button>
+
+              <button
+                onClick={async () => {
+                  try {
+                    toast.info('Syncing real Mumbai fleet data to Supabase...');
+                    const res = await fetch('/api/supabase/seed', { method: 'POST' });
+                    const data = await res.json();
+                    if (data.success) {
+                      toast.success('Sync complete!', { description: data.message });
+                    } else {
+                      toast.error('Sync notice', { description: data.error });
+                    }
+                  } catch (e: any) {
+                    toast.error('Sync failed', { description: e.message });
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold flex items-center gap-2 transition"
+              >
+                <Server className="w-3.5 h-3.5" />
+                Sync Real Fleet Data to Supabase
+              </button>
+
+              <button
+                onClick={handleResetData}
+                className="px-4 py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold flex items-center gap-2 transition"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-red-400" />
+                Reset Local Store to Real Data
+              </button>
             </div>
           </div>
         </div>

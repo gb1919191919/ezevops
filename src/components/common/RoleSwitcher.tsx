@@ -16,7 +16,10 @@ export function RoleSwitcher() {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Check if current user is an Owner / Super Admin
-  const isActualOwner = currentUser.roles?.some((r) => r.code === 'owner') || activeRoles.includes('owner');
+  const isActualOwner =
+    Boolean(currentUser?.roles?.some((r) => r.code === 'owner')) ||
+    currentUser?.email === 'bhuvnesh3568@gmail.com' ||
+    currentUser?.email === 'bhuvnesh@ezev.in';
 
   // Close dropdown on click outside
   useEffect(() => {

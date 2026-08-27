@@ -3,7 +3,6 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSupabaseAuth } from '@/hooks/useSupabaseAuth';
-import { useAppStore } from '@/lib/store/appStore';
 import {
   Zap,
   Mail,
@@ -13,27 +12,23 @@ import {
   CheckCircle2,
   AlertCircle,
   KeyRound,
-  Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
   const [authMode, setAuthMode] = useState<'magic_link' | 'password'>('magic_link');
-  const [email, setEmail] = useState('bhuvnesh3568@gmail.com');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
-  const { loading, authError, signInWithOtp, signInWithPassword, matchAndSyncProfile } =
-    useSupabaseAuth();
-  const staffProfiles = useAppStore((s) => s.staffProfiles);
-  const setCurrentUser = useAppStore((s) => s.setCurrentUser);
-  const setActiveRoles = useAppStore((s) => s.setActiveRoles);
+  const { loading, authError, signInWithOtp, signInWithPassword } = useSupabaseAuth();
 
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim()) {
-      toast.error('Please enter your work email.');
+      toast.error('Please enter your authorized work email.');
       return;
     }
 
@@ -54,15 +49,6 @@ export default function LoginPage() {
     if (res.success) {
       router.push('/');
     }
-  };
-
-  const handleQuickDemoLogin = (staffEmail: string) => {
-    setEmail(staffEmail);
-    matchAndSyncProfile(staffEmail);
-    toast.success(`Logged in as ${staffEmail}`, {
-      description: 'Session mapped to staff role in local state',
-    });
-    router.push('/');
   };
 
   return (
@@ -122,17 +108,19 @@ export default function LoginPage() {
             <div className="p-5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-3">
               <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
               <div>
-                <h3 className="font-bold text-sm text-emerald-300">Magic Link Sent!</h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  We sent a secure login link to <strong className="text-zinc-200">{email}</strong>.
-                  Click the link to log into EzEv Ops.
+                <h3 className="font-bold text-sm text-emerald-300">Sign-in Link Dispatched</h3>
+                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                  A secure cryptographic authentication link has been dispatched to <strong className="text-zinc-200 font-mono">{email}</strong>.
+                </p>
+                <p className="text-[11px] text-zinc-400 mt-2">
+                  Open the email link on this device to verify your operator session and access the operations portal.
                 </p>
               </div>
               <button
-                onClick={() => router.push('/')}
-                className="w-full py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition"
+                onClick={() => setIsSubmitted(false)}
+                className="w-full py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs transition mt-2"
               >
-                Proceed to Dashboard
+                Enter Different Email
               </button>
             </div>
           ) : (
@@ -143,7 +131,7 @@ export default function LoginPage() {
               <div className="space-y-1.5">
                 <label className="text-zinc-300 font-semibold flex items-center justify-between">
                   <span>Work Email Address</span>
-                  <span className="text-[10px] text-blue-400 font-mono">Owner / Staff</span>
+                  <span className="text-[10px] text-blue-400 font-mono">Authorized Staff Only</span>
                 </label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
@@ -153,7 +141,7 @@ export default function LoginPage() {
                     placeholder="bhuvnesh3568@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition font-mono"
+                    className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition font-mono"
                   />
                 </div>
               </div>
@@ -169,14 +157,14 @@ export default function LoginPage() {
                       placeholder="••••••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition"
                     />
                   </div>
                 </div>
               )}
 
               {authError && (
-                <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0" />
                   <span>{authError}</span>
                 </div>
@@ -188,11 +176,11 @@ export default function LoginPage() {
                 className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
-                  <span>Authenticating...</span>
+                  <span>Authenticating with Supabase...</span>
                 ) : (
                   <>
                     <span>
-                      {authMode === 'magic_link' ? 'Send Login Magic Link' : 'Sign In with Password'}
+                      {authMode === 'magic_link' ? 'Send Secure Magic Link' : 'Sign In with Password'}
                     </span>
                     <ArrowRight className="w-4 h-4" />
                   </>
@@ -201,75 +189,16 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* Quick Staff Fast-Switch Helper */}
-          <div className="pt-4 border-t border-[#27272a] space-y-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block text-center">
-              Quick Operator Session Login
-            </span>
-            <div className="space-y-1.5">
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('bhuvnesh3568@gmail.com')}
-                className="w-full p-2 rounded-xl bg-[#141416] hover:bg-blue-500/15 border border-blue-500/30 text-left transition flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-blue-400" />
-                  <div className="truncate">
-                    <div className="font-bold text-zinc-100 text-xs">Bhuvnesh Kumar</div>
-                    <div className="text-[10px] text-zinc-400 font-mono truncate">
-                      bhuvnesh3568@gmail.com
-                    </div>
-                  </div>
-                </div>
-                <span className="px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 font-mono text-[9px] font-bold border border-blue-500/30 flex-shrink-0">
-                  SUPER ADMIN
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('zaffar.patel@ezev.in')}
-                className="w-full p-2 rounded-xl bg-[#141416] hover:bg-zinc-800 border border-[#2a2a2f] text-left transition flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <div className="truncate">
-                    <div className="font-bold text-zinc-200 text-xs">Zaffar Patel</div>
-                    <div className="text-[10px] text-zinc-400 font-mono truncate">
-                      zaffar.patel@ezev.in
-                    </div>
-                  </div>
-                </div>
-                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono text-[9px] font-bold border border-zinc-700 flex-shrink-0">
-                  OPS MANAGER
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleQuickDemoLogin('rajkumar.mandal@ezev.in')}
-                className="w-full p-2 rounded-xl bg-[#141416] hover:bg-zinc-800 border border-[#2a2a2f] text-left transition flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-2 h-2 rounded-full bg-amber-400" />
-                  <div className="truncate">
-                    <div className="font-bold text-zinc-200 text-xs">Rajkumar Mandal</div>
-                    <div className="text-[10px] text-zinc-400 font-mono truncate">
-                      rajkumar.mandal@ezev.in
-                    </div>
-                  </div>
-                </div>
-                <span className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 font-mono text-[9px] font-bold border border-zinc-700 flex-shrink-0">
-                  CHIEF MECHANIC
-                </span>
-              </button>
-            </div>
+          {/* Security Notice */}
+          <div className="pt-3 border-t border-[#27272a] flex items-center justify-center gap-2 text-[11px] text-zinc-400">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>End-to-end Row-Level Security Protected</span>
           </div>
         </div>
 
         {/* Footer info */}
         <p className="text-center text-[11px] text-zinc-400">
-          Supabase Connected: <span className="font-mono text-zinc-300">yliozdsnqnfjkpcuctwe</span>
+          Supabase Project: <span className="font-mono text-zinc-300">yliozdsnqnfjkpcuctwe</span>
         </p>
       </div>
     </div>

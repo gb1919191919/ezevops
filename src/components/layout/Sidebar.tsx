@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAppStore } from '@/lib/store/appStore';
+import { useRBAC } from '@/hooks/useRBAC';
 import {
   LayoutDashboard,
   Car,
@@ -27,6 +28,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const isCollapsed = useAppStore((s) => s.isSidebarCollapsed);
   const toggleCollapse = useAppStore((s) => s.toggleSidebarCollapse);
+  const { isOwner, isManager, isMechanic, isRSA } = useRBAC();
 
   const jobCards = useAppStore((s) => s.jobCards);
   const vehicles = useAppStore((s) => s.vehicles);
@@ -46,11 +48,12 @@ export function Sidebar() {
 
   const pendingTasksCount = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ABANDONED').length;
 
+  // Build filtered navigation sections based on verified user permissions
   const navSections = [
     {
       title: 'Operations',
       items: [
-        { name: 'Dashboard', href: '/', icon: LayoutDashboard, badge: null },
+        { name: 'Dashboard', href: '/', icon: LayoutDashboard, badge: null, visible: true },
         {
           name: 'Fleet Master',
           href: '/fleet',
@@ -60,12 +63,14 @@ export function Sidebar() {
               ? `${vehicles.filter((v) => v.pending_status !== null).length}`
               : null,
           badgeVariant: 'warning',
+          visible: true,
         },
         {
           name: 'Rapid Inspection',
           href: '/inspections',
           icon: ShieldCheck,
           badge: null,
+          visible: true,
         },
         {
           name: 'Approvals Desk',
@@ -73,6 +78,7 @@ export function Sidebar() {
           icon: CheckSquare,
           badge: pendingApprovalsCount > 0 ? `${pendingApprovalsCount}` : null,
           badgeVariant: 'danger',
+          visible: isOwner || isManager,
         },
       ],
     },
@@ -85,6 +91,7 @@ export function Sidebar() {
           icon: Package,
           badge: lowStockCount > 0 ? `${lowStockCount}` : null,
           badgeVariant: 'danger',
+          visible: true,
         },
         {
           name: 'Job Cards',
@@ -95,6 +102,7 @@ export function Sidebar() {
               ? `${jobCards.filter((j) => j.status === 'PENDING').length}`
               : null,
           badgeVariant: 'warning',
+          visible: true,
         },
         {
           name: 'Objectives & Tasks',
@@ -102,8 +110,9 @@ export function Sidebar() {
           icon: CheckCircle2,
           badge: pendingTasksCount > 0 ? `${pendingTasksCount}` : null,
           badgeVariant: 'info',
+          visible: true,
         },
-        { name: 'Hubs Directory', href: '/hubs', icon: Building2, badge: null },
+        { name: 'Hubs Directory', href: '/hubs', icon: Building2, badge: null, visible: true },
       ],
     },
     {
@@ -115,12 +124,14 @@ export function Sidebar() {
           icon: BookOpen,
           badge: `${sops.length}`,
           badgeVariant: 'info',
+          visible: true,
         },
         {
           name: 'Team Notes & Scratchpad',
           href: '/notes',
           icon: StickyNote,
           badge: null,
+          visible: true,
         },
       ],
     },
@@ -133,9 +144,10 @@ export function Sidebar() {
           icon: DollarSign,
           badge: refunds.filter((r) => r.status === 'SUBMITTED').length > 0 ? '!' : null,
           badgeVariant: 'warning',
+          visible: isOwner || isManager,
         },
-        { name: 'Audit Trail', href: '/audit', icon: History, badge: null },
-        { name: 'Settings & Roles', href: '/settings', icon: Settings, badge: null },
+        { name: 'Audit Trail', href: '/audit', icon: History, badge: null, visible: isOwner },
+        { name: 'Settings & Roles', href: '/settings', icon: Settings, badge: null, visible: isOwner },
       ],
     },
   ];
@@ -148,65 +160,70 @@ export function Sidebar() {
       )}
     >
       <div className="space-y-5">
-        {navSections.map((section, sIdx) => (
-          <div key={sIdx} className="space-y-1">
-            {!isCollapsed && (
-              <h4 className="px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
-                {section.title}
-              </h4>
-            )}
-            <div className="space-y-0.5">
-              {section.items.map((item) => {
-                const isActive = pathname === item.href;
-                const Icon = item.icon;
+        {navSections.map((section, sIdx) => {
+          const visibleItems = section.items.filter((item) => item.visible);
+          if (visibleItems.length === 0) return null;
 
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    title={isCollapsed ? item.name : undefined}
-                    className={cn(
-                      'flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition group relative',
-                      isActive
-                        ? 'bg-[#1e1e22] text-blue-400 font-semibold border border-[#2a2a2f] shadow-sm'
-                        : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1c1c1f] border border-transparent',
-                      isCollapsed && 'justify-center px-2'
-                    )}
-                  >
-                    <Icon
+          return (
+            <div key={sIdx} className="space-y-1">
+              {!isCollapsed && (
+                <h4 className="px-3 text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                  {section.title}
+                </h4>
+              )}
+              <div className="space-y-0.5">
+                {visibleItems.map((item) => {
+                  const isActive = pathname === item.href;
+                  const Icon = item.icon;
+
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      title={isCollapsed ? item.name : undefined}
                       className={cn(
-                        'w-4 h-4 flex-shrink-0 transition-colors',
-                        isActive ? 'text-blue-400' : 'text-zinc-400 group-hover:text-zinc-200'
+                        'flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition group relative',
+                        isActive
+                          ? 'bg-[#1e1e22] text-blue-400 font-semibold border border-[#2a2a2f] shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-[#1c1c1f] border border-transparent',
+                        isCollapsed && 'justify-center px-2'
                       )}
-                    />
-
-                    {!isCollapsed && (
-                      <span className="flex-1 truncate">{item.name}</span>
-                    )}
-
-                    {item.badge && !isCollapsed && (
-                      <span
+                    >
+                      <Icon
                         className={cn(
-                          'px-1.5 py-0.2 rounded-md font-mono text-[10px] font-bold border',
-                          item.badgeVariant === 'danger' && 'bg-rose-500/10 text-rose-300 border-rose-500/30',
-                          item.badgeVariant === 'warning' && 'bg-amber-500/10 text-amber-300 border-amber-500/30',
-                          item.badgeVariant === 'info' && 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                          'w-4 h-4 flex-shrink-0 transition-colors',
+                          isActive ? 'text-blue-400' : 'text-zinc-400 group-hover:text-zinc-200'
                         )}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
+                      />
 
-                    {/* Collapsed dot badge */}
-                    {item.badge && isCollapsed && (
-                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-400 ring-2 ring-[#18181b]" />
-                    )}
-                  </Link>
-                );
-              })}
+                      {!isCollapsed && (
+                        <span className="flex-1 truncate">{item.name}</span>
+                      )}
+
+                      {item.badge && !isCollapsed && (
+                        <span
+                          className={cn(
+                            'px-1.5 py-0.2 rounded-md font-mono text-[10px] font-bold border',
+                            item.badgeVariant === 'danger' && 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+                            item.badgeVariant === 'warning' && 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+                            item.badgeVariant === 'info' && 'bg-blue-500/10 text-blue-300 border-blue-500/30'
+                          )}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+
+                      {/* Collapsed dot badge */}
+                      {item.badge && isCollapsed && (
+                        <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-blue-400 ring-2 ring-[#18181b]" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Footer Collapse Action */}
