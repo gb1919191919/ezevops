@@ -160,6 +160,8 @@ interface AppStoreState {
 
   // Role-Based Group Communications (8.2)
   createChatChannel: (channel: Omit<ChatChannel, 'id' | 'created_at'>) => void;
+  updateChatChannel: (id: string, updates: Partial<ChatChannel>) => void;
+  deleteChatChannel: (id: string) => void;
   sendChannelMessage: (msg: Omit<ChannelMessage, 'id' | 'created_at'>) => void;
 
   // 6. Spare Parts Catalog (Single "Store 1" Warehouse, Dispatch & Usage)
@@ -935,14 +937,90 @@ export const useAppStore = create<AppStoreState>()(
 
       // Role-Based Group Communications (8.2)
       createChatChannel: (channelData) => {
-        const { chatChannels } = get();
+        const { chatChannels, auditLogs, currentUser } = get();
         const newId = `chan-${Date.now()}`;
         const newChan: ChatChannel = {
           ...channelData,
           id: newId,
           created_at: new Date().toISOString(),
         };
-        set({ chatChannels: [...chatChannels, newChan] });
+
+        const newAudit: AuditLog = {
+          id: `audit-${Date.now()}`,
+          table_name: 'chat_channels',
+          record_id: newId,
+          action: 'INSERT',
+          performed_by: currentUser?.id || 'admin',
+          performer_name: currentUser?.full_name || 'Staff Member',
+          new_data: newChan,
+          timestamp: new Date().toISOString(),
+        };
+
+        set({
+          chatChannels: [...chatChannels, newChan],
+          auditLogs: [newAudit, ...auditLogs],
+        });
+
+        // Background push to Supabase
+        supabaseSync.pushMutation('chat_channels', 'insert', newChan);
+      },
+
+      updateChatChannel: (id, updates) => {
+        const { chatChannels, auditLogs, currentUser } = get();
+        const existing = chatChannels.find((c) => c.id === id);
+        if (!existing) return;
+
+        const updatedChan: ChatChannel = {
+          ...existing,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+
+        const newAudit: AuditLog = {
+          id: `audit-${Date.now()}`,
+          table_name: 'chat_channels',
+          record_id: id,
+          action: 'UPDATE',
+          performed_by: currentUser?.id || 'admin',
+          performer_name: currentUser?.full_name || 'Staff Member',
+          old_data: existing,
+          new_data: updatedChan,
+          timestamp: new Date().toISOString(),
+        };
+
+        set({
+          chatChannels: chatChannels.map((c) => (c.id === id ? updatedChan : c)),
+          auditLogs: [newAudit, ...auditLogs],
+        });
+
+        // Background push to Supabase
+        supabaseSync.pushMutation('chat_channels', 'update', updatedChan);
+      },
+
+      deleteChatChannel: (id) => {
+        const { chatChannels, channelMessages, auditLogs, currentUser } = get();
+        const existing = chatChannels.find((c) => c.id === id);
+        if (!existing) return;
+
+        const newAudit: AuditLog = {
+          id: `audit-${Date.now()}`,
+          table_name: 'chat_channels',
+          record_id: id,
+          action: 'DELETE',
+          performed_by: currentUser?.id || 'admin',
+          performer_name: currentUser?.full_name || 'Staff Member',
+          old_data: existing,
+          timestamp: new Date().toISOString(),
+        };
+
+        set({
+          chatChannels: chatChannels.filter((c) => c.id !== id),
+          channelMessages: channelMessages.filter((m) => m.channel_id !== id),
+          auditLogs: [newAudit, ...auditLogs],
+        });
+
+        // Background push to Supabase
+        supabaseSync.pushMutation('chat_channels', 'delete', { id });
       },
 
       sendChannelMessage: (msgData) => {
@@ -954,6 +1032,9 @@ export const useAppStore = create<AppStoreState>()(
           created_at: new Date().toISOString(),
         };
         set({ channelMessages: [...channelMessages, newMsg] });
+
+        // Background push to Supabase
+        supabaseSync.pushMutation('channel_messages', 'insert', newMsg);
       },
 
       // ====================================================================

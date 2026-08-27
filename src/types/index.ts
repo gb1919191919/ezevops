@@ -1,29 +1,86 @@
 export type RoleCode = 'owner' | 'manager' | 'rsa' | 'mechanic' | string;
 
 export type PermissionKey =
+  // Fleet Master
   | 'vehicle:view'
+  | 'vehicle:create'
+  | 'vehicle:edit'
   | 'vehicle:request_state'
   | 'vehicle:approve_state'
   | 'vehicle:reassign_iot'
-  | 'vehicle:edit'
+  | 'vehicle:update_odometer'
+  | 'vehicle:delete'
+  // Rapid Inspections
+  | 'inspections:view'
+  | 'inspections:create'
+  | 'inspections:override_status'
+  // Job Cards & Defect Tickets
+  | 'job:view'
   | 'job:create'
+  | 'job:edit'
+  | 'job:assign_mechanic'
   | 'job:complete'
   | 'job:approve'
-  | 'job:edit'
+  | 'job:reject'
+  | 'job:delete'
+  // Inventory & Central Store 1 Spares
+  | 'inventory:view'
   | 'inventory:request'
   | 'inventory:approve'
+  | 'inventory:adjust_stock'
+  | 'part:create'
   | 'part:edit'
+  | 'part:delete'
+  // Approvals Desk
+  | 'approvals:view'
+  | 'approvals:job_cards'
+  | 'approvals:vehicle_status'
+  | 'approvals:refunds'
+  // Customer Disputes & Refunds
+  | 'refund:view'
   | 'refund:create'
+  | 'refund:edit'
   | 'refund:approve'
+  | 'refund:reject'
+  // Objectives & Tasks
+  | 'task:view'
   | 'task:manage'
-  | 'task:execute'
+  | 'task:create_task'
   | 'task:edit'
-  | 'roles:manage'
-  | 'role:switch'
+  | 'task:execute'
+  | 'task:delete'
+  // Daily Staff Shift Logs
+  | 'shift_logs:view'
+  | 'shift_logs:create'
+  | 'shift_logs:edit_all'
+  // Team Communications & Channels
+  | 'channels:view'
+  | 'channels:create'
+  | 'channels:edit_access'
+  | 'channels:delete'
+  | 'channels:send_message'
+  // SOPs & Operational Manuals
+  | 'sops:view'
+  | 'sops:create'
+  | 'sops:edit'
+  | 'sops:publish'
+  | 'sops:manage'
+  | 'sops:delete'
+  // Scratchpad & Team Notes
+  | 'notes:view'
+  | 'notes:create'
+  | 'notes:edit'
+  | 'notes:manage'
+  | 'notes:pin'
+  | 'notes:delete'
+  // Hubs & Charging Infrastructure
+  | 'hubs:view'
   | 'hubs:manage'
   | 'hub:edit'
-  | 'sops:manage'
-  | 'notes:manage'
+  // Governance & Administration
+  | 'roles:manage'
+  | 'role:switch'
+  | 'audit:view'
   | 'data:view_all';
 
 export type VehicleStatus =
@@ -379,8 +436,10 @@ export interface ChatChannel {
   is_system?: boolean; // true for Operations, Mechanics, Accounts
   is_private?: boolean;
   allowed_roles?: string[];
+  allowed_members?: string[];
   created_by?: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface ChannelMessage {
@@ -481,7 +540,7 @@ export interface AuditLog {
   id: string;
   table_name: string;
   record_id: string;
-  action: 'INSERT' | 'UPDATE' | 'SOFT_DELETE' | 'DELETE_ATTEMPT';
+  action: 'INSERT' | 'UPDATE' | 'DELETE' | 'SOFT_DELETE' | 'DELETE_ATTEMPT';
   performed_by?: string | null;
   performer_name?: string | null;
   old_data?: Record<string, any> | null;

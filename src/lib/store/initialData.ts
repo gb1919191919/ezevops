@@ -17,13 +17,13 @@ import {
   VehicleInspection,
   PartUsageLog,
 } from '@/types';
-import { INITIAL_PERMISSIONS_LIST } from '@/lib/rbac';
+import { INITIAL_PERMISSIONS_LIST, ROLE_DEFINITIONS } from '@/lib/rbac';
 
 export const INITIAL_ROLES: Role[] = [
-  { id: 'role-01', code: 'owner', label: 'Super Admin (Owner)', description: 'Full system sovereignty, master audits, and financial oversight', is_system: true },
-  { id: 'role-02', code: 'manager', label: 'Hub Operations Manager', description: 'Approvals, hub inventory, staff scheduling, dispute verification', is_system: true },
-  { id: 'role-03', code: 'rsa', label: 'Roadside Assistance (RSA)', description: 'Rapid field inspection, towing, roadside recovery, battery sweeps', is_system: true },
-  { id: 'role-04', code: 'mechanic', label: 'Hub Maintenance Mechanic', description: 'Job tickets, defect inspections, part requests, safety audits', is_system: true },
+  { id: 'role-01', code: 'owner', label: 'Super Admin (Owner)', description: 'Full system sovereignty, master audits, and financial oversight', permissions: ROLE_DEFINITIONS.owner.permissions, is_system: true },
+  { id: 'role-02', code: 'manager', label: 'Hub Operations Manager', description: 'Approvals, hub inventory, staff scheduling, dispute verification', permissions: ROLE_DEFINITIONS.manager.permissions, is_system: true },
+  { id: 'role-03', code: 'rsa', label: 'Roadside Assistance (RSA)', description: 'Rapid field inspection, towing, roadside recovery, battery sweeps', permissions: ROLE_DEFINITIONS.rsa.permissions, is_system: true },
+  { id: 'role-04', code: 'mechanic', label: 'Hub Maintenance Mechanic', description: 'Job tickets, defect inspections, part requests, safety audits', permissions: ROLE_DEFINITIONS.mechanic.permissions, is_system: true },
 ];
 
 export const INITIAL_PERMISSIONS: Permission[] = INITIAL_PERMISSIONS_LIST.map((p, idx) => ({
