@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { useAppStore } from '@/lib/store/appStore';
 import { useRBAC } from '@/hooks/useRBAC';
-import { Vehicle, VehicleStatus, ScooterModel } from '@/types';
+import { Vehicle, VehicleStatus, ScooterModel, AuditLog } from '@/types';
 import { VehicleStatusBadge } from '../common/StatusBadge';
 import { VehicleDetailModal } from './VehicleDetailModal';
 import { ViewSwitcher, ViewMode } from '../common/ViewSwitcher';
@@ -30,6 +30,8 @@ import {
   ArrowUp,
   ArrowDown,
   Building2,
+  Clock,
+  ChevronDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -54,6 +56,7 @@ export function FleetTable() {
   const [hubFilter, setHubFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<ViewMode>('table');
   const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
+  const [availabilityDays, setAvailabilityDays] = useState<7 | 30 | 90>(7);
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('key_number');
@@ -67,6 +70,7 @@ export function FleetTable() {
   const hubs = useAppStore((s) => s.hubs || []);
   const jobCards = useAppStore((s) => s.jobCards || []);
   const partUsageLogs = useAppStore((s) => s.partUsageLogs || []);
+  const auditLogs = useAppStore((s) => s.auditLogs || []);
   const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
   const updateVehicleCustomId = useAppStore((s) => s.updateVehicleCustomId);
   const { isOwner, isManager } = useRBAC();
@@ -108,6 +112,131 @@ export function FleetTable() {
 
     return map;
   }, [jobCards, partUsageLogs]);
+
+  // ==========================================================================
+  // FLEET EFFECTIVE AVAILABILITY / UPTIME COMPUTATION
+  // Reconstructs each vehicle's status timeline from audit logs.
+  // Statuses NOT "Available" count as downtime (Under Repair, Not Available,
+  // Needs Maintenance, etc.). Result is fleet-wide uptime % over N days.
+  // ==========================================================================
+  const DOWNTIME_STATUSES: string[] = ['Under Repair', 'Not Available', 'Needs Maintenance'];
+
+  const fleetAvailability = useMemo(() => {
+    const now = Date.now();
+    const windowMs = availabilityDays * 24 * 60 * 60 * 1000;
+    const windowStart = now - windowMs;
+
+    // Get all active vehicles in current filter scope
+    const activeVehicles = vehicles.filter((v) => v.is_active && !v.is_archived);
+    if (activeVehicles.length === 0) {
+      return { percentage: 0, uptimeHours: 0, downtimeHours: 0, vehicleCount: 0, perVehicle: new Map<string, number>() };
+    }
+
+    // Collect vehicle status change audit events within the window
+    const vehicleAuditEvents = auditLogs.filter(
+      (log) =>
+        log.table_name === 'vehicles' &&
+        log.action === 'UPDATE' &&
+        new Date(log.timestamp).getTime() >= windowStart &&
+        (log.new_data?.current_status || log.old_data?.current_status)
+    );
+
+    // Group events by vehicle record_id, sorted ascending by time
+    const eventsByVehicle = new Map<string, { time: number; newStatus: string }[]>();
+    vehicleAuditEvents.forEach((log) => {
+      const vid = log.record_id;
+      if (!eventsByVehicle.has(vid)) eventsByVehicle.set(vid, []);
+      const newStatus = log.new_data?.current_status || log.new_data?.pending_status;
+      if (newStatus) {
+        eventsByVehicle.get(vid)!.push({
+          time: new Date(log.timestamp).getTime(),
+          newStatus,
+        });
+      }
+    });
+
+    // Sort each vehicle's events by time
+    eventsByVehicle.forEach((events) => events.sort((a, b) => a.time - b.time));
+
+    let totalUptimeMs = 0;
+    let totalDowntimeMs = 0;
+    const perVehicle = new Map<string, number>(); // vehicle id -> uptime %
+
+    activeVehicles.forEach((vehicle) => {
+      const events = eventsByVehicle.get(vehicle.id) || [];
+      let uptimeMs = 0;
+      let downtimeMs = 0;
+
+      if (events.length === 0) {
+        // No status changes recorded in this window —
+        // use the vehicle's current status for the entire period
+        const isDown = DOWNTIME_STATUSES.includes(vehicle.current_status);
+        if (isDown) {
+          downtimeMs = windowMs;
+        } else {
+          uptimeMs = windowMs;
+        }
+      } else {
+        // Walk through the timeline from windowStart to now
+        // Before the first event, infer status from either the audit log's
+        // old_data or the vehicle's created_at
+        let currentDown = false;
+
+        // Try to get status before first event from its old_data
+        const firstAudit = vehicleAuditEvents.find(
+          (l) =>
+            l.record_id === vehicle.id &&
+            l.new_data?.current_status === events[0].newStatus
+        );
+        if (firstAudit?.old_data?.current_status) {
+          currentDown = DOWNTIME_STATUSES.includes(firstAudit.old_data.current_status);
+        } else {
+          // Assume "Available" before any recorded change
+          currentDown = false;
+        }
+
+        let prevTime = windowStart;
+
+        events.forEach((ev) => {
+          const segmentMs = Math.max(0, ev.time - prevTime);
+          if (currentDown) {
+            downtimeMs += segmentMs;
+          } else {
+            uptimeMs += segmentMs;
+          }
+          currentDown = DOWNTIME_STATUSES.includes(ev.newStatus);
+          prevTime = ev.time;
+        });
+
+        // Remaining segment from last event to now
+        const tailMs = Math.max(0, now - prevTime);
+        if (currentDown) {
+          downtimeMs += tailMs;
+        } else {
+          uptimeMs += tailMs;
+        }
+      }
+
+      totalUptimeMs += uptimeMs;
+      totalDowntimeMs += downtimeMs;
+
+      const vehicleTotal = uptimeMs + downtimeMs;
+      perVehicle.set(vehicle.id, vehicleTotal > 0 ? (uptimeMs / vehicleTotal) * 100 : 100);
+    });
+
+    const totalMs = totalUptimeMs + totalDowntimeMs;
+    const percentage = totalMs > 0 ? (totalUptimeMs / totalMs) * 100 : 100;
+    const uptimeHours = Math.round(totalUptimeMs / (1000 * 60 * 60));
+    const downtimeHours = Math.round(totalDowntimeMs / (1000 * 60 * 60));
+
+    return {
+      percentage,
+      uptimeHours,
+      downtimeHours,
+      vehicleCount: activeVehicles.length,
+      perVehicle,
+    };
+  }, [vehicles, auditLogs, availabilityDays]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -373,6 +502,94 @@ export function FleetTable() {
           </div>
           <div className="kpi-icon w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
             <DollarSign className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* KPI 5: Fleet Effective Availability / Uptime */}
+        <div className="kpi-card p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] shadow-sm col-span-1 sm:col-span-2">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <span className="kpi-label text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                  Effective Fleet Availability
+                </span>
+                {/* Time Period Selector */}
+                <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-[#141416] border border-[#2a2a2f]">
+                  {([7, 30, 90] as const).map((d) => (
+                    <button
+                      key={d}
+                      onClick={() => setAvailabilityDays(d)}
+                      className={cn(
+                        'px-2 py-0.5 rounded-md text-[10px] font-bold transition',
+                        availabilityDays === d
+                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                          : 'text-zinc-500 hover:text-zinc-300'
+                      )}
+                    >
+                      {d}D
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-end gap-3">
+                <span className="kpi-val text-2xl font-black text-cyan-300 tabular-nums">
+                  {fleetAvailability.percentage.toFixed(1)}%
+                </span>
+                <div className="text-[10px] text-zinc-500 font-mono pb-0.5">
+                  <span className="text-emerald-400 font-semibold">
+                    {fleetAvailability.uptimeHours.toLocaleString()}h
+                  </span>{' '}
+                  uptime /{' '}
+                  <span className="text-rose-400 font-semibold">
+                    {fleetAvailability.downtimeHours.toLocaleString()}h
+                  </span>{' '}
+                  downtime
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div className="mt-2.5 w-full h-2 rounded-full bg-[#141416] border border-[#2a2a2f] overflow-hidden">
+                <div
+                  className={cn(
+                    'h-full rounded-full transition-all duration-500',
+                    fleetAvailability.percentage >= 90
+                      ? 'bg-gradient-to-r from-emerald-500 to-cyan-400'
+                      : fleetAvailability.percentage >= 70
+                      ? 'bg-gradient-to-r from-amber-500 to-yellow-400'
+                      : 'bg-gradient-to-r from-rose-500 to-orange-400'
+                  )}
+                  style={{ width: `${Math.min(100, fleetAvailability.percentage)}%` }}
+                />
+              </div>
+
+              <div className="flex items-center justify-between mt-1.5 text-[10px] text-zinc-500 font-mono">
+                <span>
+                  {fleetAvailability.vehicleCount} vehicles over last {availabilityDays} days
+                </span>
+                <span
+                  className={cn(
+                    'font-bold',
+                    fleetAvailability.percentage >= 90
+                      ? 'text-emerald-400'
+                      : fleetAvailability.percentage >= 70
+                      ? 'text-amber-400'
+                      : 'text-rose-400'
+                  )}
+                >
+                  {fleetAvailability.percentage >= 90
+                    ? 'Excellent'
+                    : fleetAvailability.percentage >= 70
+                    ? 'Moderate'
+                    : 'Critical'}
+                </span>
+              </div>
+            </div>
+
+            <div className="kpi-icon w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 shrink-0">
+              <TrendingUp className="w-5 h-5" />
+            </div>
           </div>
         </div>
       </KpiCardContainer>
