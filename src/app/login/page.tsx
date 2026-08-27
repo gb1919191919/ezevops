@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [authMode, setAuthMode] = useState<'magic_link' | 'password'>('magic_link');
+  const [authMode, setAuthMode] = useState<'magic_link' | 'password'>('password');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
