@@ -11,7 +11,6 @@ import { formatPhone, cn } from '@/lib/utils';
 import {
   Database,
   Shield,
-  Key,
   Copy,
   Check,
   RefreshCw,
@@ -20,11 +19,9 @@ import {
   Plus,
   Lock,
   CheckCircle2,
-  Code2,
   Edit2,
   Download,
   X,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { toast } from 'sonner';
 

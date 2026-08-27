@@ -14,7 +14,9 @@ import {
   Building2,
   Users,
   StickyNote,
-  FileText,
+  CalendarCheck,
+  MessageSquare,
+  ShieldAlert,
   ArrowRight,
   CornerDownLeft,
   X,
@@ -57,6 +59,9 @@ export function GlobalSearchModal({
   const hubs = useAppStore((s) => s.hubs);
   const staffProfiles = useAppStore((s) => s.staffProfiles);
   const teamNotes = useAppStore((s) => s.teamNotes);
+  const dailyShiftLogs = useAppStore((s) => s.dailyShiftLogs || []);
+  const chatChannels = useAppStore((s) => s.chatChannels || []);
+  const blockedUsers = useAppStore((s) => s.blockedUsers || []);
 
   useEffect(() => {
     if (isOpen) {
@@ -343,8 +348,68 @@ export function GlobalSearchModal({
       }
     });
 
+    // 10. Daily Shift Logs
+    dailyShiftLogs.forEach((log) => {
+      if (
+        log.staff_name.toLowerCase().includes(q) ||
+        log.accomplishments.toLowerCase().includes(q) ||
+        (log.blockers && log.blockers.toLowerCase().includes(q))
+      ) {
+        items.push({
+          id: `shift-${log.id}`,
+          title: `Shift Log: ${log.staff_name} (${log.shift_type})`,
+          subtitle: `${log.accomplishments.slice(0, 80)}... • Date: ${log.date}`,
+          category: 'shift_logs',
+          categoryLabel: 'Daily Shift Logs',
+          icon: CalendarCheck,
+          href: '/shift-logs',
+          badge: `${log.vehicles_serviced} Serviced`,
+          badgeColor: 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+        });
+      }
+    });
+
+    // 11. Team Channels
+    chatChannels.forEach((chan) => {
+      if (chan.name.toLowerCase().includes(q) || (chan.description && chan.description.toLowerCase().includes(q))) {
+        items.push({
+          id: `chan-${chan.id}`,
+          title: `#${chan.name}`,
+          subtitle: chan.description || 'Team group channel',
+          category: 'channels',
+          categoryLabel: 'Team Channels',
+          icon: MessageSquare,
+          href: '/channels',
+          badge: chan.is_private ? 'Private' : 'Channel',
+          badgeColor: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+        });
+      }
+    });
+
+    // 12. Blocked Users & Penalty Recoveries
+    blockedUsers.forEach((blk) => {
+      if (
+        blk.user_name.toLowerCase().includes(q) ||
+        blk.phone.includes(q) ||
+        blk.vehicle_no.toLowerCase().includes(q) ||
+        blk.reason.toLowerCase().includes(q)
+      ) {
+        items.push({
+          id: `blk-${blk.id}`,
+          title: `Blocked: ${blk.user_name} (${blk.vehicle_no})`,
+          subtitle: `Phone: ${blk.phone} • Reason: ${blk.reason} • Recovery: ₹${blk.recovery_amount}`,
+          category: 'blocked_users',
+          categoryLabel: 'Blocked Users',
+          icon: ShieldAlert,
+          href: '/fleet',
+          badge: blk.recovery_status,
+          badgeColor: 'text-rose-400 border-rose-500/30 bg-rose-500/10',
+        });
+      }
+    });
+
     return items;
-  }, [query, vehicles, parts, jobCards, objectives, tasks, sops, refunds, hubs, staffProfiles, teamNotes]);
+  }, [query, vehicles, parts, jobCards, objectives, tasks, sops, refunds, hubs, staffProfiles, teamNotes, dailyShiftLogs, chatChannels, blockedUsers]);
 
   const handleSelect = (item: SearchResultItem) => {
     onClose();

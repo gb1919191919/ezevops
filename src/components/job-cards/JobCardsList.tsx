@@ -13,18 +13,14 @@ import {
   Search,
   Filter,
   CheckCircle2,
-  XCircle,
   Car,
   Clock,
   DollarSign,
   Package,
-  Calendar,
-  Layers,
   FileSpreadsheet,
   FileText,
   ChevronRight,
   X,
-  User,
   Activity,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -42,11 +38,14 @@ export function JobCardsList() {
   const vehicles = useAppStore((s) => s.vehicles);
   const hubs = useAppStore((s) => s.hubs);
   const parts = useAppStore((s) => s.parts);
+  const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
   const approveJobCard = useAppStore((s) => s.approveJobCard);
   const rejectJobCard = useAppStore((s) => s.rejectJobCard);
   const clearBadge = useAppStore((s) => s.clearBadge);
   const currentUser = useAppStore((s) => s.currentUser);
   const { isOwner, isManager } = useRBAC();
+
+  const isGlobalHub = selectedHubIds.includes('ALL') || selectedHubIds.length === 0;
 
   // Clear sidebar badge on visiting Job Cards (1.2)
   useEffect(() => {
@@ -61,6 +60,8 @@ export function JobCardsList() {
     const thirtyDaysAgo = now - 30 * 24 * 60 * 60 * 1000;
 
     return jobCards.filter((job) => {
+      if (!isGlobalHub && !selectedHubIds.includes(job.hub_id)) return false;
+
       const isFullAdmin = isOwner || isManager;
       if (!isFullAdmin) {
         const isAssigned = job.assigned_mechanic_id === currentUser?.id;

@@ -14,12 +14,8 @@ import {
   Users,
   Paperclip,
   Image as ImageIcon,
-  CheckCircle2,
   X,
-  Search,
   Shield,
-  Smile,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 

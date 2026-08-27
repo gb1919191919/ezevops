@@ -49,7 +49,7 @@ export function RoleSwitcher() {
       <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#141416] border border-[#2a2a2f] text-xs text-zinc-500 cursor-not-allowed" title="Role switching is restricted to Super Admin (Owner)">
         <Lock className="w-3 h-3 text-zinc-500" />
         <span className="capitalize font-mono text-[11px] text-zinc-400">
-          {currentUser.roles?.[0]?.label || 'Staff'}
+          {currentUser?.roles?.[0]?.label || 'Staff'}
         </span>
       </div>
     );

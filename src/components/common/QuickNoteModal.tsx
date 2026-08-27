@@ -41,7 +41,7 @@ export function QuickNoteModal({
     });
 
     toast.success('Note Captured & Saved', {
-      description: `Logged by ${currentUser.full_name}`,
+      description: `Logged by ${currentUser?.full_name || 'Staff Member'}`,
     });
 
     setTitle('');
@@ -155,7 +155,7 @@ export function QuickNoteModal({
           {/* Footer Actions */}
           <div className="pt-3 border-t border-[#27272a] flex items-center justify-between">
             <span className="text-[10px] text-zinc-500 font-mono">
-              Author: {currentUser.full_name} ({currentUser.roles?.[0]?.label || 'Staff'})
+              Author: {currentUser?.full_name || 'Staff User'} ({currentUser?.roles?.[0]?.label || 'Staff'})
             </span>
             <div className="flex items-center gap-2">
               <button

@@ -7,6 +7,19 @@ interface HeaderDefinition {
 }
 
 /**
+ * HTML Entity escaping to protect PDF print previews against HTML/script injection
+ */
+function escapeHTML(val: any): string {
+  if (val === null || val === undefined) return '';
+  return String(val)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
  * Clean and escape values for CSV / TSV formatting
  */
 function escapeCSVValue(val: any): string {
@@ -34,7 +47,9 @@ export function exportToCSV(
     return;
   }
 
-  const columnHeaders = headers || Object.keys(rows[0]).map((k) => ({ key: k, label: k }));
+  // Union of all keys across rows if headers not provided
+  const allKeys = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+  const columnHeaders = headers || allKeys.map((k) => ({ key: k, label: k }));
   const headerLine = columnHeaders.map((h) => escapeCSVValue(h.label)).join(',');
   const dataLines = rows.map((row) =>
     columnHeaders.map((h) => escapeCSVValue(row[h.key])).join(',')
@@ -96,11 +111,24 @@ export function exportToPDF(
     hour12: true,
   });
 
+  const safeTitle = escapeHTML(title);
+  const safeSubtitle = escapeHTML(subtitle);
+
+  const headerHtml = headers.map((h) => `<th>${escapeHTML(h)}</th>`).join('');
+  const rowsHtml = rows
+    .map(
+      (r, idx) =>
+        `<tr class="${idx % 2 === 1 ? 'even' : ''}">${r
+          .map((cell) => `<td>${escapeHTML(cell)}</td>`)
+          .join('')}</tr>`
+    )
+    .join('');
+
   const html = `
     <!DOCTYPE html>
     <html>
       <head>
-        <title>${title} - ${timestamp}</title>
+        <title>${safeTitle} - ${timestamp}</title>
         <meta charset="utf-8" />
         <style>
           @page {
@@ -142,83 +170,83 @@ export function exportToPDF(
             font-size: 10px;
             color: #64748b;
           }
+          .meta-box strong {
+            color: #0f172a;
+          }
           table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
+            font-size: 11px;
           }
           th {
             background-color: #f1f5f9;
-            color: #1e293b;
-            font-weight: 700;
+            color: #334155;
             text-align: left;
             padding: 8px 10px;
-            border: 1px solid #cbd5e1;
             font-size: 10px;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.05em;
+            border-bottom: 1.5px solid #cbd5e1;
           }
           td {
-            padding: 7px 10px;
-            border: 1px solid #e2e8f0;
-            color: #334155;
-            font-size: 10px;
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1e293b;
+            vertical-align: top;
           }
-          tr:nth-child(even) {
+          tr.even {
             background-color: #f8fafc;
           }
           .footer {
             margin-top: 24px;
+            padding-top: 10px;
             border-top: 1px solid #e2e8f0;
-            padding-top: 8px;
             display: flex;
             justify-content: space-between;
-            color: #94a3b8;
             font-size: 9px;
+            color: #94a3b8;
+          }
+          @media print {
+            body {
+              padding: 0;
+            }
+            .no-print {
+              display: none;
+            }
           }
         </style>
       </head>
       <body>
         <div class="header-banner">
           <div>
-            <h1 class="brand-title">EzEv <span>Ops</span></h1>
-            <div class="doc-subtitle">${title} — ${subtitle}</div>
+            <h1 class="brand-title">EzEv <span>Operations Mumbai</span></h1>
+            <div class="doc-subtitle">${safeTitle} &bull; ${safeSubtitle}</div>
           </div>
           <div class="meta-box">
-            <div><strong>Generated:</strong> ${timestamp}</div>
-            <div><strong>System:</strong> Mumbai Fleet Command (Live)</div>
-            <div><strong>Total Records:</strong> ${rows.length}</div>
+            <div>Generated: <strong>${timestamp}</strong></div>
+            <div>Total Records: <strong>${rows.length}</strong></div>
           </div>
         </div>
 
         <table>
           <thead>
-            <tr>
-              ${headers.map((h) => `<th>${h}</th>`).join('')}
-            </tr>
+            <tr>${headerHtml}</tr>
           </thead>
           <tbody>
-            ${rows
-              .map(
-                (r) =>
-                  `<tr>${r
-                    .map((cell) => `<td>${cell === null || cell === undefined ? '-' : cell}</td>`)
-                    .join('')}</tr>`
-              )
-              .join('')}
+            ${rowsHtml}
           </tbody>
         </table>
 
         <div class="footer">
-          <div>EzEv Electric Mobility Fleet Operations & Governance System</div>
-          <div>Confidential & Proprietary Operations Document</div>
+          <div>EzEv Fleet Management System &bull; Confidential & Internal Operations</div>
+          <div>Page 1 of 1</div>
         </div>
 
         <script>
           window.onload = function() {
-            setTimeout(function() {
-              window.print();
-            }, 300);
+            window.print();
           };
         </script>
       </body>
@@ -244,12 +272,14 @@ export function exportFullDatabaseBackup() {
       tables: {
         hubs: state.hubs,
         vehicles: state.vehicles,
+        inspections: state.inspections || [],
         parts: state.parts,
         hub_part_stock: state.hubStock,
         job_cards: state.jobCards,
         part_usage_logs: state.partUsageLogs,
         refunds: state.refunds,
         objectives: state.objectives,
+        milestones: state.milestones || [],
         tasks: state.tasks,
         sops: state.sops,
         team_notes: state.teamNotes,

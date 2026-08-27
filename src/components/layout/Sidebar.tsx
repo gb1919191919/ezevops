@@ -30,7 +30,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const isCollapsed = useAppStore((s) => s.isSidebarCollapsed);
   const toggleCollapse = useAppStore((s) => s.toggleSidebarCollapse);
-  const clearedBadges = useAppStore((s) => s.clearedBadges || []);
+  const clearedBadges = useAppStore((s) => s.clearedBadges || {});
   const { isOwner, isManager } = useRBAC();
 
   const jobCards = useAppStore((s) => s.jobCards);

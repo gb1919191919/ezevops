@@ -8,7 +8,6 @@ import { VehicleDetailModal } from '../fleet/VehicleDetailModal';
 import {
   Search,
   Car,
-  Key,
   MapPin,
   X,
   Command,

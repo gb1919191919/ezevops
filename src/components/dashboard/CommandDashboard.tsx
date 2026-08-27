@@ -13,14 +13,11 @@ import {
   Wrench,
   Zap,
   Building2,
-  AlertTriangle,
   ArrowRight,
   ShieldCheck,
-  Plus,
   Activity,
   Warehouse,
   CheckCircle2,
-  FileSpreadsheet,
 } from 'lucide-react';
 
 export function CommandDashboard() {

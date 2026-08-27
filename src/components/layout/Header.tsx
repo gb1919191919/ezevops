@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useAppStore } from '@/lib/store/appStore';
 import { RoleSwitcher } from '../common/RoleSwitcher';
 import { HubSelector } from '../common/HubSelector';
-import { VehicleSearchCombobox } from '../common/VehicleSearchCombobox';
 import { UserProfileSelector } from '../common/UserProfileSelector';
 import { QuickNoteModal } from '../common/QuickNoteModal';
 import { GlobalSearchModal } from '../common/GlobalSearchModal';

@@ -20,8 +20,6 @@ import {
   FileCheck,
   Camera,
   Upload,
-  Image as ImageIcon,
-  Film,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -423,7 +421,7 @@ export function RapidInspectionLogger() {
                           </span>
                         </div>
                         <span className="text-emerald-400 font-mono font-bold">
-                          {insp.odometer_km.toLocaleString('en-IN')} KM
+                          {(insp.odometer_km ?? 0).toLocaleString('en-IN')} KM
                         </span>
                       </div>
 

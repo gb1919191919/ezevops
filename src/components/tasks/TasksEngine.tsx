@@ -12,8 +12,6 @@ import { formatDate, cn } from '@/lib/utils';
 import {
   CheckCircle2,
   Plus,
-  Calendar,
-  User,
   Users,
   Building2,
   Car,
@@ -30,7 +28,6 @@ import {
   Flag,
   ListTodo,
   X,
-  Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -77,6 +74,7 @@ export function TasksEngine() {
   const milestones = useAppStore((s) => s.milestones);
   const tasks = useAppStore((s) => s.tasks);
   const hubs = useAppStore((s) => s.hubs);
+  const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
   const vehicles = useAppStore((s) => s.vehicles);
   const staffProfiles = useAppStore((s) => s.staffProfiles);
   const createObjective = useAppStore((s) => s.createObjective);
@@ -86,14 +84,18 @@ export function TasksEngine() {
   const currentUser = useAppStore((s) => s.currentUser);
   const { isOwner, isManager } = useRBAC();
 
+  const isGlobalHub = selectedHubIds.includes('ALL') || selectedHubIds.length === 0;
+
   // Filtered dataset
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
+      const parentObj = objectives.find((o) => o.id === t.objective_id);
+      if (!isGlobalHub && parentObj?.hub_id && !selectedHubIds.includes(parentObj.hub_id)) return false;
+
       const isFullAdmin = isOwner || isManager;
       if (!isFullAdmin) {
         const isAssigned = (t.assigned_to || []).includes(currentUser?.id);
         const isCreator = t.created_by === currentUser?.id;
-        const parentObj = objectives.find((o) => o.id === t.objective_id);
         const isUserHub = currentUser?.assigned_hub_id && parentObj?.hub_id === currentUser.assigned_hub_id;
         if (!isAssigned && !isCreator && !isUserHub) return false;
       }
@@ -102,7 +104,6 @@ export function TasksEngine() {
 
       if (!searchTerm.trim()) return true;
       const q = searchTerm.toLowerCase();
-      const parentObj = objectives.find((o) => o.id === t.objective_id);
       const parentMs = milestones.find((m) => m.id === t.milestone_id);
 
       return (
@@ -112,7 +113,7 @@ export function TasksEngine() {
         (parentMs?.title || '').toLowerCase().includes(q)
       );
     });
-  }, [tasks, isOwner, isManager, currentUser, objectives, milestones, selectedStatusFilter, searchTerm]);
+  }, [tasks, isGlobalHub, selectedHubIds, isOwner, isManager, currentUser, objectives, milestones, selectedStatusFilter, searchTerm]);
 
   // Objective creation
   const handleCreateObjective = (e: React.FormEvent) => {

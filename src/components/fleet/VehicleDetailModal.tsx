@@ -12,18 +12,12 @@ import {
   Key,
   Shield,
   MapPin,
-  Clock,
   History,
   Wrench,
   DollarSign,
-  Layers,
   ArrowRight,
   RefreshCw,
   Edit2,
-  CheckCircle2,
-  Sparkles,
-  Gauge,
-  Tag,
 } from 'lucide-react';
 import { toast } from 'sonner';
 

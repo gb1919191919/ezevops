@@ -20,18 +20,13 @@ import {
   Trash2,
   Eye,
   FileText,
-  Clock,
-  User,
   Users,
   Lock,
-  Globe,
   Printer,
   ChevronRight,
   Sparkles,
   X,
-  AlertTriangle,
   ArrowRight,
-  ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -69,7 +64,7 @@ export function SOPsManager() {
     const isFullAdmin = isOwner || isManager;
     if (!isFullAdmin) {
       const hasRoleAccess = (s.access_roles || []).some((r) => activeRoles.includes(r as any));
-      const isAuthor = s.author_id === currentUser.id;
+      const isAuthor = currentUser?.id && s.author_id === currentUser.id;
       if (!hasRoleAccess && !isAuthor) return false;
     }
 
@@ -140,8 +135,8 @@ export function SOPsManager() {
         status: 'PUBLISHED',
         summary: formSummary.trim(),
         content: formContent.trim(),
-        author_id: currentUser.id,
-        author_name: currentUser.full_name,
+        author_id: currentUser?.id || 'admin',
+        author_name: currentUser?.full_name || 'Operations Staff',
         access_roles: formAccessRoles,
       });
       toast.success(`New SOP ${formCode} published!`);
@@ -163,11 +158,11 @@ export function SOPsManager() {
   const handleAcknowledge = (sopId: string) => {
     acknowledgeSOP(sopId);
     toast.success('Compliance Acknowledged', {
-      description: `Logged acknowledgment for ${currentUser.full_name}`,
+      description: `Logged acknowledgment for ${currentUser?.full_name || 'Staff Member'}`,
     });
   };
 
-  const hasAcknowledged = currentSOP?.acknowledged_by?.includes(currentUser.id);
+  const hasAcknowledged = Boolean(currentUser?.id && currentSOP?.acknowledged_by?.includes(currentUser.id));
 
   return (
     <div className="space-y-6">

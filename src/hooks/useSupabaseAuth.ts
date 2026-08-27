@@ -61,7 +61,7 @@ export function useSupabaseAuth() {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [staffProfiles]);
+  }, []);
 
   const matchAndSyncProfile = async (email: string) => {
     const normalizedEmail = email.trim().toLowerCase();

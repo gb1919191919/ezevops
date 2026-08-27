@@ -14,7 +14,6 @@ import {
   Filter,
   Edit2,
   Trash2,
-  Copy,
   Clock,
   User,
   Building2,
@@ -22,13 +21,11 @@ import {
   Sparkles,
   X,
   Tag,
-  Share2,
   CheckCircle2,
   Archive,
   RotateCcw,
   Flame,
   Layers,
-  Sparkle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 

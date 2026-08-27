@@ -26,10 +26,8 @@ import {
   Car,
   DollarSign,
   Tag,
-  Info,
   FileSpreadsheet,
   FileText,
-  TrendingDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -467,7 +465,7 @@ export function InventoryMatrix() {
                               className="px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition inline-flex items-center gap-1"
                               title="View Part Usage & Consumption Audit History"
                             >
-                              <Info className="w-3.5 h-3.5" />
+                              <History className="w-3.5 h-3.5" />
                               <span>History</span>
                             </button>
 

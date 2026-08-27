@@ -14,8 +14,6 @@ import {
   Clock,
   Shield,
   XCircle,
-  Sparkles,
-  TrendingUp,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { toast } from 'sonner';
@@ -25,6 +23,7 @@ export function ApprovalsDesk() {
   const hubs = useAppStore((s) => s.hubs);
   const jobCards = useAppStore((s) => s.jobCards);
   const refunds = useAppStore((s) => s.refunds);
+  const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
   const clearBadge = useAppStore((s) => s.clearBadge);
 
   const approveVehicleStatus = useAppStore((s) => s.approveVehicleStatus);
@@ -35,6 +34,7 @@ export function ApprovalsDesk() {
   const rejectRefund = useAppStore((s) => s.rejectRefund);
 
   const { isOwner, isManager } = useRBAC();
+  const isGlobalHub = selectedHubIds.includes('ALL') || selectedHubIds.length === 0;
 
   // Clear sidebar notification badge on visiting approvals desk (1.2)
   useEffect(() => {
@@ -57,8 +57,18 @@ export function ApprovalsDesk() {
     );
   }
 
-  const stagedVehicles = vehicles.filter((v) => v.pending_status !== null);
-  const pendingJobCards = jobCards.filter((j) => j.status === 'PENDING');
+  const stagedVehicles = vehicles.filter((v) => {
+    if (v.pending_status === null) return false;
+    if (!isGlobalHub && v.current_hub_id && !selectedHubIds.includes(v.current_hub_id)) return false;
+    return true;
+  });
+
+  const pendingJobCards = jobCards.filter((j) => {
+    if (j.status !== 'PENDING') return false;
+    if (!isGlobalHub && !selectedHubIds.includes(j.hub_id)) return false;
+    return true;
+  });
+
   const pendingRefunds = refunds.filter((r) => r.status === 'SUBMITTED');
 
   const totalPending = stagedVehicles.length + pendingJobCards.length + pendingRefunds.length;

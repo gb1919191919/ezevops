@@ -37,7 +37,7 @@ export function HubsDirectory() {
   const [hubName, setHubName] = useState('');
   const [hubCode, setHubCode] = useState('');
   const [hubType, setHubType] = useState<HubType>('BIKE_HUB');
-  const [hubCity, setHubCity] = useState('Bengaluru');
+  const [hubCity, setHubCity] = useState('Mumbai');
   const [hubAddress, setHubAddress] = useState('');
   const [pocName, setPocName] = useState('');
   const [pocPhone, setPocPhone] = useState('+91 ');
@@ -172,7 +172,7 @@ export function HubsDirectory() {
               setHubName('');
               setHubCode('');
               setHubType('BIKE_HUB');
-              setHubCity('Bengaluru');
+              setHubCity('Mumbai');
               setHubAddress('');
               setPocName('');
               setPocPhone('+91 ');

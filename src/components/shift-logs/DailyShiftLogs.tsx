@@ -14,16 +14,10 @@ import {
   Filter,
   Building2,
   User,
-  Clock,
-  CheckCircle2,
   AlertTriangle,
   FileSpreadsheet,
   FileText,
-  Car,
-  Wrench,
-  HelpCircle,
   X,
-  History,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -45,11 +39,15 @@ export function DailyShiftLogs() {
   const dailyShiftLogs = useAppStore((s) => s.dailyShiftLogs);
   const addDailyShiftLog = useAppStore((s) => s.addDailyShiftLog);
   const hubs = useAppStore((s) => s.hubs);
+  const selectedHubIds = useAppStore((s) => s.selectedHubIds || ['ALL']);
   const currentUser = useAppStore((s) => s.currentUser);
   const { isOwner, isManager } = useRBAC();
 
+  const isGlobalHub = selectedHubIds.includes('ALL') || selectedHubIds.length === 0;
+
   const filteredLogs = useMemo(() => {
     return dailyShiftLogs.filter((log) => {
+      if (!isGlobalHub && !selectedHubIds.includes(log.hub_id)) return false;
       if (hubFilter !== 'ALL' && log.hub_id !== hubFilter) return false;
       if (!searchTerm.trim()) return true;
 
@@ -62,7 +60,7 @@ export function DailyShiftLogs() {
         (hub?.name || '').toLowerCase().includes(q)
       );
     });
-  }, [dailyShiftLogs, hubFilter, searchTerm, hubs]);
+  }, [dailyShiftLogs, hubFilter, selectedHubIds, isGlobalHub, searchTerm, hubs]);
 
   const handleSubmitLog = (e: React.FormEvent) => {
     e.preventDefault();
