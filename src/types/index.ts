@@ -134,6 +134,7 @@ export interface VehicleInspection {
   bms_health_passed: boolean;
   recommended_status: VehicleStatus;
   notes?: string;
+  defect_media_url?: string;
   inspected_at: string;
 }
 
