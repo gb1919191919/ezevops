@@ -64,11 +64,11 @@ export function exportToCSV(
   }
 
   // Union of all keys across rows if headers not provided
-  const allKeys = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+  const allKeys = Array.from(new Set(rows.flatMap((r) => Object.keys(r || {}))));
   const columnHeaders = headers || allKeys.map((k) => ({ key: k, label: k }));
   const headerLine = columnHeaders.map((h) => escapeCSVValue(h.label)).join(',');
   const dataLines = rows.map((row) =>
-    columnHeaders.map((h) => escapeCSVValue(row[h.key])).join(',')
+    columnHeaders.map((h) => escapeCSVValue(row ? row[h.key] : '')).join(',')
   );
 
   const csvContent = [headerLine, ...dataLines].join('\r\n');
@@ -77,7 +77,7 @@ export function exportToCSV(
 
   const link = document.createElement('a');
   link.setAttribute('href', url);
-  link.setAttribute('download', `${filename.replace(/\.csv$/, '')}_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.setAttribute('download', `${(filename || 'export').replace(/\.csv$/, '')}_${new Date().toISOString().slice(0, 10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
@@ -115,13 +115,13 @@ export function exportToPDF(
   // Case 1: Standard (title, subtitle, headers, rows, filename)
   if (typeof arg2 === 'string' && Array.isArray(arg3) && Array.isArray(arg4)) {
     subtitle = arg2;
-    headerLabels = (arg3 as string[]).map((h) => (typeof h === 'string' ? h : String((h as any).label || (h as any).header || '')));
+    headerLabels = (arg3 as string[]).map((h) => (typeof h === 'string' ? h : String((h as any)?.label || (h as any)?.header || '')));
     const rawRows = arg4 as any[];
 
     if (rawRows.length > 0 && Array.isArray(rawRows[0])) {
       rowCells = rawRows;
     } else {
-      rowCells = rawRows.map((r) => headerLabels.map((h) => r[h] ?? r[h.toLowerCase()] ?? ''));
+      rowCells = rawRows.map((r) => headerLabels.map((h) => (r ? r[h] ?? (typeof h === 'string' ? r[h.toLowerCase()] : '') ?? '' : '')));
     }
   }
   // Case 2: (title, columns, rows, filename)
@@ -131,20 +131,20 @@ export function exportToPDF(
 
     // Extract headers and map keys
     if (rawCols.length > 0 && typeof rawCols[0] === 'object' && ('header' in rawCols[0] || 'label' in rawCols[0])) {
-      headerLabels = rawCols.map((c) => c.header || c.label || c.key || '');
-      const keys = rawCols.map((c) => c.dataKey || c.key || c.header || '');
+      headerLabels = rawCols.map((c) => c?.header || c?.label || c?.key || '');
+      const keys = rawCols.map((c) => c?.dataKey || c?.key || c?.header || '');
 
       if (rawRows.length > 0 && Array.isArray(rawRows[0])) {
         rowCells = rawRows;
       } else {
-        rowCells = rawRows.map((r) => keys.map((k) => r[k] ?? ''));
+        rowCells = rawRows.map((r) => keys.map((k) => (r ? r[k] ?? '' : '')));
       }
     } else {
       headerLabels = rawCols.map((c) => String(c));
       if (rawRows.length > 0 && Array.isArray(rawRows[0])) {
         rowCells = rawRows;
       } else {
-        rowCells = rawRows.map((r) => headerLabels.map((h) => r[h] ?? r[h.toLowerCase()] ?? ''));
+        rowCells = rawRows.map((r) => headerLabels.map((h) => (r ? r[h] ?? (typeof h === 'string' ? r[h.toLowerCase()] : '') ?? '' : '')));
       }
     }
   }

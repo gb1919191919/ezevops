@@ -47,8 +47,8 @@ export function TeamNotesBoard() {
   const [noteTagsInput, setNoteTagsInput] = useState('');
   const [noteIsPinned, setNoteIsPinned] = useState(false);
 
-  const teamNotes = useAppStore((s) => s.teamNotes);
-  const hubs = useAppStore((s) => s.hubs);
+  const teamNotes = useAppStore((s) => s.teamNotes || []);
+  const hubs = useAppStore((s) => s.hubs || []);
   const createNote = useAppStore((s) => s.createNote);
   const updateNote = useAppStore((s) => s.updateNote);
   const archiveNote = useAppStore((s) => s.archiveNote);
@@ -61,18 +61,18 @@ export function TeamNotesBoard() {
   const { isOwner, isManager } = useRBAC();
 
   const filteredNotes = teamNotes.filter((n) => {
-    const noteStatus = n.status || 'ACTIVE';
+    const noteStatus = n?.status || 'ACTIVE';
     if (noteStatus !== activeTab) return false;
-    if (categoryFilter !== 'ALL' && n.category !== categoryFilter) return false;
-    if (hubFilter !== 'ALL' && n.hub_id !== hubFilter) return false;
+    if (categoryFilter !== 'ALL' && n?.category !== categoryFilter) return false;
+    if (hubFilter !== 'ALL' && n?.hub_id !== hubFilter) return false;
     if (!searchTerm.trim()) return true;
 
     const q = searchTerm.toLowerCase();
     return (
-      n.title.toLowerCase().includes(q) ||
-      n.content.toLowerCase().includes(q) ||
-      n.author_name.toLowerCase().includes(q) ||
-      (n.tags || []).some((t) => t.toLowerCase().includes(q))
+      (n?.title || '').toLowerCase().includes(q) ||
+      (n?.content || '').toLowerCase().includes(q) ||
+      (n?.author_name || '').toLowerCase().includes(q) ||
+      (n?.tags || []).some((t) => (t || '').toLowerCase().includes(q))
     );
   });
 
@@ -534,7 +534,7 @@ function NoteCard({
                   : 'bg-blue-500/10 text-blue-300 border-blue-500/30'
               )}
             >
-              {note.category.replace('_', ' ')}
+              {(note.category || 'GENERAL').replace('_', ' ')}
             </span>
 
             {note.priority === 'URGENT' && (
@@ -545,7 +545,7 @@ function NoteCard({
 
             {hub && (
               <span className="text-[10px] text-zinc-400 font-medium">
-                📍 {hub.name.split(' (')[0]}
+                📍 {hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : (hub?.code || 'General')}
               </span>
             )}
           </div>

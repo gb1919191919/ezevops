@@ -68,19 +68,21 @@ export function VehicleSearchCombobox({
     const cleanQuery = query.trim().toLowerCase();
     if (!cleanQuery) return [];
 
-    return vehicles
+    return (vehicles || [])
       .filter((v) => {
-        if (!v.is_active) return false;
-        const vehicleId = v.vehicle_id.toLowerCase();
-        const vin = v.vin.toLowerCase();
-        const key = v.key_number.toLowerCase();
-        const model = v.model.toLowerCase();
+        if (!v?.is_active) return false;
+        const vehicleId = (v.vehicle_id || '').toLowerCase();
+        const vin = (v.vin || '').toLowerCase();
+        const key = (v.key_number || '').toLowerCase();
+        const model = (v.model || '').toLowerCase();
+        const customId = (v.custom_vehicle_id || '').toLowerCase();
 
         return (
           vehicleId.includes(cleanQuery) ||
           key.includes(cleanQuery) ||
           vin.includes(cleanQuery) ||
-          model.includes(cleanQuery)
+          model.includes(cleanQuery) ||
+          customId.includes(cleanQuery)
         );
       })
       .slice(0, 15);
@@ -201,9 +203,9 @@ export function VehicleSearchCombobox({
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-[10px] text-zinc-400 truncate mt-0.5">
-                          <span className="font-mono text-zinc-500">VIN: {v.vin}</span>
+                          <span className="font-mono text-zinc-500">VIN: {v.vin || 'N/A'}</span>
                           <span>•</span>
-                          <span>{hub?.name.split(' (')[0] || 'Central'}</span>
+                          <span>{hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : (hub?.code || 'Central')}</span>
                         </div>
                       </div>
                     </div>

@@ -119,7 +119,7 @@ export function QuickNoteModal({
                 <option value="">All Hubs (Global)</option>
                 {hubs.map((h) => (
                   <option key={h.id} value={h.id}>
-                    {h.name.split(' (')[0]}
+                    {h.name?.split(' (')?.[0] || h.name || h.code || 'Hub'}
                   </option>
                 ))}
               </select>

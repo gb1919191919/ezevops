@@ -163,8 +163,8 @@ export function GlobalSearchModal({
       if (vId.includes(q) || vIot.includes(q) || vCustom.includes(q) || vKey.includes(q) || vVin.includes(q) || vModel.includes(q)) {
         items.push({
           id: `veh-${v.id}`,
-          title: `Key #${v.key_number || 'N/A'} • ${v.model} (${v.custom_vehicle_id || v.id.toUpperCase()})`,
-          subtitle: `IoT ID: ${v.vehicle_id} • Status: ${v.current_status} • Hub: ${v.hub?.name || v.current_hub_id}`,
+          title: `Key #${v.key_number || 'N/A'} • ${v.model || 'EV'} (${v.custom_vehicle_id || v.id?.toUpperCase() || 'N/A'})`,
+          subtitle: `IoT ID: ${v.vehicle_id || 'N/A'} • Status: ${v.current_status} • Hub: ${v.hub?.name || v.current_hub_id || 'Central'}`,
           category: 'vehicles',
           categoryLabel: 'Fleet Vehicles',
           icon: Car,

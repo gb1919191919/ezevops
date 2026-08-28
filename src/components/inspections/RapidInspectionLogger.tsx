@@ -41,9 +41,9 @@ export function RapidInspectionLogger() {
     bms_health_passed: true,
   });
 
-  const vehicles = useAppStore((s) => s.vehicles);
-  const hubs = useAppStore((s) => s.hubs);
-  const inspections = useAppStore((s) => s.inspections);
+  const vehicles = useAppStore((s) => s.vehicles || []);
+  const hubs = useAppStore((s) => s.hubs || []);
+  const inspections = useAppStore((s) => s.inspections || []);
   const logInspection = useAppStore((s) => s.logInspection);
   const currentUser = useAppStore((s) => s.currentUser);
   const { isOwner, isManager } = useRBAC();
@@ -161,7 +161,7 @@ export function RapidInspectionLogger() {
                 <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                   <div className="flex items-center gap-2">
                     <span className="font-mono font-bold text-sm text-zinc-100">
-                      {selectedVehicle.custom_vehicle_id || selectedVehicle.id.toUpperCase()}
+                      {selectedVehicle.custom_vehicle_id || (selectedVehicle.id || '').toUpperCase()}
                     </span>
                     <span className="font-mono text-xs text-blue-300 px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 font-bold">
                       Key: #{selectedVehicle.key_number}

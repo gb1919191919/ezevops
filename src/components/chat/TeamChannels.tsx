@@ -96,7 +96,7 @@ export function TeamChannels() {
         (r.code || (r as any).role || "").toUpperCase()
       );
       const hasRole = c.allowed_roles && c.allowed_roles.length > 0
-        ? c.allowed_roles.some((r) => userRoles.includes(r.toUpperCase()))
+        ? c.allowed_roles.some((r) => userRoles.includes((r || "").toUpperCase()))
         : false;
 
       // Specific member check
@@ -299,10 +299,10 @@ export function TeamChannels() {
     const q = newStaffSearch.toLowerCase();
     return staffProfiles.filter(
       (s) =>
-        s.full_name.toLowerCase().includes(q) ||
+        (s.full_name || '').toLowerCase().includes(q) ||
         (s.email && s.email.toLowerCase().includes(q)) ||
-        s.phone.includes(q) ||
-        s.roles?.some((r) => r.label.toLowerCase().includes(q))
+        (s.phone || '').includes(q) ||
+        s.roles?.some((r) => (r.label || '').toLowerCase().includes(q))
     );
   }, [staffProfiles, newStaffSearch]);
 
@@ -311,10 +311,10 @@ export function TeamChannels() {
     const q = editStaffSearch.toLowerCase();
     return staffProfiles.filter(
       (s) =>
-        s.full_name.toLowerCase().includes(q) ||
+        (s.full_name || '').toLowerCase().includes(q) ||
         (s.email && s.email.toLowerCase().includes(q)) ||
-        s.phone.includes(q) ||
-        s.roles?.some((r) => r.label.toLowerCase().includes(q))
+        (s.phone || '').includes(q) ||
+        s.roles?.some((r) => (r.label || '').toLowerCase().includes(q))
     );
   }, [staffProfiles, editStaffSearch]);
 
@@ -455,7 +455,7 @@ export function TeamChannels() {
           {/* User status footer */}
           <div className="pt-3 border-t border-zinc-800 flex items-center gap-2.5 text-xs">
             <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-300 font-bold flex items-center justify-center font-mono text-[11px] border border-emerald-500/30">
-              {currentUser?.full_name?.slice(0, 2).toUpperCase() || "OP"}
+              {(currentUser?.full_name || "OP").slice(0, 2).toUpperCase()}
             </div>
             <div className="truncate">
               <div className="font-bold text-zinc-200 truncate">{currentUser?.full_name || "Staff User"}</div>
@@ -567,7 +567,7 @@ export function TeamChannels() {
                     )}
                   >
                     <div className="w-8 h-8 rounded-xl bg-[#2a2a2f] border border-[#3a3a42] text-zinc-300 flex items-center justify-center font-bold text-xs shrink-0 font-mono">
-                      {msg.sender_name.slice(0, 2).toUpperCase()}
+                      {(msg.sender_name || "OP").slice(0, 2).toUpperCase()}
                     </div>
 
                     <div className="space-y-1">
@@ -919,7 +919,7 @@ export function TeamChannels() {
                             >
                               <div className="flex items-center gap-2 truncate mr-2">
                                 <div className="w-5 h-5 rounded-full bg-zinc-800 text-[9px] font-bold flex items-center justify-center text-zinc-300 font-mono">
-                                  {staff.full_name.slice(0, 2).toUpperCase()}
+                                  {(staff?.full_name || "ST").slice(0, 2).toUpperCase()}
                                 </div>
                                 <div className="truncate">
                                   <span className="font-semibold text-zinc-200 truncate">{staff.full_name}</span>
@@ -1197,7 +1197,7 @@ export function TeamChannels() {
                             >
                               <div className="flex items-center gap-2 truncate mr-2">
                                 <div className="w-5 h-5 rounded-full bg-zinc-800 text-[9px] font-bold flex items-center justify-center text-zinc-300 font-mono">
-                                  {staff.full_name.slice(0, 2).toUpperCase()}
+                                  {(staff?.full_name || "ST").slice(0, 2).toUpperCase()}
                                 </div>
                                 <div className="truncate">
                                   <span className="font-semibold text-zinc-200 truncate">{staff.full_name}</span>

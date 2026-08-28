@@ -32,8 +32,8 @@ export function HubSelector() {
   const isAllSelected = selectedHubIds.includes('ALL') || selectedHubIds.length === hubs.length;
 
   const filteredHubs = hubs.filter((h) =>
-    h.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    h.code.toLowerCase().includes(searchTerm.toLowerCase())
+    (h.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (h.code || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Summary Label
@@ -42,7 +42,7 @@ export function HubSelector() {
     if (selectedHubIds.length === 0) return 'No Hub Selected';
     if (selectedHubIds.length === 1) {
       const hub = hubs.find((h) => h.id === selectedHubIds[0]);
-      return hub ? hub.name.split(' (')[0] : '1 Hub Selected';
+      return hub?.name ? hub.name.split(' (')[0] : hub?.code || '1 Hub Selected';
     }
     return `${selectedHubIds.length} Hubs Selected`;
   };
@@ -150,7 +150,7 @@ export function HubSelector() {
                     </div>
                     <div className="truncate">
                       <div className="truncate text-zinc-200 group-hover:text-white">
-                        {hub.name.split(' (')[0]}
+                        {hub?.name ? hub.name.split(' (')[0] : hub?.code || 'Hub'}
                       </div>
                       <div className="text-[10px] text-zinc-500 font-mono">{hub.code}</div>
                     </div>

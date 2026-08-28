@@ -44,7 +44,8 @@ export function formatPhone(phone: string): string {
   return phone;
 }
 
-export function getWhatsAppLink(phone: string, contactName?: string, hubName?: string): string {
+export function getWhatsAppLink(phone?: string | null, contactName?: string, hubName?: string): string {
+  if (!phone) return '#';
   const digitsOnly = phone.replace(/[^\d]/g, '');
   const greeting = encodeURIComponent(
     `Hello ${contactName || 'there'}, regarding EzEv Operations at ${hubName || 'the Hub'}:`
@@ -52,7 +53,8 @@ export function getWhatsAppLink(phone: string, contactName?: string, hubName?: s
   return `https://wa.me/${digitsOnly}?text=${greeting}`;
 }
 
-export function getTelLink(phone: string): string {
+export function getTelLink(phone?: string | null): string {
+  if (!phone) return '#';
   const digits = phone.replace(/[^\d+]/g, '');
   return `tel:${digits}`;
 }

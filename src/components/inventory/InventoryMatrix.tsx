@@ -121,9 +121,9 @@ export function InventoryMatrix() {
 
     const q = searchTerm.toLowerCase();
     return (
-      p.name.toLowerCase().includes(q) ||
-      p.sku.toLowerCase().includes(q) ||
-      p.category.toLowerCase().includes(q) ||
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.sku || '').toLowerCase().includes(q) ||
+      (p.category || '').toLowerCase().includes(q) ||
       (p.supplier || '').toLowerCase().includes(q)
     );
   });
@@ -965,7 +965,7 @@ export function InventoryMatrix() {
                         </td>
 
                         <td className="p-3.5">
-                          <div className="text-zinc-300 font-medium">{hub ? hub.name.split(' (')[0] : 'Store 1'}</div>
+                          <div className="text-zinc-300 font-medium">{hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : 'Store 1'}</div>
                           {matchedVeh ? (
                             <button
                               onClick={() => setSelectedVehicleForModal(matchedVeh)}
@@ -973,7 +973,7 @@ export function InventoryMatrix() {
                               title="Inspect Vehicle Lifecycle"
                             >
                               <Car className="w-3 h-3 text-blue-400" />
-                              <span>Key #{matchedVeh.key_number} ({matchedVeh.custom_vehicle_id || matchedVeh.id.toUpperCase()})</span>
+                              <span>Key #{matchedVeh.key_number} ({matchedVeh.custom_vehicle_id || (matchedVeh.id || '').toUpperCase()})</span>
                             </button>
                           ) : log.vehicle_id ? (
                             <span className="text-[10px] font-mono text-zinc-400 block mt-0.5">EV: {log.vehicle_id}</span>
@@ -1534,10 +1534,10 @@ export function InventoryMatrix() {
                                     title="View Vehicle Lifecycle"
                                   >
                                     <Car className="w-3 h-3 text-blue-400" />
-                                    <span>Key #{veh.key_number} ({veh.custom_vehicle_id || veh.id.toUpperCase()})</span>
+                                    <span>Key #{veh.key_number} ({veh.custom_vehicle_id || (veh.id || '').toUpperCase()})</span>
                                   </button>
                                 ) : (
-                                  <span className="text-zinc-400">{hub?.name.split(' (')[0] || 'General Store'}</span>
+                                  <span className="text-zinc-400">{hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : 'General Store'}</span>
                                 )}
                               </td>
                               <td className="p-2.5 font-mono font-bold text-zinc-200">

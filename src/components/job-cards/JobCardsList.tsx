@@ -171,15 +171,15 @@ export function JobCardsList() {
       if (sortField === 'ticket_number') {
         comp = a.ticket_number - b.ticket_number;
       } else if (sortField === 'vehicle_id') {
-        comp = a.vehicle_id.localeCompare(b.vehicle_id);
+        comp = (a.vehicle_id || '').localeCompare(b.vehicle_id || '');
       } else if (sortField === 'created_at') {
         comp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       } else if (sortField === 'parts_cost') {
-        const costA = (a.parts || []).reduce((s, p) => s + p.quantity * p.unit_cost_snapshot, 0);
-        const costB = (b.parts || []).reduce((s, p) => s + p.quantity * p.unit_cost_snapshot, 0);
+        const costA = (a.parts || []).reduce((s, p) => s + (p?.quantity || 0) * (p?.unit_cost_snapshot || 0), 0);
+        const costB = (b.parts || []).reduce((s, p) => s + (p?.quantity || 0) * (p?.unit_cost_snapshot || 0), 0);
         comp = costA - costB;
       } else if (sortField === 'status') {
-        comp = a.status.localeCompare(b.status);
+        comp = (a.status || '').localeCompare(b.status || '');
       }
       return sortOrder === 'asc' ? comp : -comp;
     });
@@ -303,7 +303,7 @@ export function JobCardsList() {
         'Vehicle Key': vehicle?.key_number || '-',
         'Vehicle ID': vehicle?.custom_vehicle_id || vehicle?.vehicle_id || '-',
         'Chassis VIN': vehicle?.vin || '-',
-        Hub: hub?.name.split(' (')[0] || '-',
+        Hub: hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : (hub?.code || '-'),
         'Issue Description': job.issue_description,
         Status: job.status,
         'Spares Count': job.parts?.length || 0,
@@ -331,12 +331,12 @@ export function JobCardsList() {
     const rows = filteredJobCards.map((job) => {
       const vehicle = vehicles.find((v) => v.id === job.vehicle_id);
       const hub = hubs.find((h) => h.id === job.hub_id);
-      const partsTotal = (job.parts || []).reduce((sum, p) => sum + p.quantity * p.unit_cost_snapshot, 0);
+      const partsTotal = (job.parts || []).reduce((sum, p) => sum + (p?.quantity || 0) * (p?.unit_cost_snapshot || 0), 0);
       return {
         ticket: `#${job.ticket_number}`,
         key: vehicle?.key_number || '-',
         vehId: vehicle?.custom_vehicle_id || vehicle?.vehicle_id || '-',
-        hub: hub?.name.split(' (')[0] || '-',
+        hub: hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : (hub?.code || '-'),
         status: job.status,
         cost: formatCurrency(partsTotal),
         date: formatDate(job.created_at),
@@ -631,7 +631,7 @@ export function JobCardsList() {
 
                         <td className="p-3.5">
                           <div className="text-zinc-200 font-medium">
-                            {hub?.name.split(' (')[0] || 'Store 1'}
+                            {hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : (hub?.code || 'Store 1')}
                           </div>
                           <span className="text-[10px] text-zinc-500 font-mono">
                             {formatDate(job.created_at)}
@@ -1095,7 +1095,7 @@ export function JobCardsList() {
                     <option value="">Choose vehicle...</option>
                     {vehicles.map((v) => (
                       <option key={v.id} value={v.id}>
-                        Key #{v.key_number} — {v.model} ({v.custom_vehicle_id || v.id.toUpperCase()})
+                        Key #{v.key_number} — {v.model} ({v.custom_vehicle_id || (v.id || '').toUpperCase()})
                       </option>
                     ))}
                   </select>

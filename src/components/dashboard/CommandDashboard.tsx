@@ -396,7 +396,7 @@ export function CommandDashboard() {
                           {available} left (Min: {stock.min_threshold})
                         </span>
                       </div>
-                      <p className="text-[11px] text-zinc-500">{hub?.name.split(' (')[0]}</p>
+                      <p className="text-[11px] text-zinc-500">{hub?.name ? (hub.name.split(' (')?.[0] || hub.name) : (hub?.code || 'Central Hub')}</p>
                     </div>
                   );
                 })}
@@ -429,7 +429,7 @@ export function CommandDashboard() {
                   <div>
                     <h4 className="font-bold text-zinc-200 flex items-center gap-1.5">
                       {h.type === 'STOCK_HUB' && <Warehouse className="w-3.5 h-3.5 text-purple-400" />}
-                      <span>{h.name.split(' (')[0]}</span>
+                      <span>{h?.name ? (h.name.split(' (')?.[0] || h.name) : (h?.code || 'Hub')}</span>
                     </h4>
                     <span className="text-[11px] text-zinc-500">
                       POC: {h.poc_name} ({formatPhone(h.poc_phone)})

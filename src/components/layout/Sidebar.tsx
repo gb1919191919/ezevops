@@ -43,20 +43,20 @@ export function Sidebar() {
   const chatChannels = useAppStore((s) => s.chatChannels || []);
 
   const pendingApprovalsCount =
-    jobCards.filter((j) => j.status === 'PENDING').length +
-    vehicles.filter((v) => v.pending_status !== null).length +
-    refunds.filter((r) => r.status === 'SUBMITTED' || r.status === 'VERIFIED').length;
+    (jobCards || []).filter((j) => j?.status === 'PENDING').length +
+    (vehicles || []).filter((v) => v?.pending_status !== null).length +
+    (refunds || []).filter((r) => r?.status === 'SUBMITTED' || r?.status === 'VERIFIED').length;
 
-  const lowStockCount = hubStock.filter(
-    (s) => s.physical_stock - s.pending_allocated_stock < s.min_threshold
+  const lowStockCount = (hubStock || []).filter(
+    (s) => (s?.physical_stock || 0) - (s?.pending_allocated_stock || 0) < (s?.min_threshold || 5)
   ).length;
 
-  const pendingTasksCount = tasks.filter((t) => t.status !== 'COMPLETED' && t.status !== 'ABANDONED').length;
+  const pendingTasksCount = (tasks || []).filter((t) => t?.status !== 'COMPLETED' && t?.status !== 'ABANDONED').length;
 
   // 1.2 Sidebar Notification Badges State Synchronization (Clears when visited)
   const showApprovalsBadge = !clearedBadges?.['approvals'] && pendingApprovalsCount > 0;
   const showJobCardsBadge =
-    !clearedBadges?.['job_cards'] && jobCards.filter((j) => j.status === 'PENDING').length > 0;
+    !clearedBadges?.['job_cards'] && (jobCards || []).filter((j) => j?.status === 'PENDING').length > 0;
 
   // Build filtered navigation sections based on verified user permissions
   const navSections = [

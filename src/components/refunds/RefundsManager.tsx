@@ -181,9 +181,9 @@ export function RefundsManager() {
       } else if (sortField === 'ride_date') {
         comp = (a.ride_date || '').localeCompare(b.ride_date || '');
       } else if (sortField === 'status') {
-        comp = a.status.localeCompare(b.status);
+        comp = (a.status || '').localeCompare(b.status || '');
       } else if (sortField === 'user_phone') {
-        comp = a.user_phone.localeCompare(b.user_phone);
+        comp = (a.user_phone || '').localeCompare(b.user_phone || '');
       } else if (sortField === 'created_at') {
         comp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       }
@@ -322,7 +322,7 @@ export function RefundsManager() {
       amount: formatCurrency(r.amount),
       payout: r.payout_type,
       status: r.status,
-      reason: r.reason.slice(0, 40),
+      reason: (r.reason || '').slice(0, 40),
     }));
     exportToPDF('EzEv Mumbai Customer Dispute Claims', columns, data, 'ezev_disputes_summary.pdf');
     toast.success('Generated PDF Report');

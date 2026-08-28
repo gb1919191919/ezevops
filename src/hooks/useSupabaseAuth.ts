@@ -16,9 +16,12 @@ export function useSupabaseAuth() {
   const setCurrentUser = useAppStore((s) => s.setCurrentUser);
   const setActiveRoles = useAppStore((s) => s.setActiveRoles);
 
-  const matchAndSyncProfile = useCallback(async (email: string) => {
+  const matchAndSyncProfile = useCallback(async (email?: string | null) => {
+    if (!email) {
+      return;
+    }
     const normalizedEmail = email.trim().toLowerCase();
-    const staffProfiles = useAppStore.getState().staffProfiles;
+    const staffProfiles = useAppStore.getState().staffProfiles || [];
 
     // 1. Check if email matches Bhuvnesh Kumar (Super Admin / Owner)
     if (normalizedEmail === 'bhuvnesh3568@gmail.com' || normalizedEmail === 'bhuvnesh@ezev.in') {
@@ -51,8 +54,8 @@ export function useSupabaseAuth() {
         const fullProfile: Profile = {
           id: dbProfile.id,
           email: dbProfile.email,
-          full_name: dbProfile.full_name,
-          phone: dbProfile.phone,
+          full_name: dbProfile.full_name || 'Operations Staff',
+          phone: dbProfile.phone || '',
           avatar_url: dbProfile.avatar_url,
           assigned_hub_id: dbProfile.assigned_hub_id,
           is_active: dbProfile.is_active,
@@ -82,7 +85,7 @@ export function useSupabaseAuth() {
       const guestProfile: Profile = {
         id: `usr-ext-${Date.now()}`,
         email: normalizedEmail,
-        full_name: normalizedEmail.split('@')[0],
+        full_name: normalizedEmail.split('@')?.[0] || 'Operations Staff',
         phone: '',
         is_active: true,
         created_at: new Date().toISOString(),

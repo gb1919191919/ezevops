@@ -297,8 +297,8 @@ export function TasksEngine() {
       const parentMs = milestones.find((m) => m.id === t.milestone_id);
       return [
         t.title,
-        parentObj?.title.slice(0, 25) || '-',
-        parentMs?.title.slice(0, 20) || '-',
+        parentObj?.title ? parentObj.title.slice(0, 25) : '-',
+        parentMs?.title ? parentMs.title.slice(0, 20) : '-',
         t.priority,
         t.status,
         t.vehicle_scope || 'NONE',
@@ -638,7 +638,7 @@ export function TasksEngine() {
                                   key={staffId}
                                   className="px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px]"
                                 >
-                                  {staff?.full_name.split(' ')[0] || staffId}
+                                  {staff?.full_name ? staff.full_name.split(' ')[0] : staffId}
                                 </span>
                               );
                             })}

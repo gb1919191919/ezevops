@@ -442,7 +442,7 @@ export function FleetTable() {
       const spend = vehicleSpendMap.get(v.id) || v.total_maintenance_spend || 0;
       const uptime = (fleetAvailability.perVehicle.get(v.id) ?? (v.uptime_percentage || 95)).toFixed(1);
       return {
-        'Vehicle ID': v.custom_vehicle_id || v.id.toUpperCase(),
+        'Vehicle ID': v.custom_vehicle_id || (v.id || '').toUpperCase(),
         'Key Number': v.key_number,
         'IoT ID (IMEI)': v.vehicle_id,
         'VIN / Chassis': v.vin,
@@ -475,7 +475,7 @@ export function FleetTable() {
       const spend = vehicleSpendMap.get(v.id) || v.total_maintenance_spend || 0;
       const uptime = (fleetAvailability.perVehicle.get(v.id) ?? (v.uptime_percentage || 95)).toFixed(1);
       return {
-        key: `${v.custom_vehicle_id || v.id.toUpperCase()} (#${v.key_number})`,
+        key: `${v.custom_vehicle_id || (v.id || '').toUpperCase()} (#${v.key_number})`,
         model: v.model,
         hub: hub ? hub.name : v.current_hub_id,
         status: v.current_status,
@@ -931,13 +931,13 @@ export function FleetTable() {
                             ) : (
                               <div className="flex items-center gap-1.5">
                                 <span className="font-mono font-bold text-zinc-100 group-hover:text-blue-400 transition">
-                                  {v.custom_vehicle_id || v.id.toUpperCase()}
+                                  {v.custom_vehicle_id || (v.id || '').toUpperCase()}
                                 </span>
                                 {(isOwner || isManager) && (
                                   <button
                                     onClick={() => {
                                       setEditingVehicleId(v.id);
-                                      setCustomIdInput(v.custom_vehicle_id || v.id.toUpperCase());
+                                      setCustomIdInput(v.custom_vehicle_id || (v.id || '').toUpperCase());
                                     }}
                                     title="Edit Custom Vehicle ID"
                                     className="p-1 rounded text-zinc-500 hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition"
@@ -1072,7 +1072,7 @@ export function FleetTable() {
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-sm text-zinc-100 group-hover:text-blue-400 transition">
-                        {v.custom_vehicle_id || v.id.toUpperCase()}
+                        {v.custom_vehicle_id || (v.id || '').toUpperCase()}
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[10px]">
                         #{v.key_number}
@@ -1257,7 +1257,7 @@ export function FleetTable() {
                       return (
                         <tr key={v.id} className="hover:bg-zinc-800/40 transition">
                           <td className="p-3 font-mono font-bold text-zinc-100">
-                            {v.custom_vehicle_id || v.id.toUpperCase()} (#{v.key_number})
+                            {v.custom_vehicle_id || (v.id || '').toUpperCase()} (#{v.key_number})
                           </td>
                           <td className="p-3">{v.model}</td>
                           <td className="p-3">{hub?.name || v.current_hub_id}</td>
@@ -1336,7 +1336,7 @@ export function FleetTable() {
                               <div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="font-mono font-bold text-zinc-100 text-xs group-hover:text-blue-400 transition">
-                                    {v.custom_vehicle_id || v.id.toUpperCase()}
+                                    {v.custom_vehicle_id || (v.id || '').toUpperCase()}
                                   </span>
                                   <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[10px]">
                                     #{v.key_number}

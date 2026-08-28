@@ -24,12 +24,12 @@ export function MobileNav() {
   const hubStock = useAppStore((s) => s.hubStock);
 
   const pendingApprovalsCount =
-    jobCards.filter((j) => j.status === 'PENDING').length +
-    vehicles.filter((v) => v.pending_status !== null).length +
-    refunds.filter((r) => r.status === 'SUBMITTED' || r.status === 'VERIFIED').length;
+    (jobCards || []).filter((j) => j?.status === 'PENDING').length +
+    (vehicles || []).filter((v) => v?.pending_status !== null).length +
+    (refunds || []).filter((r) => r?.status === 'SUBMITTED' || r?.status === 'VERIFIED').length;
 
-  const lowStockCount = hubStock.filter(
-    (s) => s.physical_stock - s.pending_allocated_stock < s.min_threshold
+  const lowStockCount = (hubStock || []).filter(
+    (s) => (s?.physical_stock || 0) - (s?.pending_allocated_stock || 0) < (s?.min_threshold || 5)
   ).length;
 
   const mobileNavItems = [

@@ -473,9 +473,9 @@ export const useAppStore = create<AppStoreState>()(
           ...refundData,
           id: newRefundId,
           status: 'SUBMITTED',
-          requested_by: currentUser.id,
-          requester_name: currentUser.full_name,
-          requester_role: currentUser.roles?.[0]?.label || 'Staff',
+          requested_by: currentUser?.id || 'usr-01',
+          requester_name: currentUser?.full_name || 'Staff Member',
+          requester_role: currentUser?.roles?.[0]?.label || 'Staff',
           is_archived: false,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -494,7 +494,7 @@ export const useAppStore = create<AppStoreState>()(
             ? {
                 ...r,
                 status: 'VERIFIED' as const,
-                approved_by: currentUser.id,
+                approved_by: currentUser?.id || 'usr-01',
                 internal_remarks: remarks || r.internal_remarks,
                 updated_at: new Date().toISOString(),
               }
@@ -515,7 +515,7 @@ export const useAppStore = create<AppStoreState>()(
                 ...r,
                 status: 'SETTLED' as const,
                 settled_at: new Date().toISOString(),
-                settled_by_name: currentUser.full_name,
+                settled_by_name: currentUser?.full_name || 'Staff Member',
                 frappe_reference: frappeReference || r.frappe_reference,
                 updated_at: new Date().toISOString(),
               }
@@ -536,7 +536,7 @@ export const useAppStore = create<AppStoreState>()(
                 ...r,
                 status: 'REJECTED' as const,
                 rejection_reason: reason,
-                approved_by: currentUser.id,
+                approved_by: currentUser?.id || 'usr-01',
                 updated_at: new Date().toISOString(),
               }
             : r
@@ -638,7 +638,7 @@ export const useAppStore = create<AppStoreState>()(
           connector_number: String(portNumber),
           status,
           reported_at: new Date().toISOString(),
-          reported_by: currentUser.full_name,
+          reported_by: currentUser?.full_name || 'Staff Member',
           remarks: remarks || undefined,
           is_archived: false,
         };
@@ -674,7 +674,7 @@ export const useAppStore = create<AppStoreState>()(
           connector_number: connectorNumber,
           status,
           reported_at: new Date().toISOString(),
-          reported_by: currentUser.full_name,
+          reported_by: currentUser?.full_name || 'Staff Member',
           remarks,
           is_archived: false,
         };
@@ -803,8 +803,8 @@ export const useAppStore = create<AppStoreState>()(
             {
               id: `chg-${Date.now()}`,
               task_id: newId,
-              changed_by: currentUser.id,
-              performer_name: currentUser.full_name,
+              changed_by: currentUser?.id || 'usr-01',
+              performer_name: currentUser?.full_name || 'Staff Member',
               field_changed: 'creation',
               old_value: 'None',
               new_value: 'Created',
@@ -838,8 +838,8 @@ export const useAppStore = create<AppStoreState>()(
         const newEntry = {
           id: `chg-${Date.now()}`,
           task_id: taskId,
-          changed_by: currentUser.id,
-          performer_name: currentUser.full_name,
+          changed_by: currentUser?.id || 'usr-01',
+          performer_name: currentUser?.full_name || 'Staff Member',
           field_changed: 'status',
           old_value: oldStatus,
           new_value: status,
@@ -895,9 +895,9 @@ export const useAppStore = create<AppStoreState>()(
         const newRemark = {
           id: `rem-${Date.now()}`,
           task_id: taskId,
-          author_id: currentUser.id,
-          author_name: currentUser.full_name,
-          author_role: currentUser.roles?.[0]?.label,
+          author_id: currentUser?.id || 'usr-01',
+          author_name: currentUser?.full_name || 'Staff Member',
+          author_role: currentUser?.roles?.[0]?.label || 'Staff',
           comment,
           is_archived: false,
           created_at: new Date().toISOString(),
@@ -1224,7 +1224,7 @@ export const useAppStore = create<AppStoreState>()(
               ...v,
               odometer_km: odometerKm,
               last_odometer_updated_at: new Date().toISOString(),
-              last_odometer_updated_by: currentUser.id,
+              last_odometer_updated_by: currentUser?.id || 'usr-01',
               updated_at: new Date().toISOString(),
             };
           }
@@ -1264,14 +1264,14 @@ export const useAppStore = create<AppStoreState>()(
       logInspection: (inspectionData) => {
         const { inspections, vehicles, auditLogs, currentUser, activeRoles } = get();
         const newId = `insp-${Date.now()}`;
-        const isAuthorized = activeRoles.includes('owner') || activeRoles.includes('manager');
+        const isAuthorized = (activeRoles || []).includes('owner') || (activeRoles || []).includes('manager');
 
         const newInspection: VehicleInspection = {
           ...inspectionData,
           id: newId,
           is_archived: false,
-          inspector_id: currentUser.id,
-          inspector_name: currentUser.full_name,
+          inspector_id: currentUser?.id || 'usr-01',
+          inspector_name: currentUser?.full_name || 'Staff Member',
           inspected_at: new Date().toISOString(),
         };
 
@@ -1281,9 +1281,9 @@ export const useAppStore = create<AppStoreState>()(
               ...v,
               odometer_km: inspectionData.odometer_km,
               last_odometer_updated_at: new Date().toISOString(),
-              last_odometer_updated_by: currentUser.id,
+              last_odometer_updated_by: currentUser?.id || 'usr-01',
               last_inspected_at: new Date().toISOString(),
-              last_inspected_by: currentUser.full_name,
+              last_inspected_by: currentUser?.full_name || 'Staff Member',
               current_status: isAuthorized ? inspectionData.recommended_status : v.current_status,
               pending_status: isAuthorized ? null : inspectionData.recommended_status,
               updated_at: new Date().toISOString(),
@@ -1393,8 +1393,8 @@ export const useAppStore = create<AppStoreState>()(
           hub_id: hubId || 'hub-store-01',
           vehicle_id: vehicleId || null,
           quantity,
-          used_by_id: currentUser.id,
-          used_by_name: currentUser.full_name,
+          used_by_id: currentUser?.id || 'usr-01',
+          used_by_name: currentUser?.full_name || 'Staff Member',
           recipient_name: recipientName,
           reason,
           is_archived: false,
@@ -1447,7 +1447,7 @@ export const useAppStore = create<AppStoreState>()(
       createJobCard: (cardData, partsList, forceImmediateApproval) => {
         const { jobCards, parts, hubStock, vehicles, auditLogs, currentUser, activeRoles } = get();
         const isAuthorized =
-          (activeRoles.includes('owner') || activeRoles.includes('manager')) &&
+          ((activeRoles || []).includes('owner') || (activeRoles || []).includes('manager')) &&
           Boolean(forceImmediateApproval);
 
         const newJobCardId = `job-${Date.now()}`;
@@ -1455,7 +1455,7 @@ export const useAppStore = create<AppStoreState>()(
         const initialStatus = isAuthorized ? 'APPROVED' : 'PENDING';
 
         const builtParts = (partsList || []).map((p, idx) => {
-          const partDef = parts.find((item) => item.id === p.part_id);
+          const partDef = (parts || []).find((item) => item.id === p.part_id);
           return {
             id: `jcp-${Date.now()}-${idx}`,
             job_card_id: newJobCardId,
@@ -1473,7 +1473,7 @@ export const useAppStore = create<AppStoreState>()(
           id: newJobCardId,
           ticket_number: newTicketNumber,
           status: initialStatus,
-          approved_by: isAuthorized ? currentUser.id : null,
+          approved_by: isAuthorized ? (currentUser?.id || 'usr-01') : null,
           approved_at: isAuthorized ? new Date().toISOString() : null,
           approval_notes: isAuthorized ? 'Self-approved upon ticket creation by authorized manager' : null,
           is_archived: false,
@@ -1514,7 +1514,7 @@ export const useAppStore = create<AppStoreState>()(
               ...v,
               odometer_km: nextOdometer,
               last_odometer_updated_at: cardData.odometer_km ? new Date().toISOString() : v.last_odometer_updated_at,
-              last_odometer_updated_by: cardData.odometer_km ? currentUser.id : v.last_odometer_updated_by,
+              last_odometer_updated_by: cardData.odometer_km ? (currentUser?.id || 'usr-01') : v.last_odometer_updated_by,
               current_status: isAuthorized ? ('Available' as const) : v.current_status,
               pending_status: isAuthorized ? null : ('Under Repair' as const),
               status_change_reason: isAuthorized ? null : cardData.issue_description,
@@ -1581,7 +1581,7 @@ export const useAppStore = create<AppStoreState>()(
             return {
               ...j,
               status: 'APPROVED' as const,
-              approved_by: currentUser.id,
+              approved_by: currentUser?.id || 'usr-01',
               approved_at: new Date().toISOString(),
               approval_notes: approvalNotes || 'Manager sign-off completed.',
               parts: j.parts?.map((p) => ({ ...p, is_approved: true })),
@@ -1640,7 +1640,7 @@ export const useAppStore = create<AppStoreState>()(
             return {
               ...j,
               status: 'REJECTED' as const,
-              approved_by: currentUser.id,
+              approved_by: currentUser?.id || 'usr-01',
               approved_at: new Date().toISOString(),
               approval_notes: rejectionNotes,
             };
@@ -1702,13 +1702,13 @@ export const useAppStore = create<AppStoreState>()(
           id: newId,
           version: '1.0',
           view_count: 1,
-          acknowledged_by: [currentUser.id],
+          acknowledged_by: currentUser?.id ? [currentUser.id] : [],
           is_archived: false,
           revisions: [
             {
               version: '1.0',
               updated_at: new Date().toISOString(),
-              updated_by_name: currentUser.full_name,
+              updated_by_name: currentUser?.full_name || 'Staff Member',
               change_summary: 'Initial document creation',
               content: sopData.content,
             },
@@ -1733,7 +1733,7 @@ export const useAppStore = create<AppStoreState>()(
         const newRevision = {
           version: nextVersion,
           updated_at: new Date().toISOString(),
-          updated_by_name: currentUser.full_name,
+          updated_by_name: currentUser?.full_name || 'Staff Member',
           change_summary: changeSummary || 'General procedure refinement',
           content: updates.content || existing.content,
         };
@@ -1771,7 +1771,7 @@ export const useAppStore = create<AppStoreState>()(
 
       acknowledgeSOP: (sopId, profileId) => {
         const { sops, currentUser } = get();
-        const targetId = profileId || currentUser.id;
+        const targetId = profileId || currentUser?.id || 'usr-01';
 
         const updatedSOPs = sops.map((s) => {
           if (s.id === sopId) {
@@ -1837,9 +1837,9 @@ export const useAppStore = create<AppStoreState>()(
           id: newId,
           status: 'ACTIVE',
           is_archived: false,
-          author_id: currentUser.id,
-          author_name: currentUser.full_name,
-          author_role: currentUser.roles?.[0]?.label || 'Operations Staff',
+          author_id: currentUser?.id || 'usr-01',
+          author_name: currentUser?.full_name || 'Staff Member',
+          author_role: currentUser?.roles?.[0]?.label || 'Operations Staff',
           resolved_at: null,
           resolved_by_name: null,
           created_at: new Date().toISOString(),
@@ -1895,7 +1895,7 @@ export const useAppStore = create<AppStoreState>()(
                 status: 'RESOLVED' as const,
                 is_pinned: false,
                 resolved_at: new Date().toISOString(),
-                resolved_by_name: currentUser.full_name,
+                resolved_by_name: currentUser?.full_name || 'Staff Member',
                 updated_at: new Date().toISOString(),
               }
             : n
@@ -1907,7 +1907,7 @@ export const useAppStore = create<AppStoreState>()(
           status: 'RESOLVED',
           is_pinned: false,
           resolved_at: new Date().toISOString(),
-          resolved_by_name: currentUser.full_name,
+          resolved_by_name: currentUser?.full_name || 'Staff Member',
           updated_at: new Date().toISOString(),
         }, { action: 'UPDATE', old_data: existing });
       },

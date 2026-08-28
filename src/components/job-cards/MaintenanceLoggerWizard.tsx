@@ -50,9 +50,9 @@ export function MaintenanceLoggerWizard({ onSuccess }: WizardProps) {
     bmsDiagnostics: false,
   });
 
-  const vehicles = useAppStore((s) => s.vehicles);
-  const parts = useAppStore((s) => s.parts);
-  const hubs = useAppStore((s) => s.hubs);
+  const vehicles = useAppStore((s) => s.vehicles || []);
+  const parts = useAppStore((s) => s.parts || []);
+  const hubs = useAppStore((s) => s.hubs || []);
   const createJobCard = useAppStore((s) => s.createJobCard);
   const currentUser = useAppStore((s) => s.currentUser);
   const { isOwner, isManager } = useRBAC();
@@ -112,8 +112,8 @@ export function MaintenanceLoggerWizard({ onSuccess }: WizardProps) {
       {
         vehicle_id: selectedVehicle.id,
         hub_id: selectedVehicle.current_hub_id,
-        reported_by: currentUser.id,
-        assigned_mechanic_id: currentUser.id,
+        reported_by: currentUser?.id || 'usr-01',
+        assigned_mechanic_id: currentUser?.id || 'usr-01',
         odometer_km: odometerKm !== '' ? Number(odometerKm) : undefined,
         issue_description: issueDescription.trim(),
         solution_applied: solutionApplied.trim() || null,

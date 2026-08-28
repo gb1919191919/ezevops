@@ -47,7 +47,7 @@ export function SOPsManager() {
   const [formAccessRoles, setFormAccessRoles] = useState<string[]>(['owner', 'manager', 'rsa', 'mechanic']);
   const [formChangeSummary, setFormChangeSummary] = useState('');
 
-  const sops = useAppStore((s) => s.sops);
+  const sops = useAppStore((s) => s.sops || []);
   const createSOP = useAppStore((s) => s.createSOP);
   const updateSOP = useAppStore((s) => s.updateSOP);
   const publishSOP = useAppStore((s) => s.publishSOP);
@@ -55,16 +55,16 @@ export function SOPsManager() {
   const archiveSOP = useAppStore((s) => s.archiveSOP);
   const restoreSOP = useAppStore((s) => s.restoreSOP);
   const currentUser = useAppStore((s) => s.currentUser);
-  const customRoles = useAppStore((s) => s.customRoles);
+  const customRoles = useAppStore((s) => s.customRoles || []);
   const { isOwner, isManager, activeRoles } = useRBAC();
 
-  const categories = Array.from(new Set(sops.map((s) => s.category)));
+  const categories = Array.from(new Set(sops.map((s) => s?.category).filter(Boolean)));
 
   const filteredSOPs = sops.filter((s) => {
     // Non-admins only see SOPs permitted to their active role or authored by them
     const isFullAdmin = isOwner || isManager;
     if (!isFullAdmin) {
-      const hasRoleAccess = (s.access_roles || []).some((r) => activeRoles.includes(r as any));
+      const hasRoleAccess = (s.access_roles || []).some((r) => (activeRoles || []).includes(r as any));
       const isAuthor = currentUser?.id && s.author_id === currentUser.id;
       if (!hasRoleAccess && !isAuthor) return false;
     }
@@ -74,10 +74,10 @@ export function SOPsManager() {
 
     const q = searchTerm.toLowerCase();
     return (
-      s.title.toLowerCase().includes(q) ||
-      s.code.toLowerCase().includes(q) ||
-      s.summary.toLowerCase().includes(q) ||
-      s.content.toLowerCase().includes(q)
+      (s.title || '').toLowerCase().includes(q) ||
+      (s.code || '').toLowerCase().includes(q) ||
+      (s.summary || '').toLowerCase().includes(q) ||
+      (s.content || '').toLowerCase().includes(q)
     );
   });
 
@@ -85,7 +85,7 @@ export function SOPsManager() {
 
   const handleOpenCreate = () => {
     setIsEditing(false);
-    setFormCode(`SOP-${formCategory.slice(0, 3).toUpperCase()}-${String(sops.length + 1).padStart(3, '0')}`);
+    setFormCode(`SOP-${(formCategory || 'OPS').slice(0, 3).toUpperCase()}-${String(sops.length + 1).padStart(3, '0')}`);
     setFormTitle('');
     setFormCategory('Operations');
     setFormSummary('');
@@ -700,7 +700,7 @@ export function SOPsManager() {
                             : 'bg-[#141416] border-[#2a2a2f] text-zinc-400'
                         )}
                       >
-                        <span className="truncate">{r.label.split(' (')[0]}</span>
+                        <span className="truncate">{r?.label ? (r.label.split(' (')?.[0] || r.label) : (r?.code || 'Role')}</span>
                         {isChecked && <Check className="w-3 h-3 text-blue-400" />}
                       </button>
                     );

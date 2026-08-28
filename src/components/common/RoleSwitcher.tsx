@@ -40,7 +40,7 @@ export function RoleSwitcher() {
       return;
     }
     toggleRole(code);
-    toast.info(`Toggled ${code.toUpperCase()} role preview`);
+    toast.info(`Toggled ${(code || '').toUpperCase()} role preview`);
   };
 
   // If user is not an owner, render a locked badge
@@ -55,6 +55,8 @@ export function RoleSwitcher() {
     );
   }
 
+  const roleList = activeRoles || [];
+
   return (
     <div className="relative inline-block text-left" ref={dropdownRef}>
       <button
@@ -64,7 +66,7 @@ export function RoleSwitcher() {
       >
         <Shield className="w-3.5 h-3.5 text-blue-400" />
         <span className="capitalize text-xs">
-          {activeRoles.length === 1 ? activeRoles[0] : `${activeRoles.length} Active Roles`}
+          {roleList.length === 1 ? roleList[0] : `${roleList.length} Active Roles`}
         </span>
         <ChevronDown className="w-3 h-3 text-zinc-400" />
       </button>
@@ -86,8 +88,8 @@ export function RoleSwitcher() {
           </div>
 
           <div className="space-y-1">
-            {customRoles.map((role) => {
-              const isSelected = activeRoles.includes(role.code) || activeRoles.includes(role.id);
+            {(customRoles || []).map((role) => {
+              const isSelected = roleList.includes(role.code) || roleList.includes(role.id);
               return (
                 <button
                   key={role.id}

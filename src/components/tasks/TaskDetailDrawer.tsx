@@ -37,10 +37,10 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentUser = useAppStore((s) => s.currentUser);
-  const vehicles = useAppStore((s) => s.vehicles);
-  const staffProfiles = useAppStore((s) => s.staffProfiles);
-  const milestones = useAppStore((s) => s.milestones);
-  const objectives = useAppStore((s) => s.objectives);
+  const vehicles = useAppStore((s) => s.vehicles || []);
+  const staffProfiles = useAppStore((s) => s.staffProfiles || []);
+  const milestones = useAppStore((s) => s.milestones || []);
+  const objectives = useAppStore((s) => s.objectives || []);
   const updateTaskStatus = useAppStore((s) => s.updateTaskStatus);
   const updateTaskAssignees = useAppStore((s) => s.updateTaskAssignees);
   const addTaskRemark = useAppStore((s) => s.addTaskRemark);
@@ -104,8 +104,8 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
     });
   };
 
-  const getFileIcon = (fileName: string) => {
-    const lower = fileName.toLowerCase();
+  const getFileIcon = (fileName?: string) => {
+    const lower = (fileName || '').toLowerCase();
     if (lower.endsWith('.pdf')) return <FileText className="w-4 h-4 text-rose-400" />;
     if (lower.endsWith('.xlsx') || lower.endsWith('.csv') || lower.endsWith('.xls'))
       return <FileSpreadsheet className="w-4 h-4 text-emerald-400" />;
@@ -121,7 +121,7 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
         <div className="p-5 border-b border-zinc-800 flex items-start justify-between bg-zinc-950">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="font-mono text-xs text-zinc-500">Task #{task.id.slice(0, 8)}</span>
+              <span className="font-mono text-xs text-zinc-500">Task #{(task.id || '').slice(0, 8)}</span>
               <TaskPriorityBadge priority={task.priority} />
             </div>
             <h2
@@ -207,7 +207,7 @@ export function TaskDetailDrawer({ task, onClose }: TaskDetailDrawerProps) {
                         : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-zinc-200'
                     )}
                   >
-                    <span>{staff.full_name.split(' (')[0]}</span>
+                    <span>{staff?.full_name ? (staff.full_name.split(' (')?.[0] || staff.full_name) : (staff?.email || 'Staff')}</span>
                     {isAssigned && <CheckCircle2 className="w-3 h-3 text-emerald-400" />}
                   </button>
                 );

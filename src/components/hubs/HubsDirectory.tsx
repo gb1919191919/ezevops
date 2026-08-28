@@ -25,7 +25,7 @@ import {
 import { toast } from 'sonner';
 
 export function HubsDirectory() {
-  const hubs = useAppStore((s) => s.hubs);
+  const hubs = useAppStore((s) => s.hubs || []);
   const addHub = useAppStore((s) => s.addHub);
   const updateHub = useAppStore((s) => s.updateHub);
   const toggleChargerStatus = useAppStore((s) => s.toggleChargerStatus);

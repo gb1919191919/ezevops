@@ -28,10 +28,11 @@ export function useRBAC() {
     return perms.every((p) => effectivePermissions.has(p));
   };
 
-  const isOwner = activeRoles.includes('owner');
-  const isManager = activeRoles.includes('manager');
-  const isRSA = activeRoles.includes('rsa');
-  const isMechanic = activeRoles.includes('mechanic');
+  const roles = activeRoles || [];
+  const isOwner = roles.includes('owner');
+  const isManager = roles.includes('manager');
+  const isRSA = roles.includes('rsa');
+  const isMechanic = roles.includes('mechanic');
 
   return {
     activeRoles,

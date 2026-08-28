@@ -250,14 +250,14 @@ export function ApprovalsDesk() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-mono font-bold text-sm text-zinc-100">
-                          {v.custom_vehicle_id || v.id.toUpperCase()}
+                          {v.custom_vehicle_id || (v.id || '').toUpperCase()}
                         </span>
                         <span className="font-mono text-xs text-blue-300 font-bold px-1.5 py-0.2 rounded bg-blue-500/10 border border-blue-500/30">
                           Key: #{v.key_number}
                         </span>
                       </div>
                       <p className="text-[11px] text-zinc-400 mt-0.5 font-mono">
-                        {v.vehicle_id} • {hub?.name}
+                        {v.vehicle_id} • {hub?.name || 'Central'}
                       </p>
                     </div>
                   </div>

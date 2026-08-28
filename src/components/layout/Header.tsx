@@ -72,17 +72,17 @@ export function Header() {
     setMobileDrawerOpen(false);
   }, [pathname, setMobileDrawerOpen]);
 
-  const pendingJobCards = jobCards.filter((j) => j.status === 'PENDING').length;
-  const pendingVehicleStatus = vehicles.filter((v) => v.pending_status !== null).length;
-  const pendingRefunds = refunds.filter((r) => r.status === 'SUBMITTED' || r.status === 'VERIFIED').length;
+  const pendingJobCards = (jobCards || []).filter((j) => j?.status === 'PENDING').length;
+  const pendingVehicleStatus = (vehicles || []).filter((v) => v?.pending_status !== null).length;
+  const pendingRefunds = (refunds || []).filter((r) => r?.status === 'SUBMITTED' || r?.status === 'VERIFIED').length;
   const totalPendingApprovals = pendingJobCards + pendingVehicleStatus + pendingRefunds;
 
-  const lowStockCount = hubStock.filter(
-    (s) => s.physical_stock - s.pending_allocated_stock < s.min_threshold
+  const lowStockCount = (hubStock || []).filter(
+    (s) => (s?.physical_stock || 0) - (s?.pending_allocated_stock || 0) < (s?.min_threshold || 5)
   ).length;
 
-  const pendingTasksCount = tasks.filter(
-    (t) => t.status !== 'COMPLETED' && t.status !== 'ABANDONED'
+  const pendingTasksCount = (tasks || []).filter(
+    (t) => t?.status !== 'COMPLETED' && t?.status !== 'ABANDONED'
   ).length;
 
   const mobileNavSections = [

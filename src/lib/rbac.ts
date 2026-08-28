@@ -221,12 +221,12 @@ export const ROLE_DEFINITIONS: Record<string, { label: string; permissions: Perm
  * Compute the additive union of permissions across all active roles for the current user
  */
 export function computeEffectivePermissions(
-  activeRoles: RoleCode[],
+  activeRoles: RoleCode[] = [],
   customRoles: Role[] = []
 ): Set<PermissionKey> {
   const permissions = new Set<PermissionKey>();
 
-  for (const roleCode of activeRoles) {
+  for (const roleCode of (activeRoles || [])) {
     // Check built-in definitions
     const def = ROLE_DEFINITIONS[roleCode];
     if (def) {

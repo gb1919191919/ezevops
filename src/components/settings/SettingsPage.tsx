@@ -70,8 +70,8 @@ export function SettingsPage() {
     "channels:view",
   ]);
 
-  const customRoles = useAppStore((s) => s.customRoles);
-  const staffProfiles = useAppStore((s) => s.staffProfiles);
+  const customRoles = useAppStore((s) => s.customRoles || []);
+  const staffProfiles = useAppStore((s) => s.staffProfiles || []);
   const addCustomRole = useAppStore((s) => s.addCustomRole);
   const updateRolePermissions = useAppStore((s) => s.updateRolePermissions);
   const addStaffProfile = useAppStore((s) => s.addStaffProfile);
@@ -96,7 +96,7 @@ export function SettingsPage() {
   // Distinct modules for permissions filtering
   const distinctModules = useMemo(() => {
     const modules = new Set<string>();
-    INITIAL_PERMISSIONS.forEach((p) => modules.add(p.module));
+    INITIAL_PERMISSIONS.forEach((p) => p?.module && modules.add(p.module));
     return Array.from(modules);
   }, []);
 
@@ -109,10 +109,10 @@ export function SettingsPage() {
       if (permSearch.trim()) {
         const q = permSearch.toLowerCase();
         return (
-          perm.code.toLowerCase().includes(q) ||
+          (perm.code || '').toLowerCase().includes(q) ||
           (perm.label && perm.label.toLowerCase().includes(q)) ||
           (perm.description && perm.description.toLowerCase().includes(q)) ||
-          perm.module.toLowerCase().includes(q)
+          (perm.module || '').toLowerCase().includes(q)
         );
       }
       return true;
