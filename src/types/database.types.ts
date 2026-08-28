@@ -55,6 +55,7 @@ export type Database = {
           date: string
           employee_name: string
           id: string
+          is_archived: boolean | null
           phone: string
           reason: string
           recovery_amount: number
@@ -67,6 +68,7 @@ export type Database = {
           date: string
           employee_name: string
           id?: string
+          is_archived?: boolean | null
           phone: string
           reason: string
           recovery_amount?: number
@@ -79,6 +81,7 @@ export type Database = {
           date?: string
           employee_name?: string
           id?: string
+          is_archived?: boolean | null
           phone?: string
           reason?: string
           recovery_amount?: number
@@ -96,6 +99,8 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          is_archived: boolean | null
+          is_hidden: boolean | null
           sender_avatar: string | null
           sender_id: string | null
           sender_name: string
@@ -107,6 +112,8 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          is_archived?: boolean | null
+          is_hidden?: boolean | null
           sender_avatar?: string | null
           sender_id?: string | null
           sender_name: string
@@ -118,6 +125,8 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          is_archived?: boolean | null
+          is_hidden?: boolean | null
           sender_avatar?: string | null
           sender_id?: string | null
           sender_name?: string
@@ -146,6 +155,7 @@ export type Database = {
           connector_number: string | null
           hub_id: string | null
           id: string
+          is_archived: boolean | null
           remarks: string | null
           reported_at: string
           reported_by: string
@@ -156,6 +166,7 @@ export type Database = {
           connector_number?: string | null
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           remarks?: string | null
           reported_at?: string
           reported_by: string
@@ -166,6 +177,7 @@ export type Database = {
           connector_number?: string | null
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           remarks?: string | null
           reported_at?: string
           reported_by?: string
@@ -189,9 +201,12 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_active: boolean | null
+          is_archived: boolean | null
           is_private: boolean
           is_system: boolean
           name: string
+          updated_at: string | null
         }
         Insert: {
           allowed_members?: string[] | null
@@ -200,9 +215,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          is_archived?: boolean | null
           is_private?: boolean
           is_system?: boolean
           name: string
+          updated_at?: string | null
         }
         Update: {
           allowed_members?: string[] | null
@@ -211,9 +229,12 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          is_archived?: boolean | null
           is_private?: boolean
           is_system?: boolean
           name?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -237,6 +258,7 @@ export type Database = {
           hub_id: string
           hub_name: string | null
           id: string
+          is_archived: boolean | null
           media_attachments: string[] | null
           milestones_completed: string | null
           roadblocks: string | null
@@ -256,6 +278,7 @@ export type Database = {
           hub_id: string
           hub_name?: string | null
           id?: string
+          is_archived?: boolean | null
           media_attachments?: string[] | null
           milestones_completed?: string | null
           roadblocks?: string | null
@@ -275,6 +298,7 @@ export type Database = {
           hub_id?: string
           hub_name?: string | null
           id?: string
+          is_archived?: boolean | null
           media_attachments?: string[] | null
           milestones_completed?: string | null
           roadblocks?: string | null
@@ -304,6 +328,7 @@ export type Database = {
         Row: {
           hub_id: string | null
           id: string
+          is_archived: boolean
           min_threshold: number
           part_id: string | null
           pending_allocated_stock: number
@@ -313,6 +338,7 @@ export type Database = {
         Insert: {
           hub_id?: string | null
           id?: string
+          is_archived?: boolean
           min_threshold?: number
           part_id?: string | null
           pending_allocated_stock?: number
@@ -322,6 +348,7 @@ export type Database = {
         Update: {
           hub_id?: string | null
           id?: string
+          is_archived?: boolean
           min_threshold?: number
           part_id?: string | null
           pending_allocated_stock?: number
@@ -358,6 +385,7 @@ export type Database = {
           day_guard_phone: string | null
           id: string
           is_active: boolean
+          is_archived: boolean
           is_warehouse: boolean
           name: string
           night_guard_details: string | null
@@ -380,6 +408,7 @@ export type Database = {
           day_guard_phone?: string | null
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           is_warehouse?: boolean
           name: string
           night_guard_details?: string | null
@@ -402,6 +431,7 @@ export type Database = {
           day_guard_phone?: string | null
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           is_warehouse?: boolean
           name?: string
           night_guard_details?: string | null
@@ -419,6 +449,7 @@ export type Database = {
           created_at: string
           id: string
           is_approved: boolean
+          is_archived: boolean | null
           job_card_id: string | null
           part_id: string | null
           quantity: number
@@ -428,6 +459,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean
+          is_archived?: boolean | null
           job_card_id?: string | null
           part_id?: string | null
           quantity?: number
@@ -437,6 +469,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_approved?: boolean
+          is_archived?: boolean | null
           job_card_id?: string | null
           part_id?: string | null
           quantity?: number
@@ -468,6 +501,7 @@ export type Database = {
           created_at: string
           hub_id: string | null
           id: string
+          is_archived: boolean | null
           issue_description: string
           odometer_km: number | null
           photos_url: string[] | null
@@ -486,6 +520,7 @@ export type Database = {
           created_at?: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           issue_description: string
           odometer_km?: number | null
           photos_url?: string[] | null
@@ -504,6 +539,7 @@ export type Database = {
           created_at?: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           issue_description?: string
           odometer_km?: number | null
           photos_url?: string[] | null
@@ -557,31 +593,37 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          is_archived: boolean | null
           is_completed: boolean
           objective_id: string
           order_index: number | null
           target_date: string | null
           title: string
+          updated_at: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
+          is_archived?: boolean | null
           is_completed?: boolean
           objective_id: string
           order_index?: number | null
           target_date?: string | null
           title: string
+          updated_at?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
+          is_archived?: boolean | null
           is_completed?: boolean
           objective_id?: string
           order_index?: number | null
           target_date?: string | null
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -600,10 +642,12 @@ export type Database = {
           description: string
           hub_id: string | null
           id: string
+          is_archived: boolean | null
           is_completed: boolean
           start_date: string | null
           target_date: string
           title: string
+          updated_at: string | null
         }
         Insert: {
           created_at?: string
@@ -611,10 +655,12 @@ export type Database = {
           description: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           is_completed?: boolean
           start_date?: string | null
           target_date: string
           title: string
+          updated_at?: string | null
         }
         Update: {
           created_at?: string
@@ -622,10 +668,12 @@ export type Database = {
           description?: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           is_completed?: boolean
           start_date?: string | null
           target_date?: string
           title?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -649,6 +697,7 @@ export type Database = {
           created_at: string
           hub_id: string | null
           id: string
+          is_archived: boolean | null
           part_id: string | null
           quantity: number
           reason: string
@@ -661,6 +710,7 @@ export type Database = {
           created_at?: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           part_id?: string | null
           quantity?: number
           reason: string
@@ -673,6 +723,7 @@ export type Database = {
           created_at?: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           part_id?: string | null
           quantity?: number
           reason?: string
@@ -712,6 +763,7 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_archived: boolean
           min_threshold: number
           name: string
           sku: string
@@ -724,6 +776,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           min_threshold?: number
           name: string
           sku: string
@@ -736,6 +789,7 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           min_threshold?: number
           name?: string
           sku?: string
@@ -784,6 +838,7 @@ export type Database = {
           full_name: string
           id: string
           is_active: boolean
+          is_archived: boolean
           phone: string
           updated_at: string
         }
@@ -796,6 +851,7 @@ export type Database = {
           full_name: string
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           phone: string
           updated_at?: string
         }
@@ -808,6 +864,7 @@ export type Database = {
           full_name?: string
           id?: string
           is_active?: boolean
+          is_archived?: boolean
           phone?: string
           updated_at?: string
         }
@@ -830,6 +887,7 @@ export type Database = {
           frappe_reference: string | null
           id: string
           internal_remarks: string | null
+          is_archived: boolean | null
           payout_type: Database["public"]["Enums"]["refund_payout_type"]
           reason: string
           rejection_reason: string | null
@@ -852,6 +910,7 @@ export type Database = {
           frappe_reference?: string | null
           id?: string
           internal_remarks?: string | null
+          is_archived?: boolean | null
           payout_type?: Database["public"]["Enums"]["refund_payout_type"]
           reason: string
           rejection_reason?: string | null
@@ -874,6 +933,7 @@ export type Database = {
           frappe_reference?: string | null
           id?: string
           internal_remarks?: string | null
+          is_archived?: boolean | null
           payout_type?: Database["public"]["Enums"]["refund_payout_type"]
           reason?: string
           rejection_reason?: string | null
@@ -937,6 +997,7 @@ export type Database = {
           change_summary: string
           content: string
           id: string
+          is_archived: boolean
           sop_id: string | null
           updated_at: string
           updated_by_name: string
@@ -946,6 +1007,7 @@ export type Database = {
           change_summary: string
           content: string
           id?: string
+          is_archived?: boolean
           sop_id?: string | null
           updated_at?: string
           updated_by_name: string
@@ -955,6 +1017,7 @@ export type Database = {
           change_summary?: string
           content?: string
           id?: string
+          is_archived?: boolean
           sop_id?: string | null
           updated_at?: string
           updated_by_name?: string
@@ -1039,6 +1102,7 @@ export type Database = {
           file_type: string | null
           file_url: string
           id: string
+          is_archived: boolean | null
           task_id: string
           uploaded_at: string
           uploaded_by: string | null
@@ -1049,6 +1113,7 @@ export type Database = {
           file_type?: string | null
           file_url: string
           id?: string
+          is_archived?: boolean | null
           task_id: string
           uploaded_at?: string
           uploaded_by?: string | null
@@ -1059,6 +1124,7 @@ export type Database = {
           file_type?: string | null
           file_url?: string
           id?: string
+          is_archived?: boolean | null
           task_id?: string
           uploaded_at?: string
           uploaded_by?: string | null
@@ -1136,6 +1202,7 @@ export type Database = {
           comment: string
           created_at: string
           id: string
+          is_archived: boolean | null
           task_id: string | null
         }
         Insert: {
@@ -1145,6 +1212,7 @@ export type Database = {
           comment: string
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           task_id?: string | null
         }
         Update: {
@@ -1154,6 +1222,7 @@ export type Database = {
           comment?: string
           created_at?: string
           id?: string
+          is_archived?: boolean | null
           task_id?: string | null
         }
         Relationships: [
@@ -1182,6 +1251,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_archived: boolean | null
           milestone_id: string | null
           objective_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
@@ -1201,6 +1271,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_archived?: boolean | null
           milestone_id?: string | null
           objective_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
@@ -1220,6 +1291,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_archived?: boolean | null
           milestone_id?: string | null
           objective_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
@@ -1265,6 +1337,7 @@ export type Database = {
           created_at: string
           hub_id: string | null
           id: string
+          is_archived: boolean | null
           is_pinned: boolean
           priority: string
           resolved_at: string | null
@@ -1283,6 +1356,7 @@ export type Database = {
           created_at?: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           is_pinned?: boolean
           priority?: string
           resolved_at?: string | null
@@ -1301,6 +1375,7 @@ export type Database = {
           created_at?: string
           hub_id?: string | null
           id?: string
+          is_archived?: boolean | null
           is_pinned?: boolean
           priority?: string
           resolved_at?: string | null
@@ -1337,6 +1412,7 @@ export type Database = {
           inspected_at: string
           inspector_id: string | null
           inspector_name: string
+          is_archived: boolean | null
           lights_passed: boolean
           notes: string | null
           odometer_km: number
@@ -1355,6 +1431,7 @@ export type Database = {
           inspected_at?: string
           inspector_id?: string | null
           inspector_name: string
+          is_archived?: boolean | null
           lights_passed?: boolean
           notes?: string | null
           odometer_km: number
@@ -1373,6 +1450,7 @@ export type Database = {
           inspected_at?: string
           inspector_id?: string | null
           inspector_name?: string
+          is_archived?: boolean | null
           lights_passed?: boolean
           notes?: string | null
           odometer_km?: number
@@ -1414,7 +1492,9 @@ export type Database = {
           current_status: Database["public"]["Enums"]["vehicle_status"]
           custom_vehicle_id: string | null
           id: string
+          iot_status: Database["public"]["Enums"]["iot_connectivity_status"]
           is_active: boolean
+          is_archived: boolean
           key_number: string
           last_inspected_at: string | null
           last_inspected_by: string | null
@@ -1423,6 +1503,8 @@ export type Database = {
           model: Database["public"]["Enums"]["scooter_model"]
           odometer_km: number | null
           pending_status: Database["public"]["Enums"]["vehicle_status"] | null
+          plate_number: string | null
+          soc_percentage: number
           status_change_reason: string | null
           total_maintenance_spend: number
           updated_at: string
@@ -1437,7 +1519,9 @@ export type Database = {
           current_status?: Database["public"]["Enums"]["vehicle_status"]
           custom_vehicle_id?: string | null
           id?: string
+          iot_status?: Database["public"]["Enums"]["iot_connectivity_status"]
           is_active?: boolean
+          is_archived?: boolean
           key_number: string
           last_inspected_at?: string | null
           last_inspected_by?: string | null
@@ -1446,6 +1530,8 @@ export type Database = {
           model?: Database["public"]["Enums"]["scooter_model"]
           odometer_km?: number | null
           pending_status?: Database["public"]["Enums"]["vehicle_status"] | null
+          plate_number?: string | null
+          soc_percentage?: number
           status_change_reason?: string | null
           total_maintenance_spend?: number
           updated_at?: string
@@ -1460,7 +1546,9 @@ export type Database = {
           current_status?: Database["public"]["Enums"]["vehicle_status"]
           custom_vehicle_id?: string | null
           id?: string
+          iot_status?: Database["public"]["Enums"]["iot_connectivity_status"]
           is_active?: boolean
+          is_archived?: boolean
           key_number?: string
           last_inspected_at?: string | null
           last_inspected_by?: string | null
@@ -1469,6 +1557,8 @@ export type Database = {
           model?: Database["public"]["Enums"]["scooter_model"]
           odometer_km?: number | null
           pending_status?: Database["public"]["Enums"]["vehicle_status"] | null
+          plate_number?: string | null
+          soc_percentage?: number
           status_change_reason?: string | null
           total_maintenance_spend?: number
           updated_at?: string
@@ -1510,6 +1600,7 @@ export type Database = {
         | "POWER_LINE_ISSUE"
         | "OFFLINE_TRIPPED"
       hub_type: "BIKE_HUB" | "STOCK_HUB"
+      iot_connectivity_status: "ONLINE" | "OFFLINE" | "NO_GPS"
       note_category:
         | "GENERAL"
         | "SHIFT_HANDOVER"
@@ -1669,6 +1760,7 @@ export const Constants = {
         "OFFLINE_TRIPPED",
       ],
       hub_type: ["BIKE_HUB", "STOCK_HUB"],
+      iot_connectivity_status: ["ONLINE", "OFFLINE", "NO_GPS"],
       note_category: [
         "GENERAL",
         "SHIFT_HANDOVER",
