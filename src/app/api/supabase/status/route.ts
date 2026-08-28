@@ -64,7 +64,7 @@ export async function GET() {
       connected: true,
       tables: results,
       schemaReady: anyTableFound,
-      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://yliozdsnqnfjkpcuctwe.supabase.co',
+      supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {

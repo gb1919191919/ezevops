@@ -25,8 +25,18 @@ export default function LoginPage() {
 
   const { loading, authError, signInWithOtp, signInWithPassword } = useSupabaseAuth();
 
+  const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutUntil, setLockoutUntil] = useState<number | null>(null);
+
+  const isLockedOut = lockoutUntil !== null && Date.now() < lockoutUntil;
+
   const handleMagicLinkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLockedOut) {
+      const remainingSecs = Math.ceil((lockoutUntil! - Date.now()) / 1000);
+      toast.error(`Too many attempts. Please wait ${remainingSecs}s.`);
+      return;
+    }
     if (!email.trim()) {
       toast.error('Please enter your authorized work email.');
       return;
@@ -35,11 +45,24 @@ export default function LoginPage() {
     const res = await signInWithOtp(email.trim());
     if (res.success) {
       setIsSubmitted(true);
+      setFailedAttempts(0);
+    } else {
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+      if (nextAttempts >= 5) {
+        setLockoutUntil(Date.now() + 60 * 1000);
+        toast.error('Rate limit reached: Locked for 60 seconds.');
+      }
     }
   };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLockedOut) {
+      const remainingSecs = Math.ceil((lockoutUntil! - Date.now()) / 1000);
+      toast.error(`Too many attempts. Please wait ${remainingSecs}s.`);
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       toast.error('Email and password are required.');
       return;
@@ -47,7 +70,15 @@ export default function LoginPage() {
 
     const res = await signInWithPassword(email.trim(), password);
     if (res.success) {
+      setFailedAttempts(0);
       router.push('/');
+    } else {
+      const nextAttempts = failedAttempts + 1;
+      setFailedAttempts(nextAttempts);
+      if (nextAttempts >= 5) {
+        setLockoutUntil(Date.now() + 60 * 1000);
+        toast.error('Rate limit reached: Locked for 60 seconds.');
+      }
     }
   };
 
@@ -138,7 +169,7 @@ export default function LoginPage() {
                   <input
                     type="email"
                     required
-                    placeholder="bhuvnesh3568@gmail.com"
+                    placeholder="staff@ezev.in"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-9 pr-3 py-2.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-blue-500 transition font-mono"
@@ -172,11 +203,13 @@ export default function LoginPage() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isLockedOut}
                 className="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition shadow-sm flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {loading ? (
                   <span>Authenticating with Supabase...</span>
+                ) : isLockedOut ? (
+                  <span>Locked (Rate Limit Exceeded)</span>
                 ) : (
                   <>
                     <span>
@@ -192,13 +225,13 @@ export default function LoginPage() {
           {/* Security Notice */}
           <div className="pt-3 border-t border-[#27272a] flex items-center justify-center gap-2 text-[11px] text-zinc-400">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>End-to-end Row-Level Security Protected</span>
+            <span>Encrypted Session • Multi-Factor Governance</span>
           </div>
         </div>
 
         {/* Footer info */}
-        <p className="text-center text-[11px] text-zinc-400">
-          Supabase Project: <span className="font-mono text-zinc-300">yliozdsnqnfjkpcuctwe</span>
+        <p className="text-center text-[11px] text-zinc-500">
+          EzEv Fleet Operations Platform • Authorised Access Only
         </p>
       </div>
     </div>

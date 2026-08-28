@@ -152,13 +152,13 @@ CREATE POLICY "auth_delete_refunds" ON public.refunds FOR DELETE TO authenticate
 
 -- OBJECTIVES, MILESTONES, TASKS, REMARKS, ATTACHMENTS, CHANGELOG
 CREATE POLICY "auth_select_objectives" ON public.objectives FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth_insert_objectives" ON public.objectives FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_objectives" ON public.objectives FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_insert_objectives" ON public.objectives FOR INSERT TO authenticated WITH CHECK ((SELECT private.is_owner_or_manager()));
+CREATE POLICY "auth_update_objectives" ON public.objectives FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager())) WITH CHECK ((SELECT private.is_owner_or_manager()));
 CREATE POLICY "auth_delete_objectives" ON public.objectives FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
 
 CREATE POLICY "auth_select_milestones" ON public.milestones FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth_insert_milestones" ON public.milestones FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_milestones" ON public.milestones FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_insert_milestones" ON public.milestones FOR INSERT TO authenticated WITH CHECK ((SELECT private.is_owner_or_manager()));
+CREATE POLICY "auth_update_milestones" ON public.milestones FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager())) WITH CHECK ((SELECT private.is_owner_or_manager()));
 CREATE POLICY "auth_delete_milestones" ON public.milestones FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
 
 CREATE POLICY "auth_select_tasks" ON public.tasks FOR SELECT TO authenticated USING (true);
@@ -189,8 +189,8 @@ CREATE POLICY "auth_delete_daily_shift_logs" ON public.daily_shift_logs FOR DELE
 
 -- CHAT CHANNELS & CHANNEL MESSAGES
 CREATE POLICY "auth_select_chat_channels" ON public.chat_channels FOR SELECT TO authenticated USING (true);
-CREATE POLICY "auth_insert_chat_channels" ON public.chat_channels FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_chat_channels" ON public.chat_channels FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_insert_chat_channels" ON public.chat_channels FOR INSERT TO authenticated WITH CHECK ((SELECT private.is_owner_or_manager()));
+CREATE POLICY "auth_update_chat_channels" ON public.chat_channels FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager())) WITH CHECK ((SELECT private.is_owner_or_manager()));
 CREATE POLICY "auth_delete_chat_channels" ON public.chat_channels FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
 
 CREATE POLICY "auth_select_channel_messages" ON public.channel_messages FOR SELECT TO authenticated USING (true);

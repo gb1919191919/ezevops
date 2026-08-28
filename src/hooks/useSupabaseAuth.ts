@@ -23,25 +23,10 @@ export function useSupabaseAuth() {
     const normalizedEmail = email.trim().toLowerCase();
     const staffProfiles = useAppStore.getState().staffProfiles || [];
 
-    // 1. Check if email matches Bhuvnesh Kumar (Super Admin / Owner)
-    if (normalizedEmail === 'bhuvnesh3568@gmail.com' || normalizedEmail === 'bhuvnesh@ezev.in') {
-      const ownerProfile = staffProfiles.find((p) => p.id === 'usr-01') || {
-        id: 'usr-01',
-        email: 'bhuvnesh3568@gmail.com',
-        full_name: 'Bhuvnesh Kumar',
-        phone: '+91 70560 55476',
-        avatar_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120',
-        is_active: true,
-        created_at: '2026-01-01T00:00:00Z',
-        updated_at: new Date().toISOString(),
-        roles: [{ id: 'role-01', code: 'owner', label: 'Super Admin (Owner)', is_system: true }],
-      };
-      setCurrentUser(ownerProfile);
-      setActiveRoles(['owner']);
-      return;
-    }
+    // SECURITY: No hardcoded email-to-role mapping. All role assignments come from the database.
+    // Previously, specific emails were hardcoded to automatically receive Super Admin access.
 
-    // 2. Query matching profile from Supabase database profiles
+    // 1. Query matching profile from Supabase database profiles (authoritative source)
     try {
       const { data: dbProfile } = await supabase
         .from('profiles')
@@ -68,10 +53,10 @@ export function useSupabaseAuth() {
         return;
       }
     } catch (e) {
-      // Fallback to store
+      // Fallback to store if database is unreachable
     }
 
-    // 3. Fallback to store staff list
+    // 2. Fallback to store staff list (for offline resilience)
     const matchedProfile = staffProfiles.find(
       (p) => p.email && p.email.toLowerCase() === normalizedEmail
     );
@@ -81,7 +66,7 @@ export function useSupabaseAuth() {
       const roleCodes = matchedProfile.roles?.map((r) => r.code) || ['mechanic'];
       setActiveRoles(roleCodes);
     } else {
-      // Unrecognized email - assign restricted field staff
+      // Unrecognized email - assign restricted field staff with minimal permissions
       const guestProfile: Profile = {
         id: `usr-ext-${Date.now()}`,
         email: normalizedEmail,
@@ -103,12 +88,17 @@ export function useSupabaseAuth() {
 
     async function checkCurrentSession() {
       try {
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        // SECURITY: Use getUser() instead of getSession() to validate JWT with Supabase server.
+        // getSession() only reads from local storage and does NOT verify the token.
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (mounted) {
-          setSession(currentSession);
-          if (currentSession?.user?.email) {
-            await matchAndSyncProfile(currentSession.user.email);
+          if (user && !userError) {
+            // Also get the session for compatibility with onAuthStateChange
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            setSession(currentSession);
+            await matchAndSyncProfile(user.email);
           } else {
+            setSession(null);
             setCurrentUser(null as any);
             setActiveRoles([]);
           }
@@ -204,6 +194,19 @@ export function useSupabaseAuth() {
       setCurrentUser(null as any);
       setActiveRoles([]);
       setSession(null);
+
+      // SECURITY (HIGH-07): Clear persisted state from localStorage on sign-out.
+      // Zustand persist middleware stores roles, user profile, and operational data
+      // in localStorage which could be accessed on shared devices after logout.
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.removeItem('ezev-ops-mumbai-v6');
+          localStorage.removeItem('ezev-ops-store');
+        } catch {
+          // localStorage may be unavailable in some contexts
+        }
+      }
+
       toast.info('Signed out successfully');
       if (typeof window !== 'undefined') {
         window.location.href = '/login';

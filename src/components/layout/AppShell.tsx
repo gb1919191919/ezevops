@@ -9,6 +9,8 @@ import { Toaster } from 'sonner';
 import { useSupabaseSync } from '@/hooks/useSupabaseSync';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLoginPage = pathname === '/login';
@@ -19,7 +21,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   if (isLoginPage) {
     return (
       <main className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col antialiased">
-        {children}
+        <ErrorBoundary fallbackTitle="Login Error">
+          {children}
+        </ErrorBoundary>
         <Toaster position="bottom-left" duration={2000} closeButton richColors theme="dark" />
       </main>
     );
@@ -35,7 +39,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* Main Content Area */}
           <main className="flex-1 overflow-y-auto pb-20 lg:pb-8 transition-all">
-            <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">{children}</div>
+            <div className="p-4 sm:p-6 max-w-7xl mx-auto space-y-6">
+              <ErrorBoundary>
+                {children}
+              </ErrorBoundary>
+            </div>
           </main>
         </div>
 

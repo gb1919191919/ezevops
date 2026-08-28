@@ -15,11 +15,8 @@ export function RoleSwitcher() {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Check if current user is an Owner / Super Admin
-  const isActualOwner =
-    Boolean(currentUser?.roles?.some((r) => r.code === 'owner')) ||
-    currentUser?.email === 'bhuvnesh3568@gmail.com' ||
-    currentUser?.email === 'bhuvnesh@ezev.in';
+  // SECURITY: Check owner status from database-assigned roles only. No hardcoded emails.
+  const isActualOwner = Boolean(currentUser?.roles?.some((r) => r.code === 'owner'));
 
   // Close dropdown on click outside
   useEffect(() => {

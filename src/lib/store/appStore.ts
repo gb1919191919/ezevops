@@ -289,10 +289,8 @@ export const useAppStore = create<AppStoreState>()(
 
       toggleRole: (role) => {
         const { currentUser, activeRoles } = get();
-        const isUserOwner =
-          Boolean(currentUser?.roles?.some((r) => r.code === 'owner')) ||
-          currentUser?.email === 'bhuvnesh3568@gmail.com' ||
-          activeRoles.includes('owner');
+        // SECURITY: Only check database-assigned roles. No hardcoded email bypass.
+        const isUserOwner = Boolean(currentUser?.roles?.some((r) => r.code === 'owner'));
         if (!isUserOwner) {
           console.warn('Role preview switching is restricted to Super Admin (Owner).');
           return;
@@ -2234,7 +2232,7 @@ export const useAppStore = create<AppStoreState>()(
         sops: state.sops,
         teamNotes: state.teamNotes,
         blockedUsers: state.blockedUsers,
-        auditLogs: state.auditLogs,
+        // SECURITY (HIGH-07): Do not persist forensic auditLogs in localStorage
       }),
     }
   )

@@ -5,7 +5,7 @@ import { useAppStore } from "@/lib/store/appStore";
 import { useRBAC } from "@/hooks/useRBAC";
 import { INITIAL_PERMISSIONS } from "@/lib/store/initialData";
 import { ROLE_DEFINITIONS } from "@/lib/rbac";
-import { supabaseUrl } from "@/lib/supabase/client";
+import { supabaseUrl, supabaseAnonKey } from "@/lib/supabase/client";
 import { exportFullDatabaseBackup } from "@/lib/exportUtils";
 import { Role, Profile, PermissionKey } from "@/types";
 import { formatPhone, cn } from "@/lib/utils";
@@ -590,13 +590,13 @@ export function SettingsPage() {
                     Publishable Key
                   </span>
                   <p className="font-mono text-zinc-400 text-[11px] mt-0.5 truncate">
-                    sb_publishable_Zmbxm8Vjiqz8Zji9o_Jp8A_r6tqTlDI
+                    {supabaseAnonKey ? `${supabaseAnonKey.slice(0, 12)}${'•'.repeat(20)}` : 'Not configured'}
                   </p>
                 </div>
                 <button
                   onClick={() =>
                     copyToClipboard(
-                      "sb_publishable_Zmbxm8Vjiqz8Zji9o_Jp8A_r6tqTlDI",
+                      supabaseAnonKey || '',
                       "Publishable Key"
                     )
                   }
@@ -626,13 +626,13 @@ export function SettingsPage() {
                     JWKS URL
                   </span>
                   <p className="font-mono text-zinc-400 text-[11px] mt-0.5 truncate">
-                    https://yliozdsnqnfjkpcuctwe.supabase.co/auth/v1/.well-known/jwks.json
+                    {supabaseUrl ? `${supabaseUrl}/auth/v1/.well-known/jwks.json` : 'Not configured'}
                   </p>
                 </div>
                 <button
                   onClick={() =>
                     copyToClipboard(
-                      "https://yliozdsnqnfjkpcuctwe.supabase.co/auth/v1/.well-known/jwks.json",
+                      supabaseUrl ? `${supabaseUrl}/auth/v1/.well-known/jwks.json` : '',
                       "JWKS URL"
                     )
                   }

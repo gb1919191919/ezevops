@@ -315,34 +315,51 @@ export function exportToPDF(
 }
 
 /**
- * Export full state backup JSON
+ * Export full state backup JSON with integrity metadata (Backup 4.1, 4.6)
  */
 export function exportFullDatabaseBackup() {
   const { useAppStore } = require('./store/appStore');
   const state = useAppStore.getState();
+
+  const counts = {
+    hubs: state.hubs?.length || 0,
+    vehicles: state.vehicles?.length || 0,
+    parts: state.parts?.length || 0,
+    hubStock: state.hubStock?.length || 0,
+    jobCards: state.jobCards?.length || 0,
+    refunds: state.refunds?.length || 0,
+    objectives: state.objectives?.length || 0,
+    milestones: state.milestones?.length || 0,
+    tasks: state.tasks?.length || 0,
+    dailyShiftLogs: state.dailyShiftLogs?.length || 0,
+    sops: state.sops?.length || 0,
+    teamNotes: state.teamNotes?.length || 0,
+  };
+
   const backupData = {
     metadata: {
       exported_at: new Date().toISOString(),
-      version: '1.0.0',
+      version: '1.2.0',
       system: 'EzEv Mumbai Fleet Operations Platform',
+      record_counts: counts,
+      exported_by: state.currentUser?.email || 'Operations Staff',
     },
-    hubs: state.hubs,
-    vehicles: state.vehicles,
-    parts: state.parts,
-    hubStock: state.hubStock,
-    jobCards: state.jobCards,
-    disputes: state.refunds,
-    objectives: state.objectives,
-    milestones: state.milestones,
-    tasks: state.tasks,
-    dailyShiftLogs: state.dailyShiftLogs,
-    chatChannels: state.chatChannels,
-    channelMessages: state.channelMessages,
-    sops: state.sops,
-    sopVersions: state.sopVersions,
-    blockedUsers: state.blockedUsers,
-    auditLogs: state.auditLogs,
-    staffProfiles: state.staffProfiles,
+    hubs: state.hubs || [],
+    vehicles: state.vehicles || [],
+    parts: state.parts || [],
+    hubStock: state.hubStock || [],
+    jobCards: state.jobCards || [],
+    refunds: state.refunds || [],
+    objectives: state.objectives || [],
+    milestones: state.milestones || [],
+    tasks: state.tasks || [],
+    dailyShiftLogs: state.dailyShiftLogs || [],
+    chatChannels: state.chatChannels || [],
+    channelMessages: state.channelMessages || [],
+    sops: state.sops || [],
+    teamNotes: state.teamNotes || [],
+    blockedUsers: state.blockedUsers || [],
+    staffProfiles: state.staffProfiles || [],
   };
 
   const jsonContent = JSON.stringify(backupData, null, 2);
@@ -357,5 +374,5 @@ export function exportFullDatabaseBackup() {
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 
-  toast.success('Full database snapshot backup downloaded!');
+  toast.success('Full database snapshot backup downloaded with integrity manifest!');
 }

@@ -43,7 +43,7 @@ BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
 
 DO $$ 
 DECLARE
@@ -66,7 +66,7 @@ RETURNS TRIGGER AS $$
 BEGIN
     RAISE EXCEPTION 'Audit logs are strictly immutable and cannot be updated or deleted.';
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SET search_path = public, pg_temp;
 
 DROP TRIGGER IF EXISTS trigger_prevent_audit_log_mutation ON public.audit_logs;
 CREATE TRIGGER trigger_prevent_audit_log_mutation

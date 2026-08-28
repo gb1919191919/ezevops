@@ -2,33 +2,36 @@
 -- EZEV OPS - SUPABASE PERFORMANCE INDEXES, TRIGGERS & REALTIME SETUP
 -- ====================================================================
 
--- 1. Automatic Profile & Super Admin Auto-Sync Trigger
+-- 1. Automatic Profile Creation Trigger (No Hardcoded Admin Emails)
+-- SECURITY: All new users default to the 'mechanic' (field staff) role.
+-- Owner/Admin role assignment must be done manually by existing admins via the Settings UI.
+-- Previously, specific email addresses were hardcoded to auto-receive Super Admin access.
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
-    matched_role_id TEXT := 'role-04'; -- Default restricted field technician (mechanic)
+    default_role_id TEXT := 'role-04'; -- Default restricted field technician (mechanic)
+    existing_profile_id TEXT;
 BEGIN
-    IF NEW.email = 'bhuvnesh3568@gmail.com' OR NEW.email = 'bhuvnesh@ezev.in' THEN
-        matched_role_id := 'role-01'; -- Super Admin (Owner)
-    END IF;
-
-    -- Upsert profile record
+    -- Upsert profile record (no hardcoded email-to-role mapping)
     INSERT INTO public.profiles (id, auth_user_id, email, full_name, phone, is_active)
     VALUES (
         'usr-' || SUBSTRING(NEW.id::text, 1, 8),
         NEW.id,
         NEW.email,
         COALESCE(NEW.raw_user_meta_data->>'full_name', split_part(NEW.email, '@', 1)),
-        COALESCE(NEW.raw_user_meta_data->>'phone', '+91 70560 55476'),
+        COALESCE(NEW.raw_user_meta_data->>'phone', ''),
         TRUE
     )
     ON CONFLICT (email) DO UPDATE
     SET auth_user_id = NEW.id;
 
-    -- Link role
-    IF matched_role_id IS NOT NULL THEN
+    -- Get the profile ID for role linking
+    SELECT id INTO existing_profile_id FROM public.profiles WHERE email = NEW.email LIMIT 1;
+
+    -- Link default mechanic role if no roles exist yet
+    IF existing_profile_id IS NOT NULL THEN
         INSERT INTO public.profile_roles (profile_id, role_id)
-        SELECT p.id, matched_role_id FROM public.profiles p WHERE p.email = NEW.email
+        VALUES (existing_profile_id, default_role_id)
         ON CONFLICT DO NOTHING;
     END IF;
 

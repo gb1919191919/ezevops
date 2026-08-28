@@ -30,12 +30,32 @@ export async function POST(req: NextRequest) {
   const isAuthorizedSecret = serviceKey && authHeader === `Bearer ${serviceKey}`;
 
   if (!isAuthorizedSecret) {
-    // Check server session
+    // SECURITY: Verify the user is authenticated AND has the 'owner' role.
+    // Previously any authenticated user (including mechanics) could seed the entire database.
     try {
       const serverClient = createServerSupabaseClient();
       const { data: { user } } = await serverClient.auth.getUser();
       if (!user) {
         return NextResponse.json({ error: 'Unauthorized: Authentication required to seed database' }, { status: 401 });
+      }
+
+      // Verify user has 'owner' role via profile_roles join
+      const { data: ownerCheck } = await supabaseAdmin
+        .from('profiles')
+        .select('id, profile_roles!inner(role_id, roles!inner(code))')
+        .eq('auth_user_id', user.id)
+        .limit(1)
+        .single();
+
+      const hasOwnerRole = ownerCheck?.profile_roles?.some(
+        (pr: any) => pr.roles?.code === 'owner'
+      );
+
+      if (!hasOwnerRole) {
+        return NextResponse.json(
+          { error: 'Forbidden: Owner (Super Admin) role required to seed database' },
+          { status: 403 }
+        );
       }
     } catch {
       return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
