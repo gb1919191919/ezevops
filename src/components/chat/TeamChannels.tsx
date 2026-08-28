@@ -594,11 +594,11 @@ export function TeamChannels() {
                             : "bg-[#202024] border border-[#2d2d34] rounded-tl-none"
                         )}
                       >
-                        <p>{msg.message}</p>
+                        <p>{msg.content || msg.message}</p>
 
                         {msg.attachments && msg.attachments.length > 0 && (
                           <div className="mt-2 space-y-1.5">
-                            {msg.attachments.map((att, idx) => (
+                            {msg.attachments.map((att: any, idx: number) => (
                               <div
                                 key={idx}
                                 className="p-2 rounded-xl bg-black/30 border border-white/10 flex items-center justify-between gap-2"

@@ -61,7 +61,7 @@ export function useSupabaseAuth() {
           is_active: dbProfile.is_active,
           created_at: dbProfile.created_at,
           updated_at: dbProfile.updated_at,
-          roles: roles.length > 0 ? roles : [{ id: 'role-02', code: 'manager', label: 'Hub Operations Manager', is_system: true }],
+          roles: roles.length > 0 ? roles : [{ id: 'role-04', code: 'mechanic', label: 'Field Staff', is_system: true }],
         };
         setCurrentUser(fullProfile);
         setActiveRoles((fullProfile.roles || []).map((r) => r.code));
@@ -78,10 +78,10 @@ export function useSupabaseAuth() {
 
     if (matchedProfile) {
       setCurrentUser(matchedProfile);
-      const roleCodes = matchedProfile.roles?.map((r) => r.code) || ['manager'];
+      const roleCodes = matchedProfile.roles?.map((r) => r.code) || ['mechanic'];
       setActiveRoles(roleCodes);
     } else {
-      // Unrecognized email - assign restricted viewer
+      // Unrecognized email - assign restricted field staff
       const guestProfile: Profile = {
         id: `usr-ext-${Date.now()}`,
         email: normalizedEmail,
@@ -90,10 +90,10 @@ export function useSupabaseAuth() {
         is_active: true,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-        roles: [{ id: 'role-02', code: 'manager', label: 'Operations Staff', is_system: false }],
+        roles: [{ id: 'role-04', code: 'mechanic', label: 'Field Staff', is_system: false }],
       };
       setCurrentUser(guestProfile);
-      setActiveRoles(['manager']);
+      setActiveRoles(['mechanic']);
     }
   }, [setCurrentUser, setActiveRoles]);
 

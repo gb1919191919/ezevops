@@ -50,26 +50,26 @@ Total Issues Identified: 34
 
 | Ref ID | Domain | Issue Title | Severity | Affected Files | Status |
 |:---|:---|:---|:---:|:---|:---:|
-| **SEC-01** | Security | Hardcoded Service Role Key in Client Bundle | **CRITICAL** | `src/components/settings/SettingsPage.tsx` | Identified |
-| **SEC-02** | Security | Hardcoded Secret Fallback in Admin SDK | **CRITICAL** | `src/lib/supabase/admin.ts` | Identified |
-| **SEC-03** | Security | Unauthenticated Production Database Seed Route | **CRITICAL** | `src/app/api/supabase/seed/route.ts` | Identified |
-| **SEC-04** | Security | Default Manager Privilege Escalation on User Signup | **CRITICAL** | `supabase/fix_and_optimize.sql` | Identified |
-| **SEC-05** | Security | Permissive RLS UPDATE Policies Across Tables | **HIGH** | `supabase/secure_rls.sql` | Identified |
-| **SEC-06** | Security | Missing RLS on Base DDL Migration Script | **HIGH** | `supabase/schema.sql` | Identified |
-| **SEC-07** | Security | LocalStorage Client RBAC Privilege Bypass | **HIGH** | `src/hooks/useSupabaseAuth.ts`, `src/lib/store/appStore.ts` | Identified |
-| **SEC-08** | Security | CSV Formula Injection (CWE-1236) | **MEDIUM** | `src/lib/exportUtils.ts` | Identified |
-| **SEC-09** | Security | Unauthenticated Internal Status Probing Endpoint | **MEDIUM** | `src/app/api/supabase/status/route.ts` | Identified |
-| **SEC-10** | Security | Unencrypted PII Storage in Browser LocalStorage | **MEDIUM** | `src/lib/store/appStore.ts` | Identified |
-| **SYNC-01**| Sync/DB | Un-synced Core Mutator Actions (7 State Methods) | **CRITICAL** | `src/lib/store/appStore.ts` | Identified |
-| **SYNC-02**| Sync/DB | Multi-Entity Mutations Only Persist Primary Entity | **CRITICAL** | `src/lib/store/appStore.ts` | Identified |
-| **SYNC-03**| Sync/DB | Shallow Queries Omit Roles & Child Relational Arrays | **CRITICAL** | `src/lib/supabase/syncService.ts` | Identified |
-| **SYNC-04**| Sync/DB | Column Name Discrepancies on `daily_shift_logs` | **CRITICAL** | `src/types/index.ts`, `supabase/schema.sql` | Identified |
-| **SYNC-05**| Sync/DB | Column Name Discrepancies on `channel_messages` | **CRITICAL** | `src/types/index.ts`, `supabase/schema.sql` | Identified |
-| **SYNC-06**| Sync/DB | Cascading Deletion Hazards Destroying Historical Ledgers | **CRITICAL** | `supabase/schema.sql` | Identified |
-| **SYNC-07**| Sync/DB | PostgREST Rejections on Incompatible Nested Arrays | **HIGH** | `src/lib/store/appStore.ts` | Identified |
-| **SYNC-08**| Sync/DB | Missing `is_archived` Columns in Database Tables | **HIGH** | `supabase/schema.sql` | Identified |
-| **SYNC-09**| Sync/DB | Sync Initialization Permanent Lockout on Offline Startup | **HIGH** | `src/lib/supabase/syncService.ts` | Identified |
-| **SYNC-10**| Sync/DB | Realtime Channel Subscription Leak on Unmount | **HIGH** | `src/hooks/useSupabaseSync.ts`, `src/lib/supabase/syncService.ts` | Identified |
+| **SEC-01** | Security | Hardcoded Service Role Key in Client Bundle | **CRITICAL** | `src/components/settings/SettingsPage.tsx` | **Fixed / Verified** |
+| **SEC-02** | Security | Hardcoded Secret Fallback in Admin SDK | **CRITICAL** | `src/lib/supabase/admin.ts` | **Fixed / Verified** |
+| **SEC-03** | Security | Unauthenticated Production Database Seed Route | **CRITICAL** | `src/app/api/supabase/seed/route.ts` | **Fixed / Verified** |
+| **SEC-04** | Security | Default Manager Privilege Escalation on User Signup | **CRITICAL** | `supabase/fix_and_optimize.sql` | **Fixed / Verified** |
+| **SEC-05** | Security | Permissive RLS UPDATE Policies Across Tables | **HIGH** | `supabase/secure_rls.sql` | **Fixed / Verified** |
+| **SEC-06** | Security | Missing RLS on Base DDL Migration Script | **HIGH** | `supabase/schema.sql` | **Fixed / Verified** |
+| **SEC-07** | Security | LocalStorage Client RBAC Privilege Bypass | **HIGH** | `src/hooks/useSupabaseAuth.ts`, `src/lib/store/appStore.ts` | **Fixed / Verified** |
+| **SEC-08** | Security | CSV Formula Injection (CWE-1236) | **MEDIUM** | `src/lib/exportUtils.ts` | **Fixed / Verified** |
+| **SEC-09** | Security | Unauthenticated Internal Status Probing Endpoint | **MEDIUM** | `src/app/api/supabase/status/route.ts` | **Fixed / Verified** |
+| **SEC-10** | Security | Unencrypted PII Storage in Browser LocalStorage | **MEDIUM** | `src/lib/store/appStore.ts` | **Fixed / Verified** |
+| **SYNC-01**| Sync/DB | Un-synced Core Mutator Actions (7 State Methods) | **CRITICAL** | `src/lib/store/appStore.ts` | **Fixed / Verified** |
+| **SYNC-02**| Sync/DB | Multi-Entity Mutations Only Persist Primary Entity | **CRITICAL** | `src/lib/store/appStore.ts` | **Fixed / Verified** |
+| **SYNC-03**| Sync/DB | Shallow Queries Omit Roles & Child Relational Arrays | **CRITICAL** | `src/lib/supabase/syncService.ts` | **Fixed / Verified** |
+| **SYNC-04**| Sync/DB | Column Name Discrepancies on `daily_shift_logs` | **CRITICAL** | `src/types/index.ts`, `supabase/schema.sql` | **Fixed / Verified** |
+| **SYNC-05**| Sync/DB | Column Name Discrepancies on `channel_messages` | **CRITICAL** | `src/types/index.ts`, `supabase/schema.sql` | **Fixed / Verified** |
+| **SYNC-06**| Sync/DB | Cascading Deletion Hazards Destroying Historical Ledgers | **CRITICAL** | `supabase/schema.sql` | **Fixed / Verified** |
+| **SYNC-07**| Sync/DB | PostgREST Rejections on Incompatible Nested Arrays | **HIGH** | `src/lib/store/appStore.ts` | **Fixed / Verified** |
+| **SYNC-08**| Sync/DB | Missing `is_archived` Columns in Database Tables | **HIGH** | `supabase/schema.sql` | **Fixed / Verified** |
+| **SYNC-09**| Sync/DB | Sync Initialization Permanent Lockout on Offline Startup | **HIGH** | `src/lib/supabase/syncService.ts` | **Fixed / Verified** |
+| **SYNC-10**| Sync/DB | Realtime Channel Subscription Leak on Unmount | **HIGH** | `src/hooks/useSupabaseSync.ts`, `src/lib/supabase/syncService.ts` | **Fixed / Verified** |
 | **BIZ-01** | Business | Job Card Creation Parameter Signature Mismatch | **HIGH** | `src/components/job-cards/JobCardsList.tsx` | Identified |
 | **BIZ-02** | Business | Two-Phase Inventory Available Stock Formula Omitted | **HIGH** | `src/components/inventory/InventoryMatrix.tsx` | Identified |
 | **BIZ-03** | Business | Missing Frappe / ERP Settlement Reference Input | **HIGH** | `src/components/refunds/RefundsManager.tsx` | Identified |

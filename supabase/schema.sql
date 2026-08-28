@@ -153,6 +153,7 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
     active_days_count INTEGER NOT NULL DEFAULT 0,
     uptime_percentage NUMERIC(5, 2) NOT NULL DEFAULT 100.00,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -160,8 +161,8 @@ CREATE TABLE IF NOT EXISTS public.vehicles (
 -- 8. Vehicle Inspections Table
 CREATE TABLE IF NOT EXISTS public.vehicle_inspections (
     id TEXT PRIMARY KEY DEFAULT 'insp-' || uuid_generate_v4()::text,
-    vehicle_id TEXT NOT NULL REFERENCES public.vehicles(id) ON DELETE CASCADE,
-    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE CASCADE,
+    vehicle_id TEXT NOT NULL REFERENCES public.vehicles(id) ON DELETE RESTRICT,
+    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE RESTRICT,
     inspector_id TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
     inspector_name TEXT NOT NULL,
     odometer_km INTEGER NOT NULL,
@@ -174,6 +175,7 @@ CREATE TABLE IF NOT EXISTS public.vehicle_inspections (
     recommended_status vehicle_status NOT NULL DEFAULT 'Available',
     notes TEXT,
     defect_media_url TEXT,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     inspected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -188,24 +190,26 @@ CREATE TABLE IF NOT EXISTS public.parts (
     min_threshold INTEGER NOT NULL DEFAULT 5,
     supplier TEXT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.hub_part_stock (
     id TEXT PRIMARY KEY DEFAULT 'hs-' || uuid_generate_v4()::text,
-    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE CASCADE,
-    part_id TEXT NOT NULL REFERENCES public.parts(id) ON DELETE CASCADE,
+    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE RESTRICT,
+    part_id TEXT NOT NULL REFERENCES public.parts(id) ON DELETE RESTRICT,
     physical_stock INTEGER NOT NULL DEFAULT 0,
     pending_allocated_stock INTEGER NOT NULL DEFAULT 0,
     min_threshold INTEGER NOT NULL DEFAULT 5,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE (hub_id, part_id)
 );
 
 CREATE TABLE IF NOT EXISTS public.part_usage_logs (
     id TEXT PRIMARY KEY DEFAULT 'usg-' || uuid_generate_v4()::text,
-    part_id TEXT NOT NULL REFERENCES public.parts(id) ON DELETE CASCADE,
-    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE CASCADE,
+    part_id TEXT NOT NULL REFERENCES public.parts(id) ON DELETE RESTRICT,
+    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE RESTRICT,
     vehicle_id TEXT REFERENCES public.vehicles(id) ON DELETE SET NULL,
     quantity INTEGER NOT NULL DEFAULT 1,
     used_by_id TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -219,10 +223,10 @@ CREATE TABLE IF NOT EXISTS public.part_usage_logs (
 CREATE TABLE IF NOT EXISTS public.job_cards (
     id TEXT PRIMARY KEY DEFAULT 'job-' || uuid_generate_v4()::text,
     ticket_number SERIAL UNIQUE,
-    vehicle_id TEXT NOT NULL REFERENCES public.vehicles(id) ON DELETE CASCADE,
+    vehicle_id TEXT NOT NULL REFERENCES public.vehicles(id) ON DELETE RESTRICT,
     reported_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
     assigned_mechanic_id TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
-    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE CASCADE,
+    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE RESTRICT,
     odometer_km INTEGER,
     issue_description TEXT NOT NULL,
     solution_applied TEXT,
@@ -230,6 +234,7 @@ CREATE TABLE IF NOT EXISTS public.job_cards (
     status approval_status NOT NULL DEFAULT 'PENDING',
     approved_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
     approval_notes TEXT,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     resolved_at TIMESTAMPTZ,
     approved_at TIMESTAMPTZ
@@ -238,7 +243,7 @@ CREATE TABLE IF NOT EXISTS public.job_cards (
 CREATE TABLE IF NOT EXISTS public.job_card_parts (
     id TEXT PRIMARY KEY DEFAULT 'jcp-' || uuid_generate_v4()::text,
     job_card_id TEXT NOT NULL REFERENCES public.job_cards(id) ON DELETE CASCADE,
-    part_id TEXT NOT NULL REFERENCES public.parts(id) ON DELETE CASCADE,
+    part_id TEXT NOT NULL REFERENCES public.parts(id) ON DELETE RESTRICT,
     quantity INTEGER NOT NULL DEFAULT 1,
     unit_cost_snapshot NUMERIC(10, 2) NOT NULL DEFAULT 0.00,
     is_approved BOOLEAN NOT NULL DEFAULT FALSE,
@@ -261,9 +266,11 @@ CREATE TABLE IF NOT EXISTS public.refunds (
     requester_name TEXT NOT NULL,
     requester_role TEXT NOT NULL,
     approved_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
+    settlement_reference TEXT,
     settled_at TIMESTAMPTZ,
     settled_by_name TEXT,
     rejection_reason TEXT,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -275,10 +282,12 @@ CREATE TABLE IF NOT EXISTS public.objectives (
     description TEXT NOT NULL,
     start_date DATE,
     target_date DATE NOT NULL,
-    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE CASCADE,
+    hub_id TEXT NOT NULL REFERENCES public.hubs(id) ON DELETE RESTRICT,
     created_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
     is_completed BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.milestones (
@@ -289,7 +298,9 @@ CREATE TABLE IF NOT EXISTS public.milestones (
     target_date DATE,
     is_completed BOOLEAN NOT NULL DEFAULT FALSE,
     order_index INTEGER DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.tasks (
@@ -308,6 +319,7 @@ CREATE TABLE IF NOT EXISTS public.tasks (
     due_date TIMESTAMPTZ,
     completed_at TIMESTAMPTZ,
     created_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -361,6 +373,7 @@ CREATE TABLE IF NOT EXISTS public.daily_shift_logs (
     milestones_completed TEXT,
     handover_notes TEXT,
     media_attachments TEXT[] DEFAULT '{}',
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -375,7 +388,10 @@ CREATE TABLE IF NOT EXISTS public.chat_channels (
     allowed_roles TEXT[] NOT NULL DEFAULT '{owner,manager,rsa,mechanic}',
     allowed_members TEXT[] NOT NULL DEFAULT '{}',
     created_by TEXT REFERENCES public.profiles(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS public.channel_messages (
@@ -387,6 +403,7 @@ CREATE TABLE IF NOT EXISTS public.channel_messages (
     sender_avatar TEXT,
     content TEXT NOT NULL,
     attachments JSONB DEFAULT '[]'::jsonb,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -405,6 +422,7 @@ CREATE TABLE IF NOT EXISTS public.sops (
     access_roles TEXT[] NOT NULL DEFAULT '{owner,manager,rsa,mechanic}',
     view_count INTEGER NOT NULL DEFAULT 0,
     acknowledged_by TEXT[] NOT NULL DEFAULT '{}',
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -416,7 +434,8 @@ CREATE TABLE IF NOT EXISTS public.sop_revisions (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_by_name TEXT NOT NULL,
     change_summary TEXT NOT NULL,
-    content TEXT NOT NULL
+    content TEXT NOT NULL,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- 16. Team Notes & Scratchpad
@@ -435,6 +454,7 @@ CREATE TABLE IF NOT EXISTS public.team_notes (
     author_role TEXT NOT NULL,
     resolved_at TIMESTAMPTZ,
     resolved_by_name TEXT,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -450,7 +470,8 @@ CREATE TABLE IF NOT EXISTS public.blocked_users (
     vehicle_no TEXT NOT NULL,
     reason TEXT NOT NULL,
     recovery_status recovery_status NOT NULL DEFAULT 'Pending',
-    recovery_amount NUMERIC(10, 2) NOT NULL DEFAULT 200.00
+    recovery_amount NUMERIC(10, 2) NOT NULL DEFAULT 200.00,
+    is_archived BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- 18. Forensic Audit Logs
@@ -510,3 +531,23 @@ CREATE INDEX IF NOT EXISTS idx_sop_rev_sop ON public.sop_revisions(sop_id);
 CREATE INDEX IF NOT EXISTS idx_team_notes_hub ON public.team_notes(hub_id);
 CREATE INDEX IF NOT EXISTS idx_team_notes_status ON public.team_notes(status);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_lookup ON public.audit_logs(table_name, record_id);
+
+-- ====================================================================
+-- ENABLE ROW LEVEL SECURITY ACROSS ALL TABLES (SEC-06)
+-- ====================================================================
+DO $$ 
+DECLARE
+    t text;
+    tables text[] := ARRAY[
+        'hubs', 'charger_logs', 'profiles', 'roles', 'profile_roles',
+        'vehicles', 'vehicle_inspections', 'parts', 'hub_part_stock', 'part_usage_logs',
+        'job_cards', 'job_card_parts', 'refunds', 'objectives', 'milestones', 'tasks',
+        'task_remarks', 'task_attachments', 'task_changelog', 'daily_shift_logs',
+        'chat_channels', 'channel_messages', 'sops', 'sop_revisions', 'team_notes',
+        'blocked_users', 'audit_logs'
+    ];
+BEGIN
+    FOREACH t IN ARRAY tables LOOP
+        EXECUTE format('ALTER TABLE public.%I ENABLE ROW LEVEL SECURITY', t);
+    END LOOP;
+END $$;

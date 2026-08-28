@@ -315,6 +315,7 @@ export interface Refund {
   payout_type: RefundPayoutType; // 'EzEv Wallet' | 'Bank Payout'
   reason: string;
   internal_remarks?: string | null;
+  settlement_reference?: string | null;
   frappe_reference?: string | null;
   status: RefundStatus;
   requested_by: string;
@@ -431,15 +432,22 @@ export type ShiftType = 'MORNING' | 'EVENING' | 'NIGHT' | 'GENERAL';
 
 export interface DailyShiftLog {
   id: string;
-  date: string; // YYYY-MM-DD
+  date?: string; // YYYY-MM-DD (legacy alias)
+  shift_date?: string; // Standard DB column
   shift_type: ShiftType;
   hub_id: string;
-  staff_name: string;
-  staff_role: string;
+  hub_name?: string;
+  author_id?: string;
+  author_name?: string;
+  author_role?: string;
+  staff_name?: string; // legacy alias
+  staff_role?: string; // legacy alias
   accomplishments: string;
   vehicles_serviced: number;
   customer_issues_resolved: number;
-  blockers?: string;
+  roadblocks?: string; // Standard DB column
+  blockers?: string; // legacy alias
+  milestones_completed?: string;
   handover_notes?: string;
   is_archived?: boolean;
   media_attachments?: string[];
@@ -471,9 +479,10 @@ export interface ChannelMessage {
   sender_id: string;
   sender_name: string;
   sender_role: string;
-  sender_avatar?: string;
-  message: string;
-  attachments?: { name: string; url: string; type: string }[];
+  sender_avatar?: string | null;
+  content?: string; // Standard DB column
+  message?: string; // legacy alias
+  attachments?: { name: string; url: string; type: string }[] | any;
   is_hidden?: boolean;
   is_archived?: boolean;
   created_at: string;

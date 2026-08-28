@@ -609,23 +609,15 @@ export function SettingsPage() {
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">
                 <div className="truncate mr-2">
                   <span className="text-zinc-500 text-[10px] font-bold uppercase tracking-wider">
-                    Secret Key
+                    Service Role Secret
                   </span>
-                  <p className="font-mono text-zinc-400 text-[11px] mt-0.5 truncate">
-                    sb_secret_deAPQXRdEYMGvqZBXf6EWw_FYqMA5-h
+                  <p className="font-mono text-emerald-400 text-[11px] mt-0.5 truncate">
+                    Configured securely on server (Hidden)
                   </p>
                 </div>
-                <button
-                  onClick={() =>
-                    copyToClipboard(
-                      "sb_secret_deAPQXRdEYMGvqZBXf6EWw_FYqMA5-h",
-                      "Secret Key"
-                    )
-                  }
-                  className="p-1.5 rounded-lg bg-zinc-900 text-zinc-400 hover:text-zinc-100 transition shrink-0"
-                >
-                  {copied === "Secret Key" ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-                </button>
+                <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                  ACTIVE
+                </span>
               </div>
 
               <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-between">

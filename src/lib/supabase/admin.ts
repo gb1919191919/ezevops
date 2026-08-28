@@ -8,9 +8,10 @@ export const supabaseUrl =
 export const supabaseSecretKey =
   process.env.SUPABASE_SECRET_KEY ||
   process.env.SUPABASE_SERVICE_ROLE_KEY ||
-  'sb_secret_deAPQXRdEYMGvqZBXf6EWw_FYqMA5-h';
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  '';
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey, {
+export const supabaseAdmin = createClient(supabaseUrl, supabaseSecretKey || 'dummy_key_for_build', {
   auth: {
     autoRefreshToken: false,
     persistSession: false,

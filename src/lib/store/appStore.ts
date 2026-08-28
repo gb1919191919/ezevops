@@ -418,7 +418,10 @@ export const useAppStore = create<AppStoreState>()(
           { roles: assignedRoles }
         );
         set({ staffProfiles: updatedStaff, auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('profiles', 'update', { id: profileId, roles: assignedRoles, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing, new_data: { roles: assignedRoles } });
+        supabaseSync.pushMutation('profiles', 'update', { id: profileId, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing, new_data: { roles: assignedRoles } });
+        for (const r of assignedRoles) {
+          supabaseSync.pushMutation('profile_roles', 'insert', { profile_id: profileId, role_id: r.id });
+        }
       },
 
       archiveStaffProfile: (id) => {
@@ -662,6 +665,14 @@ export const useAppStore = create<AppStoreState>()(
         const newAudit = createAuditLog(currentUser, 'charger_logs', newLogId, 'INSERT', null, newLog);
         set({ hubs: updatedHubs, auditLogs: [newAudit, ...auditLogs] });
         supabaseSync.pushMutation('charger_logs', 'insert', newLog, { action: 'INSERT', new_data: newLog });
+        const updatedTargetHub = updatedHubs.find((h) => h.id === hubId);
+        if (updatedTargetHub) {
+          supabaseSync.pushMutation('hubs', 'update', {
+            id: hubId,
+            charging_points_active: updatedTargetHub.charging_points_active,
+            updated_at: new Date().toISOString(),
+          });
+        }
       },
 
       logChargerStatus: (hubId, chargerName, connectorNumber, status, remarks) => {
@@ -815,7 +826,13 @@ export const useAppStore = create<AppStoreState>()(
 
         const newAudit = createAuditLog(currentUser, 'tasks', newId, 'INSERT', null, newTask);
         set({ tasks: [newTask, ...tasks], auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('tasks', 'insert', newTask, { action: 'INSERT', new_data: newTask });
+        const { changelog: chgList, remarks: _rem, attachments: _att, ...parentTaskPayload } = newTask as any;
+        supabaseSync.pushMutation('tasks', 'insert', parentTaskPayload, { action: 'INSERT', new_data: parentTaskPayload });
+        if (chgList && chgList.length > 0) {
+          for (const chg of chgList) {
+            supabaseSync.pushMutation('task_changelog', 'insert', chg);
+          }
+        }
       },
 
       updateTask: (taskId, updates) => {
@@ -967,9 +984,29 @@ export const useAppStore = create<AppStoreState>()(
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         };
+        const dbShiftLogPayload = {
+          id: newId,
+          hub_id: logData.hub_id,
+          hub_name: logData.hub_name || undefined,
+          author_id: logData.author_id || currentUser?.id || 'usr-01',
+          author_name: logData.author_name || logData.staff_name || currentUser?.full_name || 'Staff Member',
+          author_role: logData.author_role || logData.staff_role || 'Staff',
+          shift_date: logData.shift_date || logData.date || new Date().toISOString().split('T')[0],
+          shift_type: logData.shift_type,
+          accomplishments: logData.accomplishments,
+          vehicles_serviced: logData.vehicles_serviced || 0,
+          customer_issues_resolved: logData.customer_issues_resolved || 0,
+          roadblocks: logData.roadblocks || logData.blockers || '',
+          milestones_completed: logData.milestones_completed || '',
+          handover_notes: logData.handover_notes || '',
+          media_attachments: logData.media_attachments || [],
+          is_archived: false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
         const newAudit = createAuditLog(currentUser, 'daily_shift_logs', newId, 'INSERT', null, newLog);
         set({ dailyShiftLogs: [newLog, ...dailyShiftLogs], auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('daily_shift_logs', 'insert', newLog, { action: 'INSERT', new_data: newLog });
+        supabaseSync.pushMutation('daily_shift_logs', 'insert', dbShiftLogPayload, { action: 'INSERT', new_data: dbShiftLogPayload });
       },
 
       updateDailyShiftLog: (id, updates) => {
@@ -1065,17 +1102,31 @@ export const useAppStore = create<AppStoreState>()(
       },
 
       sendChannelMessage: (msgData) => {
-        const { channelMessages } = get();
+        const { channelMessages, currentUser } = get();
         const newId = `msg-${Date.now()}`;
         const newMsg: ChannelMessage = {
           ...msgData,
           id: newId,
+          content: msgData.content || msgData.message || '',
+          message: msgData.content || msgData.message || '',
           is_hidden: false,
           is_archived: false,
           created_at: new Date().toISOString(),
         };
+        const dbMsgPayload = {
+          id: newId,
+          channel_id: msgData.channel_id,
+          sender_id: msgData.sender_id || currentUser?.id || 'usr-01',
+          sender_name: msgData.sender_name || currentUser?.full_name || 'Staff Member',
+          sender_role: msgData.sender_role || 'Staff',
+          sender_avatar: msgData.sender_avatar || currentUser?.avatar_url || null,
+          content: msgData.content || msgData.message || '',
+          attachments: msgData.attachments || [],
+          is_archived: false,
+          created_at: new Date().toISOString(),
+        };
         set({ channelMessages: [...channelMessages, newMsg] });
-        supabaseSync.pushMutation('channel_messages', 'insert', newMsg);
+        supabaseSync.pushMutation('channel_messages', 'insert', dbMsgPayload);
       },
 
       // ====================================================================
@@ -1148,6 +1199,13 @@ export const useAppStore = create<AppStoreState>()(
         );
 
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'update', {
+          id: vehicleId,
+          current_status: shouldBypass ? pendingStatus : existing?.current_status,
+          pending_status: shouldBypass ? null : pendingStatus,
+          status_change_reason: reason,
+          updated_at: new Date().toISOString(),
+        }, { action: 'UPDATE', old_data: existing, performed_by: currentUser?.id, performer_name: currentUser?.full_name });
       },
 
       approveVehicleStatus: (vehicleId) => {
@@ -1169,6 +1227,12 @@ export const useAppStore = create<AppStoreState>()(
 
         const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { current_status: vehicle.current_status, pending_status: vehicle.pending_status }, { current_status: vehicle.pending_status, pending_status: null });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'update', {
+          id: vehicleId,
+          current_status: vehicle.pending_status,
+          pending_status: null,
+          updated_at: new Date().toISOString(),
+        }, { action: 'UPDATE', old_data: vehicle, performed_by: currentUser?.id, performer_name: currentUser?.full_name });
       },
 
       rejectVehicleStatus: (vehicleId) => {
@@ -1189,6 +1253,11 @@ export const useAppStore = create<AppStoreState>()(
 
         const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { pending_status: vehicle.pending_status }, { pending_status: null });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'update', {
+          id: vehicleId,
+          pending_status: null,
+          updated_at: new Date().toISOString(),
+        }, { action: 'UPDATE', old_data: vehicle, performed_by: currentUser?.id, performer_name: currentUser?.full_name });
       },
 
       reassignVehicleIotId: (vehicleId, newIotId, reason) => {
@@ -1210,6 +1279,11 @@ export const useAppStore = create<AppStoreState>()(
 
         const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { vehicle_id: oldIotId }, { vehicle_id: newIotId, reason });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'update', {
+          id: vehicleId,
+          vehicle_id: newIotId,
+          updated_at: new Date().toISOString(),
+        }, { action: 'UPDATE', old_data: vehicle, performed_by: currentUser?.id, performer_name: currentUser?.full_name });
       },
 
       updateVehicleOdometer: (vehicleId, odometerKm) => {
@@ -1233,6 +1307,13 @@ export const useAppStore = create<AppStoreState>()(
 
         const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', { odometer_km: oldOdo }, { odometer_km: odometerKm });
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('vehicles', 'update', {
+          id: vehicleId,
+          odometer_km: odometerKm,
+          last_odometer_updated_at: new Date().toISOString(),
+          last_odometer_updated_by: currentUser?.id || 'usr-01',
+          updated_at: new Date().toISOString(),
+        }, { action: 'UPDATE', old_data: vehicle, performed_by: currentUser?.id, performer_name: currentUser?.full_name });
       },
 
       archiveVehicle: (vehicleId) => {
@@ -1333,6 +1414,7 @@ export const useAppStore = create<AppStoreState>()(
           auditLogs: [newAudit, ...auditLogs],
         });
         supabaseSync.pushMutation('parts', 'insert', newPart, { action: 'INSERT', new_data: newPart });
+        supabaseSync.pushMutation('hub_part_stock', 'insert', initialStockEntry, { action: 'INSERT', new_data: initialStockEntry });
       },
 
       updatePart: (partId, partData) => {
@@ -1536,7 +1618,30 @@ export const useAppStore = create<AppStoreState>()(
           vehicles: updatedVehicles,
           auditLogs: [newAudit, ...auditLogs],
         });
-        supabaseSync.pushMutation('job_cards', 'insert', newJobCard, { action: 'INSERT', new_data: newJobCard });
+        const { parts: _parts, ...parentJobCard } = newJobCard;
+        supabaseSync.pushMutation('job_cards', 'insert', parentJobCard, { action: 'INSERT', new_data: parentJobCard });
+        for (const bp of builtParts) {
+          supabaseSync.pushMutation('job_card_parts', 'insert', bp, { action: 'INSERT', new_data: bp });
+        }
+        for (const stockItem of updatedStock.filter((s) => s.hub_id === 'hub-store-01' && builtParts.some((bp) => bp.part_id === s.part_id))) {
+          supabaseSync.pushMutation('hub_part_stock', 'update', {
+            id: stockItem.id,
+            physical_stock: stockItem.physical_stock,
+            pending_allocated_stock: stockItem.pending_allocated_stock,
+            updated_at: stockItem.updated_at,
+          });
+        }
+        const updatedTargetVeh = updatedVehicles.find((v) => v.id === cardData.vehicle_id);
+        if (updatedTargetVeh) {
+          supabaseSync.pushMutation('vehicles', 'update', {
+            id: updatedTargetVeh.id,
+            odometer_km: updatedTargetVeh.odometer_km,
+            current_status: updatedTargetVeh.current_status,
+            pending_status: updatedTargetVeh.pending_status,
+            status_change_reason: updatedTargetVeh.status_change_reason,
+            updated_at: updatedTargetVeh.updated_at,
+          });
+        }
       },
 
       updateJobCard: (jobCardId, updates) => {
@@ -1610,7 +1715,25 @@ export const useAppStore = create<AppStoreState>()(
           vehicles: updatedVehicles,
           auditLogs: [newAudit, ...auditLogs],
         });
-        supabaseSync.pushMutation('job_cards', 'update', { id: jobCardId, status: 'APPROVED', approval_notes: approvalNotes }, { action: 'UPDATE', old_data: job });
+        supabaseSync.pushMutation('job_cards', 'update', { id: jobCardId, status: 'APPROVED', approved_by: currentUser?.id || 'usr-01', approved_at: new Date().toISOString(), approval_notes: approvalNotes || 'Manager sign-off completed.' }, { action: 'UPDATE', old_data: job });
+        for (const stockItem of updatedStock.filter((s) => s.hub_id === 'hub-store-01' && (job.parts || []).some((bp) => bp.part_id === s.part_id))) {
+          supabaseSync.pushMutation('hub_part_stock', 'update', {
+            id: stockItem.id,
+            physical_stock: stockItem.physical_stock,
+            pending_allocated_stock: stockItem.pending_allocated_stock,
+            updated_at: stockItem.updated_at,
+          });
+        }
+        const updatedTargetVeh = updatedVehicles.find((v) => v.id === job.vehicle_id);
+        if (updatedTargetVeh) {
+          supabaseSync.pushMutation('vehicles', 'update', {
+            id: updatedTargetVeh.id,
+            current_status: updatedTargetVeh.current_status,
+            pending_status: updatedTargetVeh.pending_status,
+            status_change_reason: updatedTargetVeh.status_change_reason,
+            updated_at: updatedTargetVeh.updated_at,
+          });
+        }
       },
 
       rejectJobCard: (jobCardId, rejectionNotes) => {
@@ -1666,7 +1789,22 @@ export const useAppStore = create<AppStoreState>()(
           vehicles: updatedVehicles,
           auditLogs: [newAudit, ...auditLogs],
         });
-        supabaseSync.pushMutation('job_cards', 'update', { id: jobCardId, status: 'REJECTED', approval_notes: rejectionNotes }, { action: 'UPDATE', old_data: job });
+        supabaseSync.pushMutation('job_cards', 'update', { id: jobCardId, status: 'REJECTED', approved_by: currentUser?.id || 'usr-01', approved_at: new Date().toISOString(), approval_notes: rejectionNotes }, { action: 'UPDATE', old_data: job });
+        for (const stockItem of updatedStock.filter((s) => s.hub_id === 'hub-store-01' && (job.parts || []).some((bp) => bp.part_id === s.part_id))) {
+          supabaseSync.pushMutation('hub_part_stock', 'update', {
+            id: stockItem.id,
+            pending_allocated_stock: stockItem.pending_allocated_stock,
+            updated_at: stockItem.updated_at,
+          });
+        }
+        const updatedTargetVeh = updatedVehicles.find((v) => v.id === job.vehicle_id);
+        if (updatedTargetVeh) {
+          supabaseSync.pushMutation('vehicles', 'update', {
+            id: updatedTargetVeh.id,
+            pending_status: updatedTargetVeh.pending_status,
+            updated_at: updatedTargetVeh.updated_at,
+          });
+        }
       },
 
       archiveJobCard: (jobCardId) => {
@@ -1719,7 +1857,13 @@ export const useAppStore = create<AppStoreState>()(
 
         const newAudit = createAuditLog(currentUser, 'sops', newId, 'INSERT', null, newSOP);
         set({ sops: [newSOP, ...sops], auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('sops', 'insert', newSOP, { action: 'INSERT', new_data: newSOP });
+        const { revisions, ...parentSOP } = newSOP;
+        supabaseSync.pushMutation('sops', 'insert', parentSOP, { action: 'INSERT', new_data: parentSOP });
+        if (newSOP.revisions && newSOP.revisions.length > 0) {
+          for (const rev of newSOP.revisions) {
+            supabaseSync.pushMutation('sop_revisions', 'insert', { ...rev, sop_id: newId });
+          }
+        }
       },
 
       updateSOP: (sopId, updates, changeSummary) => {
@@ -1753,7 +1897,9 @@ export const useAppStore = create<AppStoreState>()(
 
         const newAudit = createAuditLog(currentUser, 'sops', sopId, 'UPDATE', { version: existing.version }, { version: nextVersion, changeSummary });
         set({ sops: updatedSOPs, auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('sops', 'update', { id: sopId, version: nextVersion, ...updates, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing });
+        const { revisions: _revs, ...parentUpdates } = updates as any;
+        supabaseSync.pushMutation('sops', 'update', { id: sopId, version: nextVersion, ...parentUpdates, updated_at: new Date().toISOString() }, { action: 'UPDATE', old_data: existing });
+        supabaseSync.pushMutation('sop_revisions', 'insert', { ...newRevision, sop_id: sopId });
       },
 
       publishSOP: (sopId) => {
@@ -1788,6 +1934,15 @@ export const useAppStore = create<AppStoreState>()(
         });
 
         set({ sops: updatedSOPs });
+        const targetSOP = updatedSOPs.find((s) => s.id === sopId);
+        if (targetSOP) {
+          supabaseSync.pushMutation('sops', 'update', {
+            id: sopId,
+            acknowledged_by: targetSOP.acknowledged_by,
+            view_count: targetSOP.view_count,
+            updated_at: new Date().toISOString(),
+          });
+        }
       },
 
       archiveSOP: (sopId) => {
@@ -1941,6 +2096,14 @@ export const useAppStore = create<AppStoreState>()(
         );
         const newAudit = createAuditLog(currentUser, 'team_notes', 'bulk', 'ARCHIVE', null, { action: 'bulkDispose' });
         set({ teamNotes: updated, auditLogs: [newAudit, ...auditLogs] });
+        for (const n of updated.filter((item) => item.status === 'ARCHIVED' && item.is_archived)) {
+          supabaseSync.pushMutation('team_notes', 'update', {
+            id: n.id,
+            status: 'ARCHIVED',
+            is_archived: true,
+            updated_at: new Date().toISOString(),
+          });
+        }
       },
 
       togglePinNote: (noteId) => {

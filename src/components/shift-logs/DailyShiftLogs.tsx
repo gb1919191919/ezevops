@@ -130,15 +130,18 @@ export function DailyShiftLogs() {
     const list = dailyShiftLogs.filter((log) => {
       if (!isGlobalHub && !selectedHubIds.includes(log.hub_id)) return false;
       if (hubFilter !== 'ALL' && log.hub_id !== hubFilter) return false;
-      if (staffFilter !== 'ALL' && log.staff_name !== staffFilter) return false;
+      const logStaffName = log.staff_name || log.author_name || '';
+      const logDate = log.date || log.shift_date || '';
+      const logBlockers = log.blockers || log.roadblocks || '';
+      if (staffFilter !== 'ALL' && logStaffName !== staffFilter) return false;
 
       // Date filtering
-      if (dateFilter === 'TODAY' && log.date !== todayStr) return false;
-      if (dateFilter === '7D' && log.date < sevenDaysAgo) return false;
-      if (dateFilter === '30D' && log.date < thirtyDaysAgo) return false;
+      if (dateFilter === 'TODAY' && logDate !== todayStr) return false;
+      if (dateFilter === '7D' && logDate < sevenDaysAgo) return false;
+      if (dateFilter === '30D' && logDate < thirtyDaysAgo) return false;
       if (dateFilter === 'CUSTOM') {
-        if (customStartDate && log.date < customStartDate) return false;
-        if (customEndDate && log.date > customEndDate) return false;
+        if (customStartDate && logDate < customStartDate) return false;
+        if (customEndDate && logDate > customEndDate) return false;
       }
 
       if (!searchTerm.trim()) return true;
@@ -146,9 +149,9 @@ export function DailyShiftLogs() {
       const q = searchTerm.toLowerCase();
       const hub = hubs.find((h) => h.id === log.hub_id);
       return (
-        (log.staff_name || '').toLowerCase().includes(q) ||
+        logStaffName.toLowerCase().includes(q) ||
         (log.accomplishments || '').toLowerCase().includes(q) ||
-        (log.blockers || '').toLowerCase().includes(q) ||
+        logBlockers.toLowerCase().includes(q) ||
         (hub?.name || '').toLowerCase().includes(q)
       );
     });
@@ -156,9 +159,13 @@ export function DailyShiftLogs() {
     return list.sort((a, b) => {
       let comp = 0;
       if (sortField === 'date') {
-        comp = (a.date || '').localeCompare(b.date || '');
+        const aDate = a.date || a.shift_date || '';
+        const bDate = b.date || b.shift_date || '';
+        comp = aDate.localeCompare(bDate);
       } else if (sortField === 'staff_name') {
-        comp = (a.staff_name || '').localeCompare(b.staff_name || '');
+        const aStaff = a.staff_name || a.author_name || '';
+        const bStaff = b.staff_name || b.author_name || '';
+        comp = aStaff.localeCompare(bStaff);
       } else if (sortField === 'vehicles_serviced') {
         comp = (a.vehicles_serviced || 0) - (b.vehicles_serviced || 0);
       } else if (sortField === 'shift_type') {

@@ -6,7 +6,7 @@
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 DECLARE
-    matched_role_id TEXT := 'role-02'; -- Default manager
+    matched_role_id TEXT := 'role-04'; -- Default restricted field technician (mechanic)
 BEGIN
     IF NEW.email = 'bhuvnesh3568@gmail.com' OR NEW.email = 'bhuvnesh@ezev.in' THEN
         matched_role_id := 'role-01'; -- Super Admin (Owner)
@@ -26,9 +26,11 @@ BEGIN
     SET auth_user_id = NEW.id;
 
     -- Link role
-    INSERT INTO public.profile_roles (profile_id, role_id)
-    SELECT p.id, matched_role_id FROM public.profiles p WHERE p.email = NEW.email
-    ON CONFLICT DO NOTHING;
+    IF matched_role_id IS NOT NULL THEN
+        INSERT INTO public.profile_roles (profile_id, role_id)
+        SELECT p.id, matched_role_id FROM public.profiles p WHERE p.email = NEW.email
+        ON CONFLICT DO NOTHING;
+    END IF;
 
     RETURN NEW;
 END;

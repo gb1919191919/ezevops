@@ -109,7 +109,7 @@ CREATE POLICY "auth_delete_profile_roles" ON public.profile_roles FOR DELETE TO 
 -- VEHICLES & INSPECTIONS
 CREATE POLICY "auth_select_vehicles" ON public.vehicles FOR SELECT TO authenticated USING (true);
 CREATE POLICY "auth_insert_vehicles" ON public.vehicles FOR INSERT TO authenticated WITH CHECK ((SELECT private.is_owner_or_manager()));
-CREATE POLICY "auth_update_vehicles" ON public.vehicles FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_update_vehicles" ON public.vehicles FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager())) WITH CHECK ((SELECT private.is_owner_or_manager()));
 CREATE POLICY "auth_delete_vehicles" ON public.vehicles FOR DELETE TO authenticated USING ((SELECT private.is_super_admin()));
 
 CREATE POLICY "auth_select_vehicle_inspections" ON public.vehicle_inspections FOR SELECT TO authenticated USING (true);
@@ -125,7 +125,7 @@ CREATE POLICY "auth_delete_parts" ON public.parts FOR DELETE TO authenticated US
 
 CREATE POLICY "auth_select_hub_part_stock" ON public.hub_part_stock FOR SELECT TO authenticated USING (true);
 CREATE POLICY "auth_insert_hub_part_stock" ON public.hub_part_stock FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_hub_part_stock" ON public.hub_part_stock FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_update_hub_part_stock" ON public.hub_part_stock FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager())) WITH CHECK ((SELECT private.is_owner_or_manager()));
 CREATE POLICY "auth_delete_hub_part_stock" ON public.hub_part_stock FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
 
 CREATE POLICY "auth_select_part_usage_logs" ON public.part_usage_logs FOR SELECT TO authenticated USING (true);
@@ -136,12 +136,12 @@ CREATE POLICY "auth_delete_part_usage_logs" ON public.part_usage_logs FOR DELETE
 -- JOB CARDS & JOB CARD PARTS
 CREATE POLICY "auth_select_job_cards" ON public.job_cards FOR SELECT TO authenticated USING (true);
 CREATE POLICY "auth_insert_job_cards" ON public.job_cards FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_job_cards" ON public.job_cards FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_update_job_cards" ON public.job_cards FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager()) OR assigned_mechanic_id = (SELECT private.get_auth_profile_id())) WITH CHECK ((SELECT private.is_owner_or_manager()) OR assigned_mechanic_id = (SELECT private.get_auth_profile_id()));
 CREATE POLICY "auth_delete_job_cards" ON public.job_cards FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
 
 CREATE POLICY "auth_select_job_card_parts" ON public.job_card_parts FOR SELECT TO authenticated USING (true);
 CREATE POLICY "auth_insert_job_card_parts" ON public.job_card_parts FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_job_card_parts" ON public.job_card_parts FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_update_job_card_parts" ON public.job_card_parts FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager())) WITH CHECK ((SELECT private.is_owner_or_manager()));
 CREATE POLICY "auth_delete_job_card_parts" ON public.job_card_parts FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
 
 -- REFUNDS
@@ -184,7 +184,7 @@ CREATE POLICY "auth_delete_task_changelog" ON public.task_changelog FOR DELETE T
 -- DAILY SHIFT LOGS
 CREATE POLICY "auth_select_daily_shift_logs" ON public.daily_shift_logs FOR SELECT TO authenticated USING (true);
 CREATE POLICY "auth_insert_daily_shift_logs" ON public.daily_shift_logs FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_daily_shift_logs" ON public.daily_shift_logs FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "auth_update_daily_shift_logs" ON public.daily_shift_logs FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager()) OR author_id = (SELECT private.get_auth_profile_id())) WITH CHECK ((SELECT private.is_owner_or_manager()) OR author_id = (SELECT private.get_auth_profile_id()));
 CREATE POLICY "auth_delete_daily_shift_logs" ON public.daily_shift_logs FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
 
 -- CHAT CHANNELS & CHANNEL MESSAGES
@@ -195,8 +195,8 @@ CREATE POLICY "auth_delete_chat_channels" ON public.chat_channels FOR DELETE TO 
 
 CREATE POLICY "auth_select_channel_messages" ON public.channel_messages FOR SELECT TO authenticated USING (true);
 CREATE POLICY "auth_insert_channel_messages" ON public.channel_messages FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_channel_messages" ON public.channel_messages FOR UPDATE TO authenticated USING (true) WITH CHECK (true);
-CREATE POLICY "auth_delete_channel_messages" ON public.channel_messages FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()));
+CREATE POLICY "auth_update_channel_messages" ON public.channel_messages FOR UPDATE TO authenticated USING (sender_id = (SELECT private.get_auth_profile_id())) WITH CHECK (sender_id = (SELECT private.get_auth_profile_id()));
+CREATE POLICY "auth_delete_channel_messages" ON public.channel_messages FOR DELETE TO authenticated USING ((SELECT private.is_owner_or_manager()) OR sender_id = (SELECT private.get_auth_profile_id()));
 
 -- SOPS & REVISIONS
 CREATE POLICY "auth_select_sops" ON public.sops FOR SELECT TO authenticated USING (true);
@@ -221,11 +221,9 @@ CREATE POLICY "auth_insert_blocked_users" ON public.blocked_users FOR INSERT TO 
 CREATE POLICY "auth_update_blocked_users" ON public.blocked_users FOR UPDATE TO authenticated USING ((SELECT private.is_owner_or_manager())) WITH CHECK ((SELECT private.is_owner_or_manager()));
 CREATE POLICY "auth_delete_blocked_users" ON public.blocked_users FOR DELETE TO authenticated USING ((SELECT private.is_super_admin()));
 
--- AUDIT LOGS
+-- AUDIT LOGS (Strictly Append-Only: No UPDATE or DELETE allowed by any role)
 CREATE POLICY "auth_select_audit_logs" ON public.audit_logs FOR SELECT TO authenticated USING ((SELECT private.is_super_admin()));
 CREATE POLICY "auth_insert_audit_logs" ON public.audit_logs FOR INSERT TO authenticated WITH CHECK (true);
-CREATE POLICY "auth_update_audit_logs" ON public.audit_logs FOR UPDATE TO authenticated USING ((SELECT private.is_super_admin())) WITH CHECK ((SELECT private.is_super_admin()));
-CREATE POLICY "auth_delete_audit_logs" ON public.audit_logs FOR DELETE TO authenticated USING ((SELECT private.is_super_admin()));
 
 -- 4. Service Role Full Access on All Tables
 DO $$ 

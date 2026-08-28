@@ -23,6 +23,7 @@ export function useSupabaseSync() {
 
     return () => {
       mounted = false;
+      supabaseSync.unsubscribeRealtime();
     };
   }, []);
 

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 import {
   INITIAL_ROLES,
   INITIAL_HUBS,
@@ -22,7 +23,25 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // 1. Check for Service Role authorization header OR valid owner session
+  const authHeader = req.headers.get('authorization') || '';
+  const serviceKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const isAuthorizedSecret = serviceKey && authHeader === `Bearer ${serviceKey}`;
+
+  if (!isAuthorizedSecret) {
+    // Check server session
+    try {
+      const serverClient = createServerSupabaseClient();
+      const { data: { user } } = await serverClient.auth.getUser();
+      if (!user) {
+        return NextResponse.json({ error: 'Unauthorized: Authentication required to seed database' }, { status: 401 });
+      }
+    } catch {
+      return NextResponse.json({ error: 'Unauthorized: Authentication required' }, { status: 401 });
+    }
+  }
+
   try {
     const summary: Record<string, { status: 'inserted' | 'skipped' | 'error'; count?: number; error?: string }> = {};
 

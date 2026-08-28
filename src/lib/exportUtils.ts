@@ -32,6 +32,10 @@ function escapeCSVValue(val: any): string {
   if (typeof val === 'object') {
     str = JSON.stringify(val);
   }
+  // Neutralize CSV Formula Injection (CWE-1236)
+  if (/^[=+@\-\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }

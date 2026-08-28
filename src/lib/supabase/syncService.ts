@@ -17,25 +17,38 @@ import {
 
 class SupabaseSyncService {
   private isInitialized = false;
+  private realtimeChannel: any = null;
 
   public async initSync() {
     if (this.isInitialized || typeof window === 'undefined') return;
-    this.isInitialized = true;
 
     try {
       await this.pullAllTables();
       this.subscribeRealtime();
+      this.isInitialized = true;
     } catch (err) {
+      this.isInitialized = false;
       console.warn('Supabase sync notice: Operating with local real Mumbai fleet dataset.', err);
+    }
+  }
+
+  public unsubscribeRealtime() {
+    if (this.realtimeChannel) {
+      try {
+        supabase.removeChannel(this.realtimeChannel);
+      } catch (e) {
+        // Channel cleanup fallback
+      }
+      this.realtimeChannel = null;
     }
   }
 
   public async pullAllTables() {
     const store = useAppStore.getState();
 
-    // 1. Hubs
+    // 1. Hubs & Charger Logs
     try {
-      const { data: hubs, error } = await supabase.from('hubs').select('*');
+      const { data: hubs, error } = await supabase.from('hubs').select('*, charger_logs:charger_logs(*)');
       if (!error && hubs && hubs.length > 0) {
         store.hubs = hubs as Hub[];
         useAppStore.setState({ hubs: hubs as Hub[] });
@@ -94,9 +107,9 @@ class SupabaseSyncService {
       // Keep baseline
     }
 
-    // 7. SOPs
+    // 7. SOPs & Revisions
     try {
-      const { data: sops, error } = await supabase.from('sops').select('*');
+      const { data: sops, error } = await supabase.from('sops').select('*, revisions:sop_revisions(*)');
       if (!error && sops && sops.length > 0) {
         useAppStore.setState({ sops: sops as SOP[] });
       }
@@ -114,7 +127,7 @@ class SupabaseSyncService {
       // Keep baseline
     }
 
-    // 9. Job Cards
+    // 9. Job Cards & Parts
     try {
       const { data: jobCards, error } = await supabase.from('job_cards').select('*, parts:job_card_parts(*)');
       if (!error && jobCards && jobCards.length > 0) {
@@ -124,7 +137,7 @@ class SupabaseSyncService {
       // Keep baseline
     }
 
-    // 10. Objectives, Milestones & Tasks
+    // 10. Objectives, Milestones & Tasks (with changelog, remarks, attachments)
     try {
       const { data: objectives, error: objErr } = await supabase.from('objectives').select('*');
       if (!objErr && objectives && objectives.length > 0) {
@@ -136,7 +149,9 @@ class SupabaseSyncService {
         useAppStore.setState({ milestones: milestones as any[] });
       }
 
-      const { data: tasks, error: tskErr } = await supabase.from('tasks').select('*, remarks:task_remarks(*)');
+      const { data: tasks, error: tskErr } = await supabase
+        .from('tasks')
+        .select('*, remarks:task_remarks(*), attachments:task_attachments(*), changelog:task_changelog(*)');
       if (!tskErr && tasks && tasks.length > 0) {
         useAppStore.setState({ tasks: tasks as TaskItem[] });
       }
@@ -144,11 +159,15 @@ class SupabaseSyncService {
       // Keep baseline
     }
 
-    // 11. Staff Profiles
+    // 11. Staff Profiles & Joined Roles
     try {
-      const { data: profiles, error } = await supabase.from('profiles').select('*');
+      const { data: profiles, error } = await supabase.from('profiles').select('*, roles:profile_roles(role:roles(*))');
       if (!error && profiles && profiles.length > 0) {
-        useAppStore.setState({ staffProfiles: profiles as Profile[] });
+        const formattedProfiles = profiles.map((p: any) => ({
+          ...p,
+          roles: (p.roles || []).map((pr: any) => pr.role).filter(Boolean),
+        }));
+        useAppStore.setState({ staffProfiles: formattedProfiles as Profile[] });
       }
     } catch (e) {
       // Keep baseline
@@ -158,7 +177,14 @@ class SupabaseSyncService {
     try {
       const { data: shiftLogs, error } = await supabase.from('daily_shift_logs').select('*').order('created_at', { ascending: false });
       if (!error && shiftLogs && shiftLogs.length > 0) {
-        useAppStore.setState({ dailyShiftLogs: shiftLogs as any[] });
+        const formattedLogs = shiftLogs.map((l: any) => ({
+          ...l,
+          date: l.shift_date || l.date,
+          staff_name: l.author_name || l.staff_name,
+          staff_role: l.author_role || l.staff_role,
+          blockers: l.roadblocks || l.blockers,
+        }));
+        useAppStore.setState({ dailyShiftLogs: formattedLogs as any[] });
       }
     } catch (e) {
       // Keep baseline
@@ -173,7 +199,11 @@ class SupabaseSyncService {
 
       const { data: messages, error: msgErr } = await supabase.from('channel_messages').select('*').order('created_at', { ascending: true });
       if (!msgErr && messages && messages.length > 0) {
-        useAppStore.setState({ channelMessages: messages as any[] });
+        const formattedMessages = messages.map((m: any) => ({
+          ...m,
+          message: m.content || m.message,
+        }));
+        useAppStore.setState({ channelMessages: formattedMessages as any[] });
       }
     } catch (e) {
       // Keep baseline
@@ -183,7 +213,7 @@ class SupabaseSyncService {
   // Subscribe to live Postgres changes
   private subscribeRealtime() {
     try {
-      supabase
+      this.realtimeChannel = supabase
         .channel('realtime-fleet-ops')
         .on(
           'postgres_changes',
