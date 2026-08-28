@@ -342,11 +342,12 @@ export function FleetTable() {
       const q = search.toLowerCase();
       const matchesId = (v.vehicle_id || '').toLowerCase().includes(q);
       const matchesCustomId = (v.custom_vehicle_id || '').toLowerCase().includes(q);
+      const matchesPlate = (v.plate_number || '').toLowerCase().includes(q);
       const matchesKey = (v.key_number || '').toLowerCase().includes(q);
       const matchesVin = (v.vin || '').toLowerCase().includes(q);
       const matchesModel = (v.model || '').toLowerCase().includes(q);
 
-      return matchesId || matchesCustomId || matchesKey || matchesVin || matchesModel;
+      return matchesId || matchesCustomId || matchesPlate || matchesKey || matchesVin || matchesModel;
     });
 
     return list.sort((a, b) => {

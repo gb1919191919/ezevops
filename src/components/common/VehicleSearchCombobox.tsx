@@ -74,11 +74,13 @@ export function VehicleSearchCombobox({
         const vehicleId = (v.vehicle_id || '').toLowerCase();
         const vin = (v.vin || '').toLowerCase();
         const key = (v.key_number || '').toLowerCase();
+        const plate = (v.plate_number || '').toLowerCase();
         const model = (v.model || '').toLowerCase();
         const customId = (v.custom_vehicle_id || '').toLowerCase();
 
         return (
           vehicleId.includes(cleanQuery) ||
+          plate.includes(cleanQuery) ||
           key.includes(cleanQuery) ||
           vin.includes(cleanQuery) ||
           model.includes(cleanQuery) ||

@@ -112,6 +112,7 @@ interface AppStoreState {
   createRefund: (
     refundData: Omit<Refund, 'id' | 'status' | 'created_at' | 'updated_at' | 'requested_by' | 'requester_name' | 'requester_role'>
   ) => void;
+  updateRefund: (refundId: string, updates: Partial<Refund>) => void;
   verifyRefund: (refundId: string, remarks?: string) => void;
   settleRefund: (refundId: string, frappeReference?: string) => void;
   rejectRefund: (refundId: string, reason: string) => void;
@@ -485,6 +486,23 @@ export const useAppStore = create<AppStoreState>()(
         const newAudit = createAuditLog(currentUser, 'refunds', newRefundId, 'INSERT', null, newRefund);
         set({ refunds: [newRefund, ...refunds], auditLogs: [newAudit, ...auditLogs] });
         supabaseSync.pushMutation('refunds', 'insert', newRefund, { action: 'INSERT', new_data: newRefund });
+      },
+
+      updateRefund: (refundId, updates) => {
+        const { refunds, auditLogs, currentUser } = get();
+        const existing = refunds.find((r) => r.id === refundId);
+        if (!existing) return;
+
+        const updatedRefund: Refund = {
+          ...existing,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        };
+
+        const updated = refunds.map((r) => (r.id === refundId ? updatedRefund : r));
+        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'UPDATE', existing, updates);
+        set({ refunds: updated, auditLogs: [newAudit, ...auditLogs] });
+        supabaseSync.pushMutation('refunds', 'update', updatedRefund, { action: 'UPDATE', old_data: existing });
       },
 
       verifyRefund: (refundId, remarks) => {

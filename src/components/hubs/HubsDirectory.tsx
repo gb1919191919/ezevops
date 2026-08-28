@@ -194,10 +194,13 @@ export function HubsDirectory() {
       {/* Hub Cards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {hubs.map((hub) => {
-          const dayGuardNameVal = hub.day_guard_name || 'Basavaraj Patil';
-          const dayGuardPhoneVal = hub.day_guard_phone || '+91 98450 21001';
-          const nightGuardNameVal = hub.night_guard_name || 'Shankar Lingam';
-          const nightGuardPhoneVal = hub.night_guard_phone || '+91 98450 31001';
+          const dayGuardNameVal = hub.day_guard_name || 'Not Assigned';
+          const dayGuardPhoneVal = hub.day_guard_phone || '';
+          const hasDayGuard = Boolean(dayGuardPhoneVal && dayGuardPhoneVal.replace(/[^\d]/g, '').length >= 10);
+
+          const nightGuardNameVal = hub.night_guard_name || 'Not Assigned';
+          const nightGuardPhoneVal = hub.night_guard_phone || '';
+          const hasNightGuard = Boolean(nightGuardPhoneVal && nightGuardPhoneVal.replace(/[^\d]/g, '').length >= 10);
 
           return (
             <div
@@ -240,27 +243,31 @@ export function HubsDirectory() {
                       <Shield className="w-3 h-3 text-emerald-400" />
                       Hub POC Manager
                     </span>
-                    <p className="font-bold text-xs text-zinc-100">{hub.poc_name}</p>
-                    <p className="text-zinc-400 font-mono text-[11px]">{formatPhone(hub.poc_phone)}</p>
+                    <p className="font-bold text-xs text-zinc-100">{hub.poc_name || 'Hub Manager'}</p>
+                    <p className="text-zinc-400 font-mono text-[11px]">{hub.poc_phone ? formatPhone(hub.poc_phone) : 'No phone listed'}</p>
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <a
-                      href={getTelLink(hub.poc_phone)}
-                      className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-semibold transition flex items-center gap-1"
-                    >
-                      <Phone className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Call</span>
-                    </a>
-                    <a
-                      href={getWhatsAppLink(hub.poc_phone, hub.poc_name, hub.name)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-xs font-semibold transition flex items-center gap-1"
-                    >
-                      <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>WhatsApp</span>
-                    </a>
+                    {hub.poc_phone && (
+                      <>
+                        <a
+                          href={getTelLink(hub.poc_phone)}
+                          className="px-2.5 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-200 text-xs font-semibold transition flex items-center gap-1"
+                        >
+                          <Phone className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>Call</span>
+                        </a>
+                        <a
+                          href={getWhatsAppLink(hub.poc_phone, hub.poc_name, hub.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-300 text-xs font-semibold transition flex items-center gap-1"
+                        >
+                          <MessageCircle className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -274,26 +281,32 @@ export function HubsDirectory() {
                     </span>
                     <div>
                       <p className="font-bold text-zinc-200">{dayGuardNameVal}</p>
-                      <p className="text-[11px] font-mono text-zinc-400">{formatPhone(dayGuardPhoneVal)}</p>
+                      <p className="text-[11px] font-mono text-zinc-400">{hasDayGuard ? formatPhone(dayGuardPhoneVal) : 'No contact'}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-900">
-                      <a
-                        href={getTelLink(dayGuardPhoneVal)}
-                        className="flex-1 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-medium text-[11px] text-center flex items-center justify-center gap-1"
-                      >
-                        <Phone className="w-3 h-3 text-emerald-400" />
-                        <span>Call</span>
-                      </a>
-                      <a
-                        href={getWhatsAppLink(dayGuardPhoneVal, dayGuardNameVal, hub.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-800/40 text-emerald-400 font-medium text-[11px] text-center flex items-center justify-center gap-1"
-                      >
-                        <MessageCircle className="w-3 h-3" />
-                        <span>WhatsApp</span>
-                      </a>
-                    </div>
+                    {hasDayGuard ? (
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-900">
+                        <a
+                          href={getTelLink(dayGuardPhoneVal)}
+                          className="flex-1 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-medium text-[11px] text-center flex items-center justify-center gap-1"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-400" />
+                          <span>Call</span>
+                        </a>
+                        <a
+                          href={getWhatsAppLink(dayGuardPhoneVal, dayGuardNameVal, hub.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-800/40 text-emerald-400 font-medium text-[11px] text-center flex items-center justify-center gap-1"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="pt-1 border-t border-zinc-900 text-[10px] text-zinc-500 italic">
+                        Not assigned
+                      </div>
+                    )}
                   </div>
 
                   {/* Night Guard */}
@@ -304,26 +317,32 @@ export function HubsDirectory() {
                     </span>
                     <div>
                       <p className="font-bold text-zinc-200">{nightGuardNameVal}</p>
-                      <p className="text-[11px] font-mono text-zinc-400">{formatPhone(nightGuardPhoneVal)}</p>
+                      <p className="text-[11px] font-mono text-zinc-400">{hasNightGuard ? formatPhone(nightGuardPhoneVal) : 'No contact'}</p>
                     </div>
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-900">
-                      <a
-                        href={getTelLink(nightGuardPhoneVal)}
-                        className="flex-1 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-medium text-[11px] text-center flex items-center justify-center gap-1"
-                      >
-                        <Phone className="w-3 h-3 text-emerald-400" />
-                        <span>Call</span>
-                      </a>
-                      <a
-                        href={getWhatsAppLink(nightGuardPhoneVal, nightGuardNameVal, hub.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex-1 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-800/40 text-emerald-400 font-medium text-[11px] text-center flex items-center justify-center gap-1"
-                      >
-                        <MessageCircle className="w-3 h-3" />
-                        <span>WhatsApp</span>
-                      </a>
-                    </div>
+                    {hasNightGuard ? (
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-zinc-900">
+                        <a
+                          href={getTelLink(nightGuardPhoneVal)}
+                          className="flex-1 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-medium text-[11px] text-center flex items-center justify-center gap-1"
+                        >
+                          <Phone className="w-3 h-3 text-emerald-400" />
+                          <span>Call</span>
+                        </a>
+                        <a
+                          href={getWhatsAppLink(nightGuardPhoneVal, nightGuardNameVal, hub.name)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex-1 py-1.5 rounded-lg bg-emerald-950/40 hover:bg-emerald-900/40 border border-emerald-800/40 text-emerald-400 font-medium text-[11px] text-center flex items-center justify-center gap-1"
+                        >
+                          <MessageCircle className="w-3 h-3" />
+                          <span>WhatsApp</span>
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="pt-1 border-t border-zinc-900 text-[10px] text-zinc-500 italic">
+                        Not assigned
+                      </div>
+                    )}
                   </div>
                 </div>
 

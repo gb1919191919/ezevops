@@ -247,6 +247,26 @@ export function InventoryMatrix() {
     .filter((s) => s.hub_id === 'hub-store-01')
     .reduce((sum, s) => sum + s.physical_stock, 0);
 
+  const now = Date.now();
+  const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+  const fourteenDaysAgo = now - 14 * 24 * 60 * 60 * 1000;
+
+  const sevenDayConsumptionValue = partUsageLogs
+    .filter((u) => u.created_at && new Date(u.created_at).getTime() >= sevenDaysAgo)
+    .reduce((sum, u) => {
+      const p = parts.find((item) => item.id === u.part_id);
+      const cost = p?.unit_cost || u.part?.unit_cost || 0;
+      return sum + (u.quantity || 1) * cost;
+    }, 0);
+
+  const fourteenDayConsumptionValue = partUsageLogs
+    .filter((u) => u.created_at && new Date(u.created_at).getTime() >= fourteenDaysAgo)
+    .reduce((sum, u) => {
+      const p = parts.find((item) => item.id === u.part_id);
+      const cost = p?.unit_cost || u.part?.unit_cost || 0;
+      return sum + (u.quantity || 1) * cost;
+    }, 0);
+
   const lowStockCount = hubStock.filter((s) => {
     if (s.hub_id !== 'hub-store-01') return false;
     const p = parts.find((item) => item.id === s.part_id);
@@ -317,7 +337,7 @@ export function InventoryMatrix() {
             7-Day Consumption Value
           </div>
           <div className="kpi-val text-xl font-mono font-bold text-emerald-400 mt-1">
-            ₹4,200
+            {formatCurrency(sevenDayConsumptionValue)}
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
             Last 7 days maintenance consumption
@@ -329,7 +349,7 @@ export function InventoryMatrix() {
             14-Day Consumption Value
           </div>
           <div className="kpi-val text-xl font-mono font-bold text-blue-400 mt-1">
-            ₹9,650
+            {formatCurrency(fourteenDayConsumptionValue)}
           </div>
           <span className="text-[11px] text-zinc-500 font-mono mt-0.5 block">
             Rolling 14-day spares usage

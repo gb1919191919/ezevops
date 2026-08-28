@@ -160,10 +160,11 @@ export function JobCardsList() {
       const matchesTicket = `#${job.ticket_number}`.includes(q);
       const matchesVehicleId = (vehicle?.vehicle_id || '').toLowerCase().includes(q);
       const matchesCustomId = (vehicle?.custom_vehicle_id || '').toLowerCase().includes(q);
+      const matchesPlate = (vehicle?.plate_number || '').toLowerCase().includes(q);
       const matchesKey = (vehicle?.key_number || '').toLowerCase().includes(q);
       const matchesDesc = (job.issue_description || '').toLowerCase().includes(q);
 
-      return matchesTicket || matchesVehicleId || matchesCustomId || matchesKey || matchesDesc;
+      return matchesTicket || matchesVehicleId || matchesCustomId || matchesPlate || matchesKey || matchesDesc;
     });
 
     return list.sort((a, b) => {

@@ -105,6 +105,7 @@ export function RefundsManager() {
   const refunds = useAppStore((s) => s.refunds || []);
   const currentUser = useAppStore((s) => s.currentUser);
   const createRefund = useAppStore((s) => s.createRefund);
+  const updateRefund = useAppStore((s) => s.updateRefund);
   const verifyRefund = useAppStore((s) => s.verifyRefund);
   const settleRefund = useAppStore((s) => s.settleRefund);
   const rejectRefund = useAppStore((s) => s.rejectRefund);
@@ -268,21 +269,14 @@ export function RefundsManager() {
     e.preventDefault();
     if (!selectedRefundToEdit) return;
 
-    useAppStore.setState((state) => ({
-      refunds: state.refunds.map((r) =>
-        r.id === selectedRefundToEdit.id
-          ? {
-              ...r,
-              amount: editAmount,
-              payout_type: editPayoutType,
-              reason: editReason.trim(),
-              internal_remarks: editRemarks.trim() || null,
-              status: editStatus,
-              evidence_attachments: editEvidence,
-            }
-          : r
-      ),
-    }));
+    updateRefund(selectedRefundToEdit.id, {
+      amount: editAmount,
+      payout_type: editPayoutType,
+      reason: editReason.trim(),
+      internal_remarks: editRemarks.trim() || null,
+      status: editStatus,
+      evidence_attachments: editEvidence,
+    });
 
     toast.success(`Updated claim for Ride #${selectedRefundToEdit.ride_id}`);
     setEditModalOpen(false);

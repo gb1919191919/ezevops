@@ -328,6 +328,7 @@ export interface Refund {
   settled_at?: string | null;
   settled_by_name?: string | null;
   rejection_reason?: string | null;
+  evidence_attachments?: string[] | null;
   is_archived?: boolean;
   created_at: string;
   updated_at: string;

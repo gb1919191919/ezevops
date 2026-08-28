@@ -156,7 +156,7 @@ export function CommandDashboard() {
         <StatCard
           title="Low Stock Triggers"
           value={lowStockAlerts.length}
-          subtitle={`${parts.length} Tracked Parts in Store 1`}
+          subtitle={`${parts.length} Active Catalog SKUs`}
           icon={Package}
           color="rose"
           badge={lowStockAlerts.length > 0 ? 'ALERT' : undefined}

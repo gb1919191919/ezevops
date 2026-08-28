@@ -156,14 +156,23 @@ export function GlobalSearchModal({
       const vId = (v.id || '').toLowerCase();
       const vIot = (v.vehicle_id || '').toLowerCase();
       const vCustom = (v.custom_vehicle_id || '').toLowerCase();
+      const vPlate = (v.plate_number || '').toLowerCase();
       const vKey = (v.key_number || '').toLowerCase();
       const vVin = (v.vin || '').toLowerCase();
       const vModel = (v.model || '').toLowerCase();
 
-      if (vId.includes(q) || vIot.includes(q) || vCustom.includes(q) || vKey.includes(q) || vVin.includes(q) || vModel.includes(q)) {
+      if (
+        vId.includes(q) ||
+        vIot.includes(q) ||
+        vCustom.includes(q) ||
+        vPlate.includes(q) ||
+        vKey.includes(q) ||
+        vVin.includes(q) ||
+        vModel.includes(q)
+      ) {
         items.push({
           id: `veh-${v.id}`,
-          title: `Key #${v.key_number || 'N/A'} • ${v.model || 'EV'} (${v.custom_vehicle_id || v.id?.toUpperCase() || 'N/A'})`,
+          title: `Key #${v.key_number || 'N/A'} • ${v.model || 'EV'} (${v.plate_number || v.custom_vehicle_id || v.id?.toUpperCase() || 'N/A'})`,
           subtitle: `IoT ID: ${v.vehicle_id || 'N/A'} • Status: ${v.current_status} • Hub: ${v.hub?.name || v.current_hub_id || 'Central'}`,
           category: 'vehicles',
           categoryLabel: 'Fleet Vehicles',

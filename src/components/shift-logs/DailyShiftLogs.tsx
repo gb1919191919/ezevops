@@ -245,15 +245,15 @@ export function DailyShiftLogs() {
     const data = filteredLogs.map((log) => {
       const hub = hubs.find((h) => h.id === log.hub_id);
       return {
-        Date: log.date,
+        Date: log.date || log.shift_date || '',
         Shift: log.shift_type,
-        'Staff Name': log.staff_name,
-        Role: log.staff_role,
+        'Staff Name': log.staff_name || log.author_name || '',
+        Role: log.staff_role || log.author_role || '',
         Hub: hub ? hub.name : log.hub_id,
         Accomplishments: log.accomplishments,
-        'Vehicles Serviced': log.vehicles_serviced,
-        'Disputes Resolved': log.customer_issues_resolved,
-        'Blockers / Roadblocks': log.blockers || 'None',
+        'Vehicles Serviced': log.vehicles_serviced || 0,
+        'Disputes Resolved': log.customer_issues_resolved || 0,
+        'Blockers / Roadblocks': log.blockers || log.roadblocks || 'None',
         'Logged At': formatDate(log.created_at),
       };
     });
@@ -273,8 +273,8 @@ export function DailyShiftLogs() {
     const rows = filteredLogs.map((log) => {
       const hub = hubs.find((h) => h.id === log.hub_id);
       return {
-        date: log.date,
-        staff: log.staff_name,
+        date: log.date || log.shift_date || '',
+        staff: log.staff_name || log.author_name || '',
         shift: log.shift_type,
         hub: hub ? hub.name : log.hub_id,
         serviced: `${log.vehicles_serviced || 0} EVs`,

@@ -41,12 +41,18 @@ export function formatPhone(phone: string): string {
   if (cleaned.startsWith('+91') && cleaned.length === 13) {
     return `+91 ${cleaned.slice(3, 8)} ${cleaned.slice(8)}`;
   }
+  if (!cleaned.startsWith('+') && cleaned.length === 10) {
+    return `+91 ${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
+  }
   return phone;
 }
 
 export function getWhatsAppLink(phone?: string | null, contactName?: string, hubName?: string): string {
   if (!phone) return '#';
-  const digitsOnly = phone.replace(/[^\d]/g, '');
+  let digitsOnly = phone.replace(/[^\d]/g, '');
+  if (digitsOnly.length === 10) {
+    digitsOnly = '91' + digitsOnly;
+  }
   const greeting = encodeURIComponent(
     `Hello ${contactName || 'there'}, regarding EzEv Operations at ${hubName || 'the Hub'}:`
   );
@@ -55,7 +61,10 @@ export function getWhatsAppLink(phone?: string | null, contactName?: string, hub
 
 export function getTelLink(phone?: string | null): string {
   if (!phone) return '#';
-  const digits = phone.replace(/[^\d+]/g, '');
+  let digits = phone.replace(/[^\d+]/g, '');
+  if (!digits.startsWith('+') && digits.length === 10) {
+    digits = '+91' + digits;
+  }
   return `tel:${digits}`;
 }
 
