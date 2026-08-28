@@ -494,7 +494,7 @@ export function TasksEngine() {
       {viewMode === 'table' && (
         <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[780px]">
               <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                 <tr>
                   <ResizableTh
@@ -799,6 +799,43 @@ export function TasksEngine() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* VIEW 4: GRID CARDS VIEW */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredTasks.length === 0 ? (
+            <div className="col-span-full p-8 text-center text-zinc-500 bg-[#1e1e22] rounded-2xl border border-[#2a2a2f]">
+              No tasks found matching current filter.
+            </div>
+          ) : (
+            filteredTasks.map((t) => (
+              <div
+                key={t.id}
+                onClick={() => setSelectedTask(t)}
+                className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] hover:border-zinc-700 cursor-pointer transition shadow-sm space-y-3 flex flex-col justify-between group"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <TaskPriorityBadge priority={t.priority} />
+                    <TaskStatusBadge status={t.status} />
+                  </div>
+                  <h4 className="font-bold text-sm text-zinc-100 group-hover:text-blue-300 transition">
+                    {t.title}
+                  </h4>
+                  {t.description && (
+                    <p className="text-xs text-zinc-400 line-clamp-2">{t.description}</p>
+                  )}
+                </div>
+
+                <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-[11px] text-zinc-500">
+                  <span>Due: {t.due_date ? formatDate(t.due_date) : 'No deadline'}</span>
+                  <span className="text-blue-400 font-semibold">Inspect &rarr;</span>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 

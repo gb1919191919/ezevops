@@ -473,7 +473,7 @@ export function RefundsManager() {
       {viewMode === 'table' && (
         <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[780px]">
               <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                 <tr>
                   <ResizableTh
@@ -784,6 +784,46 @@ export function RefundsManager() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* VIEW 4: GRID CARDS VIEW */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredRefunds.length === 0 ? (
+            <div className="col-span-full p-8 text-center text-zinc-500 bg-[#1e1e22] rounded-2xl border border-[#2a2a2f]">
+              No customer refund disputes found matching filter.
+            </div>
+          ) : (
+            filteredRefunds.map((r) => (
+              <div
+                key={r.id}
+                className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] hover:border-zinc-700 transition shadow-sm space-y-3 flex flex-col justify-between"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <span className="font-mono font-bold text-sm text-zinc-100">{formatPhone(r.user_phone)}</span>
+                      <span className="text-[10px] text-zinc-500 font-mono block">Ride #{r.ride_id}</span>
+                    </div>
+                    <span className="font-mono font-bold text-emerald-400 text-sm">{formatCurrency(r.amount)}</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 line-clamp-2">{r.reason}</p>
+                </div>
+
+                <div className="pt-2 border-t border-zinc-800 space-y-1.5 text-[11px]">
+                  <div className="flex justify-between items-center text-zinc-400">
+                    <span>Payout Method:</span>
+                    <span className="font-medium text-zinc-200">{r.payout_type}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-zinc-500 font-mono text-[10px]">
+                    <span>{formatDate(r.created_at)}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 font-bold">{r.status}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 

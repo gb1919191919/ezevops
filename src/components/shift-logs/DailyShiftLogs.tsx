@@ -32,10 +32,11 @@ import {
   CheckCircle2,
   Wrench,
   Clock,
+  BarChart3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type ShiftSortField = 'date' | 'staff_name' | 'vehicles_serviced' | 'shift_type' | 'created_at';
+type ShiftSortField = 'date' | 'staff_name' | 'vehicles_serviced' | 'shift_type' | 'created_at' | 'hub_id' | 'customer_issues_resolved';
 type SortOrder = 'asc' | 'desc';
 
 export function DailyShiftLogs() {
@@ -90,6 +91,17 @@ export function DailyShiftLogs() {
       setSortField(field);
       setSortOrder('desc');
     }
+  };
+
+  const renderSortIndicator = (field: ShiftSortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3 h-3 text-zinc-600" />;
+    }
+    return sortOrder === 'asc' ? (
+      <ArrowUp className="w-3 h-3 text-blue-400" />
+    ) : (
+      <ArrowDown className="w-3 h-3 text-blue-400" />
+    );
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -455,7 +467,7 @@ export function DailyShiftLogs() {
       {viewMode === 'table' && (
         <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[780px]">
               <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                 <tr>
                   <ResizableTh
@@ -466,11 +478,7 @@ export function DailyShiftLogs() {
                     className="p-3.5 pl-4 cursor-pointer hover:bg-zinc-800/60 transition"
                   >
                     <span>Date & Shift</span>
-                    {sortField === 'date' ? (
-                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
-                    ) : (
-                      <ArrowUpDown className="w-3 h-3 text-zinc-600" />
-                    )}
+                    {renderSortIndicator('date')}
                   </ResizableTh>
 
                   <ResizableTh
@@ -481,20 +489,18 @@ export function DailyShiftLogs() {
                     className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
                   >
                     <span>Staff Member</span>
-                    {sortField === 'staff_name' ? (
-                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
-                    ) : (
-                      <ArrowUpDown className="w-3 h-3 text-zinc-600" />
-                    )}
+                    {renderSortIndicator('staff_name')}
                   </ResizableTh>
 
                   <ResizableTh
                     colKey="hub"
                     width={widths.hub}
                     onResizeStart={startResizing}
-                    className="p-3.5"
+                    onClick={() => handleSort('hub_id')}
+                    className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
                   >
-                    Operating Hub
+                    <span>Hub Station</span>
+                    {renderSortIndicator('hub_id')}
                   </ResizableTh>
 
                   <ResizableTh
@@ -503,22 +509,29 @@ export function DailyShiftLogs() {
                     onResizeStart={startResizing}
                     className="p-3.5"
                   >
-                    Accomplishments & Activities
+                    <span>Summary of Accomplishments</span>
                   </ResizableTh>
 
                   <ResizableTh
-                    colKey="metrics"
-                    width={widths.metrics}
+                    colKey="serviced"
+                    width={widths.serviced}
                     onResizeStart={startResizing}
                     onClick={() => handleSort('vehicles_serviced')}
                     className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
                   >
-                    <span>Output Metrics</span>
-                    {sortField === 'vehicles_serviced' ? (
-                      sortOrder === 'asc' ? <ArrowUp className="w-3 h-3 text-blue-400" /> : <ArrowDown className="w-3 h-3 text-blue-400" />
-                    ) : (
-                      <ArrowUpDown className="w-3 h-3 text-zinc-600" />
-                    )}
+                    <span>Vehicles</span>
+                    {renderSortIndicator('vehicles_serviced')}
+                  </ResizableTh>
+
+                  <ResizableTh
+                    colKey="issues"
+                    width={widths.issues}
+                    onResizeStart={startResizing}
+                    onClick={() => handleSort('customer_issues_resolved')}
+                    className="p-3.5 cursor-pointer hover:bg-zinc-800/60 transition"
+                  >
+                    <span>Issues</span>
+                    {renderSortIndicator('customer_issues_resolved')}
                   </ResizableTh>
 
                   <ResizableTh
@@ -527,15 +540,15 @@ export function DailyShiftLogs() {
                     onResizeStart={startResizing}
                     className="p-3.5"
                   >
-                    Blockers & Roadblocks
+                    <span>Blockers & Handover</span>
                   </ResizableTh>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#27272a] text-zinc-300">
                 {filteredLogs.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="p-8 text-center text-zinc-500">
-                      No daily shift logs found matching the filter criteria.
+                    <td colSpan={7} className="p-8 text-center text-zinc-500">
+                      No shift activity logs found matching the filters.
                     </td>
                   </tr>
                 ) : (
@@ -543,49 +556,51 @@ export function DailyShiftLogs() {
                     const hub = hubs.find((h) => h.id === log.hub_id);
                     return (
                       <tr key={log.id} className="hover:bg-zinc-800/30 transition">
-                        <td className="p-3.5 pl-4 font-mono">
-                          <div className="text-zinc-100 font-bold">{formatDateOnly(log.date)}</div>
-                          <span
-                            className={cn(
-                              'px-1.5 py-0.5 rounded text-[10px] font-bold uppercase border inline-block mt-0.5',
-                              log.shift_type === 'MORNING'
-                                ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
-                                : log.shift_type === 'EVENING'
-                                ? 'bg-blue-500/10 text-blue-300 border-blue-500/20'
-                                : 'bg-purple-500/10 text-purple-300 border-purple-500/20'
-                            )}
-                          >
-                            {log.shift_type}
+                        <td className="p-3.5 pl-4">
+                          <span className="font-mono font-bold text-zinc-100 block">
+                            {formatDate(log.date)}
+                          </span>
+                          <span className="text-[10px] text-zinc-400 font-mono">
+                            {log.shift_type} Shift
                           </span>
                         </td>
 
                         <td className="p-3.5">
-                          <div className="font-bold text-zinc-100">{log.staff_name}</div>
-                          <span className="text-[10px] text-zinc-400 font-mono">{log.staff_role}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-[10px] font-bold">
+                              {log.staff_name.charAt(0)}
+                            </div>
+                            <div>
+                              <span className="font-bold text-zinc-200 block">{log.staff_name}</span>
+                              <span className="text-[10px] text-zinc-500">{log.staff_role}</span>
+                            </div>
+                          </div>
                         </td>
 
                         <td className="p-3.5 text-zinc-300">
                           {hub ? hub.name : log.hub_id}
                         </td>
 
-                        <td className="p-3.5">
-                          <p className="text-zinc-200 line-clamp-2">{log.accomplishments}</p>
+                        <td className="p-3.5 text-zinc-200">
+                          <p className="line-clamp-2 max-w-sm">{log.accomplishments}</p>
                         </td>
 
-                        <td className="p-3.5 font-mono">
-                          <div className="text-emerald-400 font-bold">
-                            {log.vehicles_serviced || 0} EVs Serviced
-                          </div>
-                          <div className="text-[10px] text-zinc-400">
-                            {log.customer_issues_resolved || 0} Disputes Resolved
-                          </div>
+                        <td className="p-3.5 font-mono font-bold text-emerald-400">
+                          {log.vehicles_serviced}
                         </td>
 
-                        <td className="p-3.5">
+                        <td className="p-3.5 font-mono font-bold text-blue-400">
+                          {log.customer_issues_resolved}
+                        </td>
+
+                        <td className="p-3.5 text-zinc-400">
                           {log.blockers ? (
-                            <span className="text-amber-400 text-xs flex items-center gap-1">
-                              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-                              <span className="line-clamp-2">{log.blockers}</span>
+                            <span className="text-amber-400 text-xs line-clamp-1">
+                              ⚠️ {log.blockers}
+                            </span>
+                          ) : log.handover_notes ? (
+                            <span className="text-zinc-400 text-xs line-clamp-1">
+                              📝 {log.handover_notes}
                             </span>
                           ) : (
                             <span className="text-zinc-500 text-xs">—</span>
@@ -601,38 +616,129 @@ export function DailyShiftLogs() {
         </div>
       )}
 
-      {/* Grid View */}
-      {viewMode === 'grid' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredLogs.map((log) => {
-            const hub = hubs.find((h) => h.id === log.hub_id);
+      {/* VIEW 3: REPORT VIEW */}
+      {viewMode === 'report' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Shifts by Shift Type */}
+            <div className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-4">
+              <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-blue-400" />
+                <span>Shifts by Time Interval</span>
+              </h3>
+              <div className="space-y-2.5">
+                {(['MORNING', 'EVENING', 'NIGHT', 'GENERAL'] as const).map((sType) => {
+                  const subset = filteredLogs.filter((l) => l.shift_type === sType);
+                  const totalServiced = subset.reduce((acc, l) => acc + l.vehicles_serviced, 0);
+                  return (
+                    <div key={sType} className="p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] flex justify-between items-center text-xs">
+                      <div>
+                        <span className="font-bold text-zinc-200 block">{sType}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{subset.length} shifts logged</span>
+                      </div>
+                      <span className="font-mono font-bold text-emerald-400">{totalServiced} vehicles</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Hub Activity Breakdown */}
+            <div className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-4">
+              <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-400" />
+                <span>Hub Service Volume</span>
+              </h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {hubs.map((hub) => {
+                  const subset = filteredLogs.filter((l) => l.hub_id === hub.id);
+                  const totalVehicles = subset.reduce((acc, l) => acc + l.vehicles_serviced, 0);
+                  const totalIssues = subset.reduce((acc, l) => acc + l.customer_issues_resolved, 0);
+                  return (
+                    <div key={hub.id} className="p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] flex justify-between items-center text-xs">
+                      <div>
+                        <span className="font-bold text-zinc-200 block">{hub.name}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{subset.length} shift logs</span>
+                      </div>
+                      <div className="text-right font-mono text-[11px]">
+                        <span className="text-emerald-400 font-bold block">{totalVehicles} serviced</span>
+                        <span className="text-blue-400">{totalIssues} resolved</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Top Contributing Staff */}
+            <div className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-4">
+              <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-purple-400" />
+                <span>Staff Activity Summary</span>
+              </h3>
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {Array.from(new Set(filteredLogs.map((l) => l.staff_name))).map((name) => {
+                  const staffLogs = filteredLogs.filter((l) => l.staff_name === name);
+                  const totalServiced = staffLogs.reduce((acc, l) => acc + l.vehicles_serviced, 0);
+                  return (
+                    <div key={name} className="p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] flex justify-between items-center text-xs">
+                      <div>
+                        <span className="font-bold text-zinc-200 block">{name}</span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{staffLogs[0]?.staff_role} ({staffLogs.length} logs)</span>
+                      </div>
+                      <span className="font-mono font-bold text-emerald-400">{totalServiced} vehicles</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW 4: PIPELINE / KANBAN VIEW */}
+      {viewMode === 'kanban' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {(['MORNING', 'EVENING', 'NIGHT', 'GENERAL'] as const).map((sType) => {
+            const list = filteredLogs.filter((l) => l.shift_type === sType);
             return (
-              <div
-                key={log.id}
-                className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-3 shadow-sm"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="font-bold text-sm text-zinc-100">{log.staff_name}</h3>
-                    <p className="text-xs text-zinc-400 font-mono mt-0.5">
-                      {log.date} • {log.shift_type} ({hub?.name})
-                    </p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-mono text-xs font-bold border border-emerald-500/20">
-                    {log.vehicles_serviced} Serviced
+              <div key={sType} className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-[#27272a]">
+                  <span className="text-xs font-bold text-zinc-200">{sType} Shift</span>
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-800 font-mono text-[10px] font-bold text-zinc-400 border border-zinc-700">
+                    {list.length}
                   </span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[#141416] border border-[#27272a] text-xs text-zinc-200">
-                  <p className="font-medium">{log.accomplishments}</p>
+                <div className="space-y-2.5 max-h-[620px] overflow-y-auto pr-1">
+                  {list.length === 0 ? (
+                    <div className="p-6 text-center text-zinc-600 text-xs border border-dashed border-zinc-800 rounded-xl">
+                      No logs for {sType}.
+                    </div>
+                  ) : (
+                    list.map((log) => {
+                      const hub = hubs.find((h) => h.id === log.hub_id);
+                      return (
+                        <div
+                          key={log.id}
+                          className="p-3.5 rounded-xl bg-[#141416] border border-[#27272a] hover:border-zinc-600 transition space-y-2 text-xs"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="font-bold text-zinc-100 block">{log.staff_name}</span>
+                              <span className="text-[10px] text-zinc-500 font-mono">{log.date} • {hub?.name}</span>
+                            </div>
+                            <span className="font-mono text-emerald-400 font-bold text-[11px]">{log.vehicles_serviced} V</span>
+                          </div>
+                          <p className="text-zinc-300 line-clamp-2 text-[11px]">{log.accomplishments}</p>
+                          {log.blockers && (
+                            <p className="text-amber-400 text-[10px] truncate">⚠️ {log.blockers}</p>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
-
-                {log.blockers && (
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-                    <p>{log.blockers}</p>
-                  </div>
-                )}
               </div>
             );
           })}

@@ -514,7 +514,7 @@ export function JobCardsList() {
       {viewMode === 'table' && (
         <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <table className="w-full text-left text-xs min-w-[780px]">
               <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                 <tr>
                   <ResizableTh
@@ -853,6 +853,61 @@ export function JobCardsList() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* VIEW 4: GRID CARDS VIEW */}
+      {viewMode === 'grid' && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filteredJobCards.length === 0 ? (
+            <div className="col-span-full p-8 text-center text-zinc-500 bg-[#1e1e22] rounded-2xl border border-[#2a2a2f]">
+              No job cards match the filter criteria.
+            </div>
+          ) : (
+            filteredJobCards.map((job) => {
+              const vehicle = vehicles.find((v) => v.id === job.vehicle_id);
+              const hub = hubs.find((h) => h.id === job.hub_id);
+              const partsCost = (job.parts || []).reduce((s, p) => s + p.quantity * p.unit_cost_snapshot, 0);
+
+              return (
+                <div
+                  key={job.id}
+                  onClick={() => setSelectedJobForSpares(job)}
+                  className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] hover:border-zinc-700 cursor-pointer transition shadow-sm space-y-3.5 flex flex-col justify-between group"
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-sm text-emerald-400">
+                            #{job.ticket_number}
+                          </span>
+                          <span className="font-mono font-bold text-xs text-blue-300">
+                            Key #{vehicle?.key_number}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-zinc-400 mt-0.5 block">{hub?.name || job.hub_id}</span>
+                      </div>
+                      <ApprovalBadge status={job.status} />
+                    </div>
+
+                    <p className="text-xs text-zinc-200 line-clamp-2">{job.issue_description}</p>
+                  </div>
+
+                  <div className="pt-2 border-t border-zinc-800 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-[11px] text-zinc-400">
+                      <span>Parts Used ({job.parts?.length || 0})</span>
+                      <span className="font-mono font-bold text-purple-300">{formatCurrency(partsCost)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] text-zinc-500 font-mono">
+                      <span>{formatDate(job.created_at)}</span>
+                      <span className="text-blue-400 font-semibold group-hover:translate-x-0.5 transition-transform">View Details &rarr;</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       )}
 

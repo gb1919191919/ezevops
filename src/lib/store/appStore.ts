@@ -57,6 +57,9 @@ interface AppStoreState {
   isSidebarCollapsed: boolean;
   toggleSidebarCollapse: () => void;
   setSidebarCollapse: (collapsed: boolean) => void;
+  isMobileDrawerOpen: boolean;
+  toggleMobileDrawer: () => void;
+  setMobileDrawerOpen: (open: boolean) => void;
 
   // Active Session & Multi-Role RBAC State
   currentUser: Profile;
@@ -265,11 +268,15 @@ function createAuditLog(
 export const useAppStore = create<AppStoreState>()(
   persist(
     (set, get) => ({
-      // Sidebar State
+      // Sidebar & Mobile Drawer State
       isSidebarCollapsed: false,
       toggleSidebarCollapse: () =>
         set((state) => ({ isSidebarCollapsed: !state.isSidebarCollapsed })),
       setSidebarCollapse: (collapsed) => set({ isSidebarCollapsed: collapsed }),
+      isMobileDrawerOpen: false,
+      toggleMobileDrawer: () =>
+        set((state) => ({ isMobileDrawerOpen: !state.isMobileDrawerOpen })),
+      setMobileDrawerOpen: (open) => set({ isMobileDrawerOpen: open }),
 
       // Active User & RBAC
       currentUser: null as any,
@@ -1112,6 +1119,7 @@ export const useAppStore = create<AppStoreState>()(
         const { vehicles, auditLogs, currentUser, activeRoles } = get();
         const isAuthorized = activeRoles.includes('owner') || activeRoles.includes('manager');
         const shouldBypass = Boolean(forceImmediate && isAuthorized);
+        const existing = vehicles.find((v) => v.id === vehicleId);
 
         const updatedVehicles = vehicles.map((v) => {
           if (v.id === vehicleId) {
@@ -1126,11 +1134,18 @@ export const useAppStore = create<AppStoreState>()(
           return v;
         });
 
-        const newAudit = createAuditLog(currentUser, 'vehicles', vehicleId, 'UPDATE', null, {
-          current_status: shouldBypass ? pendingStatus : undefined,
-          pending_status: shouldBypass ? null : pendingStatus,
-          status_change_reason: reason,
-        });
+        const newAudit = createAuditLog(
+          currentUser,
+          'vehicles',
+          vehicleId,
+          'UPDATE',
+          existing ? { current_status: existing.current_status, pending_status: existing.pending_status } : null,
+          {
+            current_status: shouldBypass ? pendingStatus : existing?.current_status,
+            pending_status: shouldBypass ? null : pendingStatus,
+            status_change_reason: reason,
+          }
+        );
 
         set({ vehicles: updatedVehicles, auditLogs: [newAudit, ...auditLogs] });
       },

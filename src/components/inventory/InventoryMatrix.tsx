@@ -377,7 +377,7 @@ export function InventoryMatrix() {
       {activeTab === 'store1' && (
         <div className="space-y-4">
           {/* Filter and Search */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#1e1e22] p-3.5 rounded-2xl border border-[#2a2a2f]">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 bg-[#1e1e22] p-3.5 rounded-2xl border border-[#2a2a2f]">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-400" />
               <input
@@ -389,7 +389,7 @@ export function InventoryMatrix() {
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
@@ -402,190 +402,460 @@ export function InventoryMatrix() {
                   </option>
                 ))}
               </select>
+
+              <ViewSwitcher currentView={viewMode} onViewChange={setViewMode} />
             </div>
           </div>
 
-          {/* Parts Table */}
-          <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
-                  <tr>
-                    <ResizableTh
-                      colKey="name_sku"
-                      width={store1Widths.name_sku}
-                      onResizeStart={startStore1Resizing}
-                      className="p-3.5 pl-4"
-                    >
-                      Spare Part & SKU
-                    </ResizableTh>
-
-                    <ResizableTh
-                      colKey="category"
-                      width={store1Widths.category}
-                      onResizeStart={startStore1Resizing}
-                      className="p-3.5"
-                    >
-                      Category
-                    </ResizableTh>
-
-                    <ResizableTh
-                      colKey="supplier"
-                      width={store1Widths.supplier}
-                      onResizeStart={startStore1Resizing}
-                      className="p-3.5"
-                    >
-                      Supplier
-                    </ResizableTh>
-
-                    <ResizableTh
-                      colKey="cost"
-                      width={store1Widths.cost}
-                      onResizeStart={startStore1Resizing}
-                      className="p-3.5"
-                    >
-                      Unit Cost
-                    </ResizableTh>
-
-                    <ResizableTh
-                      colKey="stock"
-                      width={store1Widths.stock}
-                      onResizeStart={startStore1Resizing}
-                      className="p-3.5"
-                    >
-                      Store 1 Physical Stock
-                    </ResizableTh>
-
-                    <ResizableTh
-                      colKey="status"
-                      width={store1Widths.status}
-                      onResizeStart={startStore1Resizing}
-                      className="p-3.5"
-                    >
-                      Threshold Status
-                    </ResizableTh>
-
-                    <th style={{ width: `${store1Widths.actions || 180}px` }} className="p-3.5 text-right pr-4">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#27272a] text-zinc-300">
-                  {filteredParts.length === 0 ? (
+          {/* VIEW 1: PARTS TABLE */}
+          {viewMode === 'table' && (
+            <div className="border border-[#2a2a2f] rounded-2xl overflow-hidden bg-[#1e1e22]/50 backdrop-blur-md shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs min-w-[750px]">
+                  <thead className="bg-[#18181b] text-zinc-400 font-semibold border-b border-[#27272a] uppercase tracking-wider text-[10px]">
                     <tr>
-                      <td colSpan={7} className="p-8 text-center text-zinc-500">
-                        No spare parts found matching the search.
-                      </td>
+                      <ResizableTh
+                        colKey="name_sku"
+                        width={store1Widths.name_sku}
+                        onResizeStart={startStore1Resizing}
+                        className="p-3.5 pl-4"
+                      >
+                        Spare Part & SKU
+                      </ResizableTh>
+
+                      <ResizableTh
+                        colKey="category"
+                        width={store1Widths.category}
+                        onResizeStart={startStore1Resizing}
+                        className="p-3.5"
+                      >
+                        Category
+                      </ResizableTh>
+
+                      <ResizableTh
+                        colKey="supplier"
+                        width={store1Widths.supplier}
+                        onResizeStart={startStore1Resizing}
+                        className="p-3.5"
+                      >
+                        Supplier
+                      </ResizableTh>
+
+                      <ResizableTh
+                        colKey="cost"
+                        width={store1Widths.cost}
+                        onResizeStart={startStore1Resizing}
+                        className="p-3.5"
+                      >
+                        Unit Cost
+                      </ResizableTh>
+
+                      <ResizableTh
+                        colKey="stock"
+                        width={store1Widths.stock}
+                        onResizeStart={startStore1Resizing}
+                        className="p-3.5"
+                      >
+                        Store 1 Physical Stock
+                      </ResizableTh>
+
+                      <ResizableTh
+                        colKey="status"
+                        width={store1Widths.status}
+                        onResizeStart={startStore1Resizing}
+                        className="p-3.5"
+                      >
+                        Threshold Status
+                      </ResizableTh>
+
+                      <th style={{ width: `${store1Widths.actions || 180}px` }} className="p-3.5 text-right pr-4">
+                        Actions
+                      </th>
                     </tr>
-                  ) : (
-                    filteredParts.map((part) => {
-                      const stockEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === part.id);
-                      const physicalCount = stockEntry ? stockEntry.physical_stock : 0;
-                      const threshold = part.min_threshold || 5;
-                      const isLow = physicalCount <= threshold;
+                  </thead>
+                  <tbody className="divide-y divide-[#27272a] text-zinc-300">
+                    {filteredParts.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-zinc-500">
+                          No spare parts found matching the search.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredParts.map((part) => {
+                        const stockEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === part.id);
+                        const physicalCount = stockEntry ? stockEntry.physical_stock : 0;
+                        const threshold = part.min_threshold || 5;
+                        const isLow = physicalCount <= threshold;
 
-                      return (
-                        <tr key={part.id} className="hover:bg-zinc-800/40 transition">
-                          <td className="p-3.5 pl-4">
-                            <div className="font-bold text-zinc-100">{part.name}</div>
-                            <div className="font-mono text-[10px] text-blue-400 mt-0.5">
-                              {part.sku}
-                            </div>
-                            {part.description && (
-                              <div className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5">
-                                {part.description}
+                        return (
+                          <tr key={part.id} className="hover:bg-zinc-800/40 transition">
+                            <td className="p-3.5 pl-4">
+                              <div className="font-bold text-zinc-100">{part.name}</div>
+                              <div className="font-mono text-[10px] text-blue-400 mt-0.5">
+                                {part.sku}
                               </div>
-                            )}
-                          </td>
-
-                          <td className="p-3.5">
-                            <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] font-medium">
-                              {part.category}
-                            </span>
-                          </td>
-
-                          <td className="p-3.5 text-zinc-400">
-                            {part.supplier || 'Pakshal Auto Parts'}
-                          </td>
-
-                          <td className="p-3.5 font-mono font-bold text-zinc-200">
-                            {formatCurrency(part.unit_cost)}
-                          </td>
-
-                          <td className="p-3.5 font-mono font-bold text-sm">
-                            <span
-                              className={cn(
-                                physicalCount === 0
-                                  ? 'text-rose-400'
-                                  : isLow
-                                  ? 'text-amber-400'
-                                  : 'text-emerald-400'
+                              {part.description && (
+                                <div className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5">
+                                  {part.description}
+                                </div>
                               )}
-                            >
-                              {physicalCount} Pcs
-                            </span>
-                          </td>
+                            </td>
 
-                          <td className="p-3.5">
-                            <span
-                              className={cn(
-                                'px-2 py-0.5 rounded text-[10px] font-bold uppercase border inline-flex items-center gap-1',
-                                isLow
-                                  ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
-                                  : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                            <td className="p-3.5">
+                              <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] font-medium">
+                                {part.category}
+                              </span>
+                            </td>
+
+                            <td className="p-3.5 text-zinc-400">
+                              {part.supplier || 'Pakshal Auto Parts'}
+                            </td>
+
+                            <td className="p-3.5 font-mono font-bold text-zinc-200">
+                              {formatCurrency(part.unit_cost)}
+                            </td>
+
+                            <td className="p-3.5 font-mono font-bold text-sm">
+                              <span
+                                className={cn(
+                                  physicalCount === 0
+                                    ? 'text-rose-400'
+                                    : isLow
+                                    ? 'text-amber-400'
+                                    : 'text-emerald-400'
+                                )}
+                              >
+                                {physicalCount} Pcs
+                              </span>
+                            </td>
+
+                            <td className="p-3.5">
+                              <span
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-[10px] font-bold uppercase border inline-flex items-center gap-1',
+                                  isLow
+                                    ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                                    : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                                )}
+                              >
+                                {isLow && <AlertTriangle className="w-3 h-3 text-amber-400" />}
+                                <span>{isLow ? `Low (Min ${threshold})` : 'Adequate'}</span>
+                              </span>
+                            </td>
+
+                            <td className="p-3.5 text-right pr-4 space-x-1.5">
+                              <button
+                                onClick={() => setSelectedPartForAudit(part)}
+                                className="px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition inline-flex items-center gap-1"
+                                title="View Part Usage & Consumption Audit History"
+                              >
+                                <History className="w-3.5 h-3.5" />
+                                <span>History</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleOpenIssue(part.id)}
+                                className="px-2 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold transition"
+                                title="Issue / Dispatch"
+                              >
+                                Issue
+                              </button>
+
+                              {isAuthorized && (
+                                <>
+                                  <button
+                                    onClick={() => handleOpenAdjust(part.id)}
+                                    className="px-2 py-1 rounded-lg bg-[#141416] hover:bg-zinc-800 border border-[#2a2a2f] text-zinc-300 text-xs transition"
+                                    title="Adjust Stock Count"
+                                  >
+                                    <Sliders className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleOpenEdit(part)}
+                                    className="px-2 py-1 rounded-lg bg-[#141416] hover:bg-zinc-800 border border-[#2a2a2f] text-zinc-300 text-xs transition"
+                                    title="Edit Part Details"
+                                  >
+                                    <Edit2 className="w-3.5 h-3.5 text-blue-400" />
+                                  </button>
+                                </>
                               )}
-                            >
-                              {isLow && <AlertTriangle className="w-3 h-3 text-amber-400" />}
-                              <span>{isLow ? `Low (Min ${threshold})` : 'Adequate'}</span>
-                            </span>
-                          </td>
-
-                          <td className="p-3.5 text-right pr-4 space-x-1.5">
-                            <button
-                              onClick={() => setSelectedPartForAudit(part)}
-                              className="px-2 py-1 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-semibold transition inline-flex items-center gap-1"
-                              title="View Part Usage & Consumption Audit History"
-                            >
-                              <History className="w-3.5 h-3.5" />
-                              <span>History</span>
-                            </button>
-
-                            <button
-                              onClick={() => handleOpenIssue(part.id)}
-                              className="px-2 py-1 rounded-lg bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 text-xs font-semibold transition"
-                              title="Issue / Dispatch"
-                            >
-                              Issue
-                            </button>
-
-                            {isAuthorized && (
-                              <>
-                                <button
-                                  onClick={() => handleOpenAdjust(part.id)}
-                                  className="px-2 py-1 rounded-lg bg-[#141416] hover:bg-zinc-800 border border-[#2a2a2f] text-zinc-300 text-xs transition"
-                                  title="Adjust Stock Count"
-                                >
-                                  <Sliders className="w-3.5 h-3.5" />
-                                </button>
-
-                                <button
-                                  onClick={() => handleOpenEdit(part)}
-                                  className="px-2 py-1 rounded-lg bg-[#141416] hover:bg-zinc-800 border border-[#2a2a2f] text-zinc-300 text-xs transition"
-                                  title="Edit Part Details"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5 text-blue-400" />
-                                </button>
-                              </>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* VIEW 2: GRID CARDS VIEW */}
+          {viewMode === 'grid' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredParts.map((part) => {
+                const stockEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === part.id);
+                const physicalCount = stockEntry ? stockEntry.physical_stock : 0;
+                const threshold = part.min_threshold || 5;
+                const isLow = physicalCount <= threshold;
+
+                return (
+                  <div
+                    key={part.id}
+                    className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] hover:border-zinc-700 transition shadow-sm space-y-4 flex flex-col justify-between group"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-[10px] font-mono text-blue-400 font-bold block">{part.sku}</span>
+                          <h4 className="font-bold text-sm text-zinc-100 group-hover:text-blue-300 transition">
+                            {part.name}
+                          </h4>
+                        </div>
+                        <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 text-[10px] font-medium shrink-0">
+                          {part.category}
+                        </span>
+                      </div>
+
+                      {part.description && (
+                        <p className="text-xs text-zinc-400 line-clamp-2">{part.description}</p>
+                      )}
+
+                      <div className="flex items-center justify-between text-xs pt-2 border-t border-zinc-800">
+                        <span className="text-zinc-500">Unit Cost:</span>
+                        <span className="font-mono font-bold text-zinc-200">{formatCurrency(part.unit_cost)}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-zinc-500">Store 1 Stock:</span>
+                        <span
+                          className={cn(
+                            'font-mono font-bold',
+                            physicalCount === 0
+                              ? 'text-rose-400'
+                              : isLow
+                              ? 'text-amber-400'
+                              : 'text-emerald-400'
+                          )}
+                        >
+                          {physicalCount} Pcs (Min {threshold})
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-3 border-t border-zinc-800">
+                      <button
+                        onClick={() => setSelectedPartForAudit(part)}
+                        className="flex-1 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 text-xs font-semibold transition text-center"
+                      >
+                        History
+                      </button>
+                      <button
+                        onClick={() => handleOpenIssue(part.id)}
+                        className="flex-1 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition text-center shadow-sm"
+                      >
+                        Issue
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* VIEW 3: REPORT VIEW */}
+          {viewMode === 'report' && (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Stock Health by Category */}
+                <div className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-4">
+                  <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                    <Package className="w-4 h-4 text-blue-400" />
+                    <span>Inventory Valuation by Category</span>
+                  </h3>
+                  <div className="space-y-2.5">
+                    {categories.map((cat) => {
+                      const catParts = filteredParts.filter((p) => p.category === cat);
+                      const valuation = catParts.reduce((sum, p) => {
+                        const sEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === p.id);
+                        return sum + (sEntry ? sEntry.physical_stock * p.unit_cost : 0);
+                      }, 0);
+                      return (
+                        <div key={cat} className="p-3 rounded-xl bg-[#141416] border border-[#27272a] flex justify-between items-center text-xs">
+                          <div>
+                            <span className="font-bold text-zinc-200 block">{cat}</span>
+                            <span className="text-[10px] text-zinc-500 font-mono">{catParts.length} distinct SKUs</span>
+                          </div>
+                          <span className="font-mono font-bold text-purple-300">{formatCurrency(valuation)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Stock Level Warning Mix */}
+                <div className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-4">
+                  <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    <span>Stock Adequacy Breakdown</span>
+                  </h3>
+                  <div className="space-y-3">
+                    {(() => {
+                      const zeroStock = filteredParts.filter((p) => {
+                        const s = hubStock.find((st) => st.hub_id === 'hub-store-01' && st.part_id === p.id);
+                        return !s || s.physical_stock === 0;
+                      });
+                      const lowStock = filteredParts.filter((p) => {
+                        const s = hubStock.find((st) => st.hub_id === 'hub-store-01' && st.part_id === p.id);
+                        return s && s.physical_stock > 0 && s.physical_stock <= (p.min_threshold || 5);
+                      });
+                      const adequateStock = filteredParts.filter((p) => {
+                        const s = hubStock.find((st) => st.hub_id === 'hub-store-01' && st.part_id === p.id);
+                        return s && s.physical_stock > (p.min_threshold || 5);
+                      });
+
+                      return [
+                        { label: 'Adequate Stock (> threshold)', count: adequateStock.length, color: 'text-emerald-400', bg: 'bg-emerald-500' },
+                        { label: 'Low Stock Alert (<= threshold)', count: lowStock.length, color: 'text-amber-400', bg: 'bg-amber-500' },
+                        { label: 'Critical Out of Stock (0 pcs)', count: zeroStock.length, color: 'text-rose-400', bg: 'bg-rose-500' },
+                      ].map((item) => (
+                        <div key={item.label} className="p-3 rounded-xl bg-[#141416] border border-[#27272a] space-y-1.5">
+                          <div className="flex justify-between items-center text-xs">
+                            <span className={cn('font-bold', item.color)}>{item.label}</span>
+                            <span className="font-mono text-zinc-200 font-bold">{item.count}</span>
+                          </div>
+                          <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className={cn('h-full rounded-full', item.bg)}
+                              style={{ width: `${filteredParts.length > 0 ? (item.count / filteredParts.length) * 100 : 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* Top Consumed Parts */}
+                <div className="p-5 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-4">
+                  <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2">
+                    <History className="w-4 h-4 text-indigo-400" />
+                    <span>Recent Spares Dispatched</span>
+                  </h3>
+                  <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                    {partUsageLogs.slice(0, 5).map((log) => (
+                      <div key={log.id} className="p-2.5 rounded-xl bg-[#141416] border border-[#27272a] text-xs space-y-1">
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-zinc-200">{log.part?.name || 'Spare Part'}</span>
+                          <span className="font-mono text-blue-400 font-bold">x{log.quantity}</span>
+                        </div>
+                        <p className="text-[11px] text-zinc-500">Issued to: {log.recipient_name || log.used_by_name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW 4: PIPELINE / KANBAN VIEW */}
+          {viewMode === 'kanban' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[
+                {
+                  key: 'critical',
+                  title: 'Critical Out of Stock (0 Pcs)',
+                  filterFn: (p: PartInventory) => {
+                    const s = hubStock.find((st) => st.hub_id === 'hub-store-01' && st.part_id === p.id);
+                    return !s || s.physical_stock === 0;
+                  },
+                  color: 'text-rose-400',
+                  badgeBg: 'bg-rose-500/10 text-rose-300 border-rose-500/30',
+                },
+                {
+                  key: 'low',
+                  title: 'Low Stock Alert (<= Threshold)',
+                  filterFn: (p: PartInventory) => {
+                    const s = hubStock.find((st) => st.hub_id === 'hub-store-01' && st.part_id === p.id);
+                    return s && s.physical_stock > 0 && s.physical_stock <= (p.min_threshold || 5);
+                  },
+                  color: 'text-amber-400',
+                  badgeBg: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+                },
+                {
+                  key: 'adequate',
+                  title: 'Adequate Physical Stock',
+                  filterFn: (p: PartInventory) => {
+                    const s = hubStock.find((st) => st.hub_id === 'hub-store-01' && st.part_id === p.id);
+                    return s && s.physical_stock > (p.min_threshold || 5);
+                  },
+                  color: 'text-emerald-400',
+                  badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+                },
+              ].map((column) => {
+                const list = filteredParts.filter(column.filterFn);
+                return (
+                  <div key={column.key} className="p-4 rounded-2xl bg-[#1e1e22] border border-[#2a2a2f] space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#27272a]">
+                      <span className={cn('text-xs font-bold', column.color)}>{column.title}</span>
+                      <span className={cn('px-2 py-0.5 rounded-full font-mono text-[10px] font-bold border', column.badgeBg)}>
+                        {list.length}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 max-h-[620px] overflow-y-auto pr-1">
+                      {list.length === 0 ? (
+                        <div className="p-6 text-center text-zinc-600 text-xs border border-dashed border-zinc-800 rounded-xl">
+                          No spare parts in this threshold.
+                        </div>
+                      ) : (
+                        list.map((part) => {
+                          const stockEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === part.id);
+                          const physicalCount = stockEntry ? stockEntry.physical_stock : 0;
+
+                          return (
+                            <div
+                              key={part.id}
+                              className="p-3.5 rounded-xl bg-[#141416] border border-[#27272a] hover:border-zinc-600 transition space-y-2 text-xs"
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className="font-mono text-[10px] text-blue-400 font-bold block">{part.sku}</span>
+                                  <h5 className="font-bold text-zinc-100">{part.name}</h5>
+                                </div>
+                                <span className="font-mono font-bold text-zinc-300">{formatCurrency(part.unit_cost)}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-[11px] pt-1.5 border-t border-zinc-800 text-zinc-400">
+                                <span>{part.category}</span>
+                                <span className="font-mono font-bold text-zinc-200">{physicalCount} Pcs in stock</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 pt-1">
+                                <button
+                                  onClick={() => handleOpenIssue(part.id)}
+                                  className="flex-1 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-[10px] transition"
+                                >
+                                  Issue
+                                </button>
+                                {isAuthorized && (
+                                  <button
+                                    onClick={() => handleOpenAdjust(part.id)}
+                                    className="px-2 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[10px] transition"
+                                  >
+                                    Adjust
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
