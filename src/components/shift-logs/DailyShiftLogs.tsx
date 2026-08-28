@@ -568,11 +568,11 @@ export function DailyShiftLogs() {
                         <td className="p-3.5">
                           <div className="flex items-center gap-2">
                             <div className="w-6 h-6 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 text-[10px] font-bold">
-                              {log.staff_name.charAt(0)}
+                              {(log.staff_name || 'Staff').charAt(0).toUpperCase()}
                             </div>
                             <div>
-                              <span className="font-bold text-zinc-200 block">{log.staff_name}</span>
-                              <span className="text-[10px] text-zinc-500">{log.staff_role}</span>
+                              <span className="font-bold text-zinc-200 block">{log.staff_name || 'Staff Member'}</span>
+                              <span className="text-[10px] text-zinc-500">{log.staff_role || 'Technician'}</span>
                             </div>
                           </div>
                         </td>
@@ -582,15 +582,15 @@ export function DailyShiftLogs() {
                         </td>
 
                         <td className="p-3.5 text-zinc-200">
-                          <p className="line-clamp-2 max-w-sm">{log.accomplishments}</p>
+                          <p className="line-clamp-2 max-w-sm">{log.accomplishments || 'Shift routine operations completed.'}</p>
                         </td>
 
                         <td className="p-3.5 font-mono font-bold text-emerald-400">
-                          {log.vehicles_serviced}
+                          {log.vehicles_serviced || 0}
                         </td>
 
                         <td className="p-3.5 font-mono font-bold text-blue-400">
-                          {log.customer_issues_resolved}
+                          {log.customer_issues_resolved || 0}
                         </td>
 
                         <td className="p-3.5 text-zinc-400">
@@ -629,9 +629,9 @@ export function DailyShiftLogs() {
               <div className="space-y-2.5">
                 {(['MORNING', 'EVENING', 'NIGHT', 'GENERAL'] as const).map((sType) => {
                   const subset = filteredLogs.filter((l) => l.shift_type === sType);
-                  const totalServiced = subset.reduce((acc, l) => acc + l.vehicles_serviced, 0);
+                  const totalServiced = subset.reduce((acc, l) => acc + (l.vehicles_serviced || 0), 0);
                   return (
-                    <div key={sType} className="p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] flex justify-between items-center text-xs">
+                    <div key={sType} className="p-3 rounded-xl bg-[#141416] border border-[#27272a] flex justify-between items-center text-xs">
                       <div>
                         <span className="font-bold text-zinc-200 block">{sType}</span>
                         <span className="text-[10px] text-zinc-500 font-mono">{subset.length} shifts logged</span>
@@ -652,10 +652,10 @@ export function DailyShiftLogs() {
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {hubs.map((hub) => {
                   const subset = filteredLogs.filter((l) => l.hub_id === hub.id);
-                  const totalVehicles = subset.reduce((acc, l) => acc + l.vehicles_serviced, 0);
-                  const totalIssues = subset.reduce((acc, l) => acc + l.customer_issues_resolved, 0);
+                  const totalVehicles = subset.reduce((acc, l) => acc + (l.vehicles_serviced || 0), 0);
+                  const totalIssues = subset.reduce((acc, l) => acc + (l.customer_issues_resolved || 0), 0);
                   return (
-                    <div key={hub.id} className="p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] flex justify-between items-center text-xs">
+                    <div key={hub.id} className="p-3 rounded-xl bg-[#141416] border border-[#27272a] flex justify-between items-center text-xs">
                       <div>
                         <span className="font-bold text-zinc-200 block">{hub.name}</span>
                         <span className="text-[10px] text-zinc-500 font-mono">{subset.length} shift logs</span>
@@ -677,14 +677,14 @@ export function DailyShiftLogs() {
                 <span>Staff Activity Summary</span>
               </h3>
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
-                {Array.from(new Set(filteredLogs.map((l) => l.staff_name))).map((name) => {
+                {Array.from(new Set(filteredLogs.map((l) => l.staff_name).filter(Boolean))).map((name) => {
                   const staffLogs = filteredLogs.filter((l) => l.staff_name === name);
-                  const totalServiced = staffLogs.reduce((acc, l) => acc + l.vehicles_serviced, 0);
+                  const totalServiced = staffLogs.reduce((acc, l) => acc + (l.vehicles_serviced || 0), 0);
                   return (
                     <div key={name} className="p-3 rounded-xl bg-[#141416] border border-[#2a2a2f] flex justify-between items-center text-xs">
                       <div>
                         <span className="font-bold text-zinc-200 block">{name}</span>
-                        <span className="text-[10px] text-zinc-500 font-mono">{staffLogs[0]?.staff_role} ({staffLogs.length} logs)</span>
+                        <span className="text-[10px] text-zinc-500 font-mono">{staffLogs[0]?.staff_role || 'Technician'} ({staffLogs.length} logs)</span>
                       </div>
                       <span className="font-mono font-bold text-emerald-400">{totalServiced} vehicles</span>
                     </div>
@@ -725,12 +725,12 @@ export function DailyShiftLogs() {
                         >
                           <div className="flex justify-between items-start">
                             <div>
-                              <span className="font-bold text-zinc-100 block">{log.staff_name}</span>
-                              <span className="text-[10px] text-zinc-500 font-mono">{log.date} • {hub?.name}</span>
+                              <span className="font-bold text-zinc-100 block">{log.staff_name || 'Staff Member'}</span>
+                              <span className="text-[10px] text-zinc-500 font-mono">{log.date} • {hub?.name || log.hub_id}</span>
                             </div>
-                            <span className="font-mono text-emerald-400 font-bold text-[11px]">{log.vehicles_serviced} V</span>
+                            <span className="font-mono text-emerald-400 font-bold text-[11px]">{log.vehicles_serviced || 0} V</span>
                           </div>
-                          <p className="text-zinc-300 line-clamp-2 text-[11px]">{log.accomplishments}</p>
+                          <p className="text-zinc-300 line-clamp-2 text-[11px]">{log.accomplishments || 'Shift task completed'}</p>
                           {log.blockers && (
                             <p className="text-amber-400 text-[10px] truncate">⚠️ {log.blockers}</p>
                           )}
