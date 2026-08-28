@@ -456,7 +456,7 @@ export function InventoryMatrix() {
                         onResizeStart={startStore1Resizing}
                         className="p-3.5"
                       >
-                        Store 1 Physical Stock
+                        Store 1 Available Stock (Physical)
                       </ResizableTh>
 
                       <ResizableTh
@@ -484,8 +484,10 @@ export function InventoryMatrix() {
                       filteredParts.map((part) => {
                         const stockEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === part.id);
                         const physicalCount = stockEntry ? stockEntry.physical_stock : 0;
+                        const pendingCount = stockEntry ? stockEntry.pending_allocated_stock : 0;
+                        const availableCount = Math.max(0, physicalCount - pendingCount);
                         const threshold = part.min_threshold || 5;
-                        const isLow = physicalCount <= threshold;
+                        const isLow = availableCount <= threshold;
 
                         return (
                           <tr key={part.id} className="hover:bg-zinc-800/40 transition">
@@ -495,7 +497,7 @@ export function InventoryMatrix() {
                                 {part.sku}
                               </div>
                               {part.description && (
-                                <div className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5">
+                                <div className="text-[10px] text-zinc-400 line-clamp-1 mt-0.5">
                                   {part.description}
                                 </div>
                               )}
@@ -515,18 +517,32 @@ export function InventoryMatrix() {
                               {formatCurrency(part.unit_cost)}
                             </td>
 
-                            <td className="p-3.5 font-mono font-bold text-sm">
-                              <span
-                                className={cn(
-                                  physicalCount === 0
-                                    ? 'text-rose-400'
-                                    : isLow
-                                    ? 'text-amber-400'
-                                    : 'text-emerald-400'
+                            <td className="p-3.5 font-mono text-sm">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={cn(
+                                    'font-bold',
+                                    availableCount === 0
+                                      ? 'text-rose-400'
+                                      : isLow
+                                      ? 'text-amber-400'
+                                      : 'text-emerald-400'
+                                  )}
+                                >
+                                  {availableCount}
+                                </span>
+                                <span className="text-xs text-zinc-400 font-medium">
+                                  ({physicalCount}) Pcs
+                                </span>
+                                {pendingCount > 0 && (
+                                  <span
+                                    className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-300 border border-amber-500/30 font-sans font-bold"
+                                    title={`${pendingCount} Pcs staged in pending Job Cards`}
+                                  >
+                                    {pendingCount} staged
+                                  </span>
                                 )}
-                              >
-                                {physicalCount} Pcs
-                              </span>
+                              </div>
                             </td>
 
                             <td className="p-3.5">
@@ -597,8 +613,10 @@ export function InventoryMatrix() {
               {filteredParts.map((part) => {
                 const stockEntry = hubStock.find((s) => s.hub_id === 'hub-store-01' && s.part_id === part.id);
                 const physicalCount = stockEntry ? stockEntry.physical_stock : 0;
+                const pendingCount = stockEntry ? stockEntry.pending_allocated_stock : 0;
+                const availableCount = Math.max(0, physicalCount - pendingCount);
                 const threshold = part.min_threshold || 5;
-                const isLow = physicalCount <= threshold;
+                const isLow = availableCount <= threshold;
 
                 return (
                   <div
@@ -623,25 +641,35 @@ export function InventoryMatrix() {
                       )}
 
                       <div className="flex items-center justify-between text-xs pt-2 border-t border-zinc-800">
-                        <span className="text-zinc-500">Unit Cost:</span>
+                        <span className="text-zinc-400">Unit Cost:</span>
                         <span className="font-mono font-bold text-zinc-200">{formatCurrency(part.unit_cost)}</span>
                       </div>
 
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-zinc-500">Store 1 Stock:</span>
-                        <span
-                          className={cn(
-                            'font-mono font-bold',
-                            physicalCount === 0
-                              ? 'text-rose-400'
-                              : isLow
-                              ? 'text-amber-400'
-                              : 'text-emerald-400'
-                          )}
-                        >
-                          {physicalCount} Pcs (Min {threshold})
-                        </span>
+                        <span className="text-zinc-400">Store 1 Available:</span>
+                        <div className="text-right font-mono">
+                          <span
+                            className={cn(
+                              'font-bold',
+                              availableCount === 0
+                                ? 'text-rose-400'
+                                : isLow
+                                ? 'text-amber-400'
+                                : 'text-emerald-400'
+                            )}
+                          >
+                            {availableCount}
+                          </span>
+                          <span className="text-zinc-400 text-[11px] ml-1">
+                            ({physicalCount}) Pcs
+                          </span>
+                        </div>
                       </div>
+                      {pendingCount > 0 && (
+                        <div className="text-[10px] text-amber-300 bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 rounded text-center font-medium">
+                          {pendingCount} Pcs staged in open Job Cards
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 pt-3 border-t border-zinc-800">
@@ -999,26 +1027,28 @@ export function InventoryMatrix() {
 
       {/* Edit Part Modal */}
       {editPartOpen && selectedPartToEdit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="edit-part-title">
           <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="edit-part-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <Edit2 className="w-4 h-4 text-blue-400" />
                 <span>Edit Part: {selectedPartToEdit.sku}</span>
               </h3>
               <button
                 onClick={() => setEditPartOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 p-1"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Close dialog"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSaveEdit} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Part Name</label>
+                  <label htmlFor="edit-part-name" className="text-zinc-400 font-semibold">Part Name</label>
                   <input
+                    id="edit-part-name"
                     type="text"
                     required
                     value={editName}
@@ -1028,8 +1058,9 @@ export function InventoryMatrix() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">SKU Code</label>
+                  <label htmlFor="edit-part-sku" className="text-zinc-400 font-semibold">SKU Code</label>
                   <input
+                    id="edit-part-sku"
                     type="text"
                     required
                     value={editSku}
@@ -1039,10 +1070,11 @@ export function InventoryMatrix() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Category</label>
+                  <label htmlFor="edit-part-category" className="text-zinc-400 font-semibold">Category</label>
                   <input
+                    id="edit-part-category"
                     type="text"
                     required
                     value={editCategory}
@@ -1052,8 +1084,9 @@ export function InventoryMatrix() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Unit Cost (₹)</label>
+                  <label htmlFor="edit-part-cost" className="text-zinc-400 font-semibold">Unit Cost (₹)</label>
                   <input
+                    id="edit-part-cost"
                     type="number"
                     required
                     min="0"
@@ -1064,8 +1097,9 @@ export function InventoryMatrix() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Min Threshold</label>
+                  <label htmlFor="edit-part-threshold" className="text-zinc-400 font-semibold">Min Threshold</label>
                   <input
+                    id="edit-part-threshold"
                     type="number"
                     required
                     min="1"
@@ -1077,8 +1111,9 @@ export function InventoryMatrix() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Supplier Name</label>
+                <label htmlFor="edit-part-supplier" className="text-zinc-400 font-semibold">Supplier Name</label>
                 <input
+                  id="edit-part-supplier"
                   type="text"
                   value={editSupplier}
                   onChange={(e) => setEditSupplier(e.target.value)}
@@ -1087,8 +1122,9 @@ export function InventoryMatrix() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Description</label>
+                <label htmlFor="edit-part-desc" className="text-zinc-400 font-semibold">Description</label>
                 <textarea
+                  id="edit-part-desc"
                   rows={2}
                   value={editDesc}
                   onChange={(e) => setEditDesc(e.target.value)}
@@ -1118,26 +1154,28 @@ export function InventoryMatrix() {
 
       {/* Add Part Modal */}
       {addPartOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="add-part-title">
           <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="add-part-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <Plus className="w-4 h-4 text-blue-400" />
                 <span>Add Spare Part to Store 1</span>
               </h3>
               <button
                 onClick={() => setAddPartOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 p-1"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Close dialog"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleAddPartSubmit} className="space-y-3.5 text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Part Name</label>
+                  <label htmlFor="add-part-name" className="text-zinc-400 font-semibold">Part Name</label>
                   <input
+                    id="add-part-name"
                     type="text"
                     required
                     placeholder="e.g. Master Cylinder"
@@ -1148,8 +1186,9 @@ export function InventoryMatrix() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">SKU Code</label>
+                  <label htmlFor="add-part-sku" className="text-zinc-400 font-semibold">SKU Code</label>
                   <input
+                    id="add-part-sku"
                     type="text"
                     required
                     placeholder="e.g. EZEV-MST-CYL-01"
@@ -1160,10 +1199,11 @@ export function InventoryMatrix() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Category</label>
+                  <label htmlFor="add-part-category" className="text-zinc-400 font-semibold">Category</label>
                   <select
+                    id="add-part-category"
                     value={partCategory}
                     onChange={(e) => setPartCategory(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
@@ -1179,8 +1219,9 @@ export function InventoryMatrix() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Unit Cost (₹)</label>
+                  <label htmlFor="add-part-cost" className="text-zinc-400 font-semibold">Unit Cost (₹)</label>
                   <input
+                    id="add-part-cost"
                     type="number"
                     required
                     min="0"
@@ -1191,8 +1232,9 @@ export function InventoryMatrix() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Min Threshold</label>
+                  <label htmlFor="add-part-threshold" className="text-zinc-400 font-semibold">Min Threshold</label>
                   <input
+                    id="add-part-threshold"
                     type="number"
                     required
                     min="1"
@@ -1204,8 +1246,9 @@ export function InventoryMatrix() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Supplier Name</label>
+                <label htmlFor="add-part-supplier" className="text-zinc-400 font-semibold">Supplier Name</label>
                 <input
+                  id="add-part-supplier"
                   type="text"
                   placeholder="Pakshal Auto Parts / SMH E Ventures"
                   value={partSupplier}
@@ -1215,8 +1258,9 @@ export function InventoryMatrix() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Description</label>
+                <label htmlFor="add-part-desc" className="text-zinc-400 font-semibold">Description</label>
                 <textarea
+                  id="add-part-desc"
                   rows={2}
                   placeholder="Technical specs or compatibility..."
                   value={partDesc}

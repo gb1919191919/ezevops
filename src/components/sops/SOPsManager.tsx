@@ -582,26 +582,28 @@ export function SOPsManager() {
 
       {/* SOP Create / Edit Revision Modal */}
       {editorModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="sop-editor-title">
           <div className="w-full max-w-2xl bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="sop-editor-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <BookOpen className="w-4 h-4 text-blue-400" />
                 <span>{isEditing ? `Edit SOP Revision: ${formCode}` : 'Author New SOP Document'}</span>
               </h3>
               <button
                 onClick={() => setEditorModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 p-1"
+                aria-label="Close dialog"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSaveSOP} className="space-y-4 text-xs">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">SOP Code</label>
+                  <label htmlFor="sop-code-input" className="text-zinc-400 font-semibold">SOP Code</label>
                   <input
+                    id="sop-code-input"
                     type="text"
                     required
                     value={formCode}
@@ -610,9 +612,10 @@ export function SOPsManager() {
                   />
                 </div>
 
-                <div className="space-y-1 col-span-2">
-                  <label className="text-zinc-400 font-semibold">Document Title</label>
+                <div className="space-y-1 sm:col-span-2">
+                  <label htmlFor="sop-title-input" className="text-zinc-400 font-semibold">Document Title</label>
                   <input
+                    id="sop-title-input"
                     type="text"
                     required
                     placeholder="e.g. Roadside Battery Swap & High Voltage Safety Protocol"
@@ -623,10 +626,11 @@ export function SOPsManager() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Category</label>
+                  <label htmlFor="sop-category-select" className="text-zinc-400 font-semibold">Category</label>
                   <select
+                    id="sop-category-select"
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
@@ -640,10 +644,11 @@ export function SOPsManager() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">
+                  <label htmlFor="sop-change-summary-input" className="text-zinc-400 font-semibold">
                     {isEditing ? 'Revision Change Summary *' : 'Initial Version Note'}
                   </label>
                   <input
+                    id="sop-change-summary-input"
                     type="text"
                     required={isEditing}
                     placeholder="e.g. Added mandatory 15-digit IoT ping step"
@@ -655,8 +660,9 @@ export function SOPsManager() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Executive Summary</label>
+                <label htmlFor="sop-summary-input" className="text-zinc-400 font-semibold">Executive Summary</label>
                 <textarea
+                  id="sop-summary-input"
                   rows={2}
                   required
                   placeholder="Short 1-2 sentence description of when and why this SOP applies..."
@@ -667,8 +673,9 @@ export function SOPsManager() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Step-by-Step Procedure Instructions (Markdown)</label>
+                <label htmlFor="sop-content-input" className="text-zinc-400 font-semibold">Step-by-Step Procedure Instructions (Markdown)</label>
                 <textarea
+                  id="sop-content-input"
                   rows={8}
                   required
                   value={formContent}

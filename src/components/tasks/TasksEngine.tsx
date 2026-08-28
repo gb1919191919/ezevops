@@ -846,16 +846,17 @@ export function TasksEngine() {
 
       {/* 1. Modal: Create Objective */}
       {objectiveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="create-obj-title">
           <div className="w-full max-w-md bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="create-obj-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <Target className="w-4 h-4 text-blue-400" />
                 <span>Create Strategic Objective</span>
               </h3>
               <button
                 onClick={() => setObjectiveModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 p-1"
+                aria-label="Close dialog"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -863,8 +864,9 @@ export function TasksEngine() {
 
             <form onSubmit={handleCreateObjective} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Objective Title *</label>
+                <label htmlFor="obj-title-input" className="text-zinc-400 font-semibold">Objective Title *</label>
                 <input
+                  id="obj-title-input"
                   type="text"
                   required
                   placeholder="e.g. Expand Active CS Fleet Availability to 95%"
@@ -875,8 +877,9 @@ export function TasksEngine() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Description & Impact</label>
+                <label htmlFor="obj-desc-input" className="text-zinc-400 font-semibold">Description & Impact</label>
                 <textarea
+                  id="obj-desc-input"
                   rows={3}
                   placeholder="Strategic details and target operational KPIs..."
                   value={objDesc}
@@ -885,10 +888,11 @@ export function TasksEngine() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Start Date</label>
+                  <label htmlFor="obj-start-date-input" className="text-zinc-400 font-semibold">Start Date</label>
                   <input
+                    id="obj-start-date-input"
                     type="date"
                     value={objStartDate}
                     onChange={(e) => setObjStartDate(e.target.value)}
@@ -896,8 +900,9 @@ export function TasksEngine() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-zinc-400 font-semibold">Target Date</label>
+                  <label htmlFor="obj-target-date-input" className="text-zinc-400 font-semibold">Target Date</label>
                   <input
+                    id="obj-target-date-input"
                     type="date"
                     value={objTargetDate}
                     onChange={(e) => setObjTargetDate(e.target.value)}
@@ -928,16 +933,17 @@ export function TasksEngine() {
 
       {/* 2. Modal: Create Milestone (7.1) */}
       {milestoneModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="create-ms-title">
           <div className="w-full max-w-md bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="create-ms-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <Flag className="w-4 h-4 text-amber-400" />
                 <span>Create Strategic Milestone</span>
               </h3>
               <button
                 onClick={() => setMilestoneModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 p-1"
+                aria-label="Close dialog"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1004,16 +1010,17 @@ export function TasksEngine() {
 
       {/* 3. Modal: Create Task (7.1 & 7.2) */}
       {taskModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="create-task-title">
           <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="create-task-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <ListTodo className="w-4 h-4 text-emerald-400" />
                 <span>Create Field Work Order Task</span>
               </h3>
               <button
                 onClick={() => setTaskModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-300 p-1"
+                aria-label="Close dialog"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1021,8 +1028,9 @@ export function TasksEngine() {
 
             <form onSubmit={handleCreateTask} className="space-y-3.5 text-xs">
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Parent Objective *</label>
+                <label htmlFor="task-parent-obj-select" className="text-zinc-400 font-semibold">Parent Objective *</label>
                 <select
+                  id="task-parent-obj-select"
                   required
                   value={taskObjectiveId}
                   onChange={(e) => {
@@ -1041,8 +1049,9 @@ export function TasksEngine() {
 
               {/* Milestone Selection (Optional) */}
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Linked Milestone (Optional)</label>
+                <label htmlFor="task-milestone-select" className="text-zinc-400 font-semibold">Linked Milestone (Optional)</label>
                 <select
+                  id="task-milestone-select"
                   value={taskMilestoneId}
                   onChange={(e) => setTaskMilestoneId(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-200 focus:outline-none cursor-pointer"
@@ -1059,8 +1068,9 @@ export function TasksEngine() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Task Title *</label>
+                <label htmlFor="task-title-input" className="text-zinc-400 font-semibold">Task Title *</label>
                 <input
+                  id="task-title-input"
                   type="text"
                   required
                   placeholder="e.g. Inspect front brake disc calipers on Ola Batch 2"
@@ -1071,8 +1081,9 @@ export function TasksEngine() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Task Scope & Instructions</label>
+                <label htmlFor="task-desc-input" className="text-zinc-400 font-semibold">Task Scope & Instructions</label>
                 <textarea
+                  id="task-desc-input"
                   rows={2}
                   placeholder="Provide step-by-step instructions for mechanics or field staff..."
                   value={taskDesc}

@@ -205,12 +205,15 @@ export interface Vehicle {
   custom_vehicle_id?: string; // Editable Vehicle ID (e.g. 'VEH/01' or 'veh-01')
   vehicle_id: string; // 14-15 digit numerical string (IoT IMEI/ID, e.g., '860141073062442')
   vin: string; // Chassis/VIN string (e.g. 'MD625CK192847101')
+  plate_number?: string | null; // e.g. 'MH-02-EE-4091'
   key_number: string; // 4-digit alphanumeric code (e.g. 'B001', 'K104')
   model: ScooterModel; // 'CS Model' | 'Ola Model' | 'Single Light Model'
   current_hub_id: string;
   current_status: VehicleStatus;
   pending_status: VehicleStatus | null;
   status_change_reason: string | null;
+  iot_status?: 'ONLINE' | 'OFFLINE' | 'NO_GPS' | null;
+  soc_percentage?: number | null; // Battery State of Charge (0-100%)
   odometer_km: number | null; // Only updated when someone logs distance or inspection
   last_odometer_updated_at: string | null;
   last_odometer_updated_by: string | null;

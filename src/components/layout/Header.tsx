@@ -193,16 +193,17 @@ export function Header() {
           {/* Mobile Hamburger Drawer Toggle (Mobile & Tablet) */}
           <button
             onClick={toggleMobileDrawer}
-            className="lg:hidden p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-[#1e1e22] border border-[#2a2a2f] transition"
-            title="Open Full Navigation Menu"
+            aria-label="Open Full Navigation Menu"
+            className="lg:hidden p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-[#1e1e22] border border-[#2a2a2f] transition min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
-            <Menu className="w-4 h-4 text-zinc-300" />
+            <Menu className="w-5 h-5 text-zinc-300" />
           </button>
 
           {/* Sidebar Collapse Toggle Button (Desktop) */}
           <button
             onClick={toggleSidebarCollapse}
-            className="hidden lg:flex p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-[#1e1e22] border border-[#2a2a2f] transition"
+            aria-label={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+            className="hidden lg:flex p-2 rounded-xl text-zinc-400 hover:text-zinc-100 hover:bg-[#1e1e22] border border-[#2a2a2f] transition min-h-[44px] min-w-[44px] items-center justify-center"
             title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
           >
             {isSidebarCollapsed ? (

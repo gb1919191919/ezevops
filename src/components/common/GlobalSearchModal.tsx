@@ -497,7 +497,7 @@ export function GlobalSearchModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-24 p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150" role="dialog" aria-modal="true" aria-label="Universal Operations Search">
       <div className="w-full max-w-2xl rounded-2xl bg-[#18181b] border border-[#2e2e33] shadow-2xl overflow-hidden flex flex-col max-h-[80vh] animate-in zoom-in-95 duration-150">
         {/* Search Header */}
         <div className="flex items-center px-4 py-3.5 border-b border-[#27272a] gap-3 bg-[#141416]">
@@ -505,6 +505,7 @@ export function GlobalSearchModal({
           <input
             ref={inputRef}
             type="text"
+            aria-label="Search operational records"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
@@ -520,7 +521,8 @@ export function GlobalSearchModal({
                 setQuery('');
                 inputRef.current?.focus();
               }}
-              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200"
+              aria-label="Clear search input"
+              className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 min-h-[44px] min-w-[44px] flex items-center justify-center"
             >
               <X className="w-4 h-4" />
             </button>

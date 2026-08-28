@@ -40,6 +40,8 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
   const [editOdo, setEditOdo] = useState<number>(vehicle?.odometer_km || 0);
   const [editStatus, setEditStatus] = useState<VehicleStatus>(vehicle?.current_status || 'Available');
   const [editReason, setEditReason] = useState(vehicle?.status_change_reason || '');
+  const [editCustomId, setEditCustomId] = useState(vehicle?.custom_vehicle_id || '');
+  const [editPlateNumber, setEditPlateNumber] = useState(vehicle?.plate_number || '');
 
   // Quick Status change state
   const [isChangingStatus, setIsChangingStatus] = useState(false);
@@ -82,6 +84,8 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
     setEditOdo(vehicle.odometer_km || 0);
     setEditStatus(vehicle.current_status);
     setEditReason(vehicle.status_change_reason || '');
+    setEditCustomId(vehicle.custom_vehicle_id || '');
+    setEditPlateNumber(vehicle.plate_number || '');
     setIsEditMode(true);
   };
 
@@ -104,7 +108,9 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
       current_hub_id: editHubId,
       odometer_km: Number(editOdo),
       current_status: editStatus,
-      status_change_reason: editReason.trim() || null,
+      status_change_reason: editReason.trim() || undefined,
+      custom_vehicle_id: editCustomId.trim() || undefined,
+      plate_number: editPlateNumber.trim() || undefined,
       last_odometer_updated_at: new Date().toISOString(),
     });
 
@@ -127,25 +133,34 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
-      <div className="w-full max-w-4xl bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div
+        className="relative w-full max-w-4xl bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="vehicle-detail-title"
+      >
         {/* Header */}
-        <div className="px-6 py-4 bg-[#18181b] border-b border-[#27272a] flex items-center justify-between flex-shrink-0">
+        <div className="p-6 border-b border-[#2a2a2f] flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
               <Car className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="font-mono font-bold text-sm text-zinc-100">
-                  Key: {vehicle.key_number}
+                <h2 id="vehicle-detail-title" className="text-lg font-bold text-zinc-100">
+                  {vehicle.custom_vehicle_id || (vehicle.id || '').toUpperCase()}
+                </h2>
+                <span className="px-2 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-xs">
+                  Key #{vehicle.key_number}
                 </span>
-                <span className="text-[10px] text-zinc-400 font-mono">
-                  (IoT: {vehicle.vehicle_id})
-                </span>
-                <VehicleStatusBadge status={vehicle.current_status} />
+                {vehicle.plate_number && (
+                  <span className="px-2 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-xs font-bold">
+                    {vehicle.plate_number}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-zinc-400">
-                Model: <strong className="text-zinc-200">{vehicle.model}</strong> • Hub: <strong className="text-zinc-200">{currentHub?.name || 'Unassigned'}</strong>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Chassis: {vehicle.vin} &bull; IoT ID: {vehicle.vehicle_id}
               </p>
             </div>
           </div>
@@ -163,7 +178,8 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
 
             <button
               onClick={onClose}
-              className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 rounded-lg transition"
+              className="p-1.5 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 rounded-lg transition min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Close dialog"
             >
               <X className="w-5 h-5" />
             </button>
@@ -180,14 +196,15 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                   <Edit2 className="w-4 h-4 text-blue-400" />
                   <span>Edit Vehicle Specifications</span>
                 </h3>
-                <span className="text-[10px] font-mono text-zinc-500">ID: {vehicle.id}</span>
+                <span className="text-[10px] font-mono text-zinc-400">ID: {vehicle.id}</span>
               </div>
 
               <form onSubmit={handleSaveVehicleEdit} className="space-y-4 text-xs">
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">Scooter Model</label>
+                    <label htmlFor="edit-veh-model" className="text-zinc-400 font-semibold">Scooter Model</label>
                     <select
+                      id="edit-veh-model"
                       value={editModel}
                       onChange={(e) => setEditModel(e.target.value as ScooterModel)}
                       className="w-full px-3 py-2 rounded-xl bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500 font-medium"
@@ -199,8 +216,9 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">Key Number (4-digit)</label>
+                    <label htmlFor="edit-veh-key" className="text-zinc-400 font-semibold">Key Number (4-digit)</label>
                     <input
+                      id="edit-veh-key"
                       type="text"
                       required
                       value={editKey}
@@ -210,8 +228,9 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">14-15 Digit IoT ID (IMEI)</label>
+                    <label htmlFor="edit-veh-iot" className="text-zinc-400 font-semibold">14-15 Digit IoT ID (IMEI)</label>
                     <input
+                      id="edit-veh-iot"
                       type="text"
                       required
                       value={editIotId}
@@ -223,8 +242,9 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">Chassis / VIN Number</label>
+                    <label htmlFor="edit-veh-vin" className="text-zinc-400 font-semibold">Chassis / VIN Number</label>
                     <input
+                      id="edit-veh-vin"
                       type="text"
                       value={editVin}
                       onChange={(e) => setEditVin(e.target.value)}
@@ -233,8 +253,9 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">Assigned Hub</label>
+                    <label htmlFor="edit-veh-hub" className="text-zinc-400 font-semibold">Assigned Hub</label>
                     <select
+                      id="edit-veh-hub"
                       value={editHubId}
                       onChange={(e) => setEditHubId(e.target.value)}
                       className="w-full px-3 py-2 rounded-xl bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
@@ -248,40 +269,14 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">Odometer Reading (KM)</label>
+                    <label htmlFor="edit-veh-custom-id" className="text-zinc-400 font-semibold">Custom Vehicle ID</label>
                     <input
-                      type="number"
-                      min="0"
-                      value={editOdo}
-                      onChange={(e) => setEditOdo(Number(e.target.value))}
-                      className="w-full px-3 py-2 rounded-xl bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-100 font-mono focus:outline-none focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">Operational Status</label>
-                    <select
-                      value={editStatus}
-                      onChange={(e) => setEditStatus(e.target.value as VehicleStatus)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
-                    >
-                      <option value="Available">Available</option>
-                      <option value="Needs Maintenance">Needs Maintenance</option>
-                      <option value="Under Repair">Under Repair</option>
-                      <option value="Not Available">Not Available</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-zinc-400 font-semibold">Status Reason / Triage Notes</label>
-                    <input
+                      id="edit-veh-custom-id"
                       type="text"
-                      placeholder="e.g. Front rim repaired, ready for fleet dispatch"
-                      value={editReason}
-                      onChange={(e) => setEditReason(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
+                      placeholder="e.g. VEH-01"
+                      value={editCustomId}
+                      onChange={(e) => setEditCustomId(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl bg-[#1c1c1f] border border-[#2a2a2f] text-zinc-100 font-mono font-bold focus:outline-none focus:border-blue-500"
                     />
                   </div>
                 </div>
@@ -331,7 +326,7 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                         setSelectedStatus(vehicle.current_status);
                         setIsChangingStatus(true);
                       }}
-                      className="px-3 py-1.5 rounded-xl bg-[#1e1e22] hover:bg-[#27272f] border border-[#2a2a2f] text-xs font-semibold text-zinc-200 transition flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-xl bg-[#1e1e22] hover:bg-[#27272f] border border-[#2a2a2f] text-xs font-semibold text-zinc-200 transition flex items-center gap-1.5 min-h-[44px]"
                     >
                       <RefreshCw className="w-3.5 h-3.5 text-blue-400" />
                       <span>Change Status</span>
@@ -380,25 +375,25 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                 </div>
               </div>
 
-              {/* Navigation Tabs */}
-              <div className="flex items-center border-b border-[#2a2a2f] gap-4 text-xs font-semibold text-zinc-400">
+              {/* Navigation Tabs - Mobile scrollable */}
+              <div className="flex items-center border-b border-[#2a2a2f] gap-4 text-xs font-semibold text-zinc-400 overflow-x-auto flex-nowrap scrollbar-none pb-0.5">
                 <button
                   onClick={() => setActiveTab('overview')}
                   className={cn(
-                    'py-2 border-b-2 transition flex items-center gap-1.5',
+                    'py-2 border-b-2 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap min-h-[44px]',
                     activeTab === 'overview'
                       ? 'border-blue-500 text-blue-400 font-bold'
                       : 'border-transparent hover:text-zinc-200'
                   )}
                 >
                   <Car className="w-3.5 h-3.5" />
-                  <span>Telemetry & Specifications</span>
+                  <span>Telemetry & Specs</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('job_cards')}
                   className={cn(
-                    'py-2 border-b-2 transition flex items-center gap-1.5',
+                    'py-2 border-b-2 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap min-h-[44px]',
                     activeTab === 'job_cards'
                       ? 'border-blue-500 text-blue-400 font-bold'
                       : 'border-transparent hover:text-zinc-200'
@@ -411,7 +406,7 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                 <button
                   onClick={() => setActiveTab('parts')}
                   className={cn(
-                    'py-2 border-b-2 transition flex items-center gap-1.5',
+                    'py-2 border-b-2 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap min-h-[44px]',
                     activeTab === 'parts'
                       ? 'border-blue-500 text-blue-400 font-bold'
                       : 'border-transparent hover:text-zinc-200'
@@ -424,7 +419,7 @@ export function VehicleDetailModal({ vehicle, isOpen = true, onClose }: VehicleD
                 <button
                   onClick={() => setActiveTab('audit')}
                   className={cn(
-                    'py-2 border-b-2 transition flex items-center gap-1.5',
+                    'py-2 border-b-2 transition flex items-center gap-1.5 shrink-0 whitespace-nowrap min-h-[44px]',
                     activeTab === 'audit'
                       ? 'border-blue-500 text-blue-400 font-bold'
                       : 'border-transparent hover:text-zinc-200'

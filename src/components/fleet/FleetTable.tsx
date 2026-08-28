@@ -199,16 +199,35 @@ export function FleetTable() {
       let uptimeMs = 0;
       let downtimeMs = 0;
 
+      // Determine state immediately before windowStart
+      const priorLogs = auditLogs
+        .filter(
+          (l) =>
+            l.table_name === 'vehicles' &&
+            l.record_id === vehicle.id &&
+            new Date(l.timestamp).getTime() < windowStart &&
+            (l.new_data?.current_status || l.action === 'ARCHIVE' || l.action === 'RESTORE')
+        )
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+      const lastPriorLog = priorLogs[0];
+      let currentStatus: VehicleStatus = (lastPriorLog?.new_data?.current_status || vehicle.current_status) as VehicleStatus;
+      let currentIsActive =
+        lastPriorLog?.action === 'ARCHIVE'
+          ? false
+          : lastPriorLog?.new_data?.is_active !== undefined
+          ? lastPriorLog.new_data.is_active
+          : (vehicle.is_active && !vehicle.is_archived);
+
       if (events.length === 0) {
         // No status changes recorded in this window
-        const isInactive = !vehicle.is_active || vehicle.is_archived;
-        const isDown = isInactive || DOWNTIME_STATUSES.includes(vehicle.current_status);
+        const isDown = !currentIsActive || DOWNTIME_STATUSES.includes(currentStatus);
 
         if (isDown) {
           downtimeMs = windowMs;
-          if (isInactive || vehicle.current_status === 'Not Available') {
+          if (!currentIsActive || currentStatus === 'Not Available') {
             inactiveDowntimeMs += windowMs;
-          } else if (vehicle.current_status === 'Under Repair') {
+          } else if (currentStatus === 'Under Repair') {
             repairDowntimeMs += windowMs;
           } else {
             maintDowntimeMs += windowMs;
@@ -218,10 +237,6 @@ export function FleetTable() {
         }
       } else {
         // Walk through timeline from windowStart to now
-        let currentStatus = vehicle.current_status;
-        let currentIsActive = vehicle.is_active && !vehicle.is_archived;
-
-        // Check if first event had prior status
         const firstAudit = vehicleAuditEvents.find((l) => l.record_id === vehicle.id);
         if (firstAudit?.old_data?.current_status) {
           currentStatus = firstAudit.old_data.current_status;
@@ -690,6 +705,7 @@ export function FleetTable() {
           <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-2.5" />
           <input
             type="text"
+            aria-label="Search vehicles by ID, key, model, or IMEI"
             placeholder="Search by Vehicle ID, Key, IoT ID, Model..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -702,6 +718,7 @@ export function FleetTable() {
           <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
             <Building2 className="w-3.5 h-3.5 text-blue-400 shrink-0" />
             <select
+              aria-label="Filter by Hub"
               value={hubFilter}
               onChange={(e) => setHubFilter(e.target.value)}
               className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
@@ -719,6 +736,7 @@ export function FleetTable() {
           <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
             <Filter className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <select
+              aria-label="Filter by Vehicle Status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
@@ -734,6 +752,7 @@ export function FleetTable() {
           {/* Model Filter */}
           <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
             <select
+              aria-label="Filter by Scooter Model"
               value={modelFilter}
               onChange={(e) => setModelFilter(e.target.value)}
               className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
@@ -749,6 +768,7 @@ export function FleetTable() {
           <div className="flex items-center gap-1.5 bg-[#141416] border border-[#2a2a2f] rounded-xl px-2.5 py-1 text-xs">
             <DollarSign className="w-3.5 h-3.5 text-purple-400 shrink-0" />
             <select
+              aria-label="Filter by Maintenance Spend"
               value={spendFilter}
               onChange={(e) => setSpendFilter(e.target.value)}
               className="bg-transparent text-zinc-300 font-medium focus:outline-none cursor-pointer text-xs"
@@ -940,16 +960,23 @@ export function FleetTable() {
                                       setCustomIdInput(v.custom_vehicle_id || (v.id || '').toUpperCase());
                                     }}
                                     title="Edit Custom Vehicle ID"
-                                    className="p-1 rounded text-zinc-500 hover:text-zinc-300 opacity-0 group-hover:opacity-100 transition"
+                                    className="p-1 rounded text-zinc-400 hover:text-zinc-200 opacity-0 group-hover:opacity-100 transition"
                                   >
                                     <Edit2 className="w-3 h-3" />
                                   </button>
                                 )}
                               </div>
                             )}
-                            <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[10px]">
-                              #{v.key_number}
-                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="px-1.5 py-0.5 rounded bg-zinc-800 border border-zinc-700 text-zinc-300 font-mono text-[10px]">
+                                #{v.key_number}
+                              </span>
+                              {v.plate_number && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold">
+                                  {v.plate_number}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
 
@@ -959,7 +986,7 @@ export function FleetTable() {
                             <span title={v.vehicle_id}>{formatTruncatedIotId(v.vehicle_id)}</span>
                             <button
                               onClick={() => copyToClipboard(v.vehicle_id, 'IoT ID')}
-                              className="text-zinc-600 hover:text-zinc-300 transition"
+                              className="text-zinc-500 hover:text-zinc-300 transition"
                               title="Copy Full 15-digit IoT ID"
                             >
                               <Copy className="w-3 h-3" />
@@ -967,9 +994,25 @@ export function FleetTable() {
                           </div>
                         </td>
 
-                        {/* Model */}
-                        <td className="p-3.5 text-zinc-300 font-medium">
-                          {v.model}
+                        {/* Model & Telemetry */}
+                        <td className="p-3.5 text-zinc-300">
+                          <div className="space-y-1">
+                            <div className="font-medium text-xs text-zinc-200">{v.model}</div>
+                            <div className="flex items-center gap-1.5 text-[10px]">
+                              <span className={cn(
+                                "px-1.5 py-0.2 rounded font-mono font-bold flex items-center gap-0.5",
+                                (v.iot_status === 'OFFLINE') ? "bg-rose-500/10 text-rose-400 border border-rose-500/30" :
+                                (v.iot_status === 'NO_GPS') ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" :
+                                "bg-emerald-500/10 text-emerald-400 border border-emerald-500/30"
+                              )}>
+                                <span className={cn("w-1.5 h-1.5 rounded-full", v.iot_status === 'OFFLINE' ? "bg-rose-400" : v.iot_status === 'NO_GPS' ? "bg-amber-400" : "bg-emerald-400")} />
+                                <span>{v.iot_status || 'ONLINE'}</span>
+                              </span>
+                              <span className="text-zinc-400 font-mono">
+                                {(v.soc_percentage !== undefined && v.soc_percentage !== null) ? `${v.soc_percentage}% SOC` : '85% SOC'}
+                              </span>
+                            </div>
+                          </div>
                         </td>
 
                         {/* Hub */}

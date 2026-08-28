@@ -59,13 +59,14 @@ export function ConfirmModal({
   const Icon = variantStyles.icon;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150" role="dialog" aria-modal="true" aria-labelledby="confirm-modal-title">
       <div className="w-full max-w-md rounded-2xl bg-[#1c1c1f] border border-[#2e2e33] shadow-2xl p-6 space-y-5 animate-in zoom-in-95 duration-150 relative">
         {/* Close Button */}
         <button
           onClick={onClose}
           disabled={isLoading}
-          className="absolute top-4 right-4 p-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition disabled:opacity-50"
+          aria-label="Close dialog"
+          className="absolute top-4 right-4 p-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition disabled:opacity-50 min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
           <X className="w-4 h-4" />
         </button>
@@ -76,7 +77,7 @@ export function ConfirmModal({
             <Icon className="w-6 h-6" />
           </div>
           <div className="space-y-1 pr-6">
-            <h3 className="text-base font-bold text-zinc-100">{title}</h3>
+            <h3 id="confirm-modal-title" className="text-base font-bold text-zinc-100">{title}</h3>
             <p className="text-xs text-zinc-400 leading-relaxed">{description}</p>
           </div>
         </div>

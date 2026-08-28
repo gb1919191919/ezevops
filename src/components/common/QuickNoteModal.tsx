@@ -51,7 +51,7 @@ export function QuickNoteModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150" role="dialog" aria-modal="true" aria-labelledby="quick-note-title">
       <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="px-5 py-4 border-b border-[#27272a] bg-[#18181b] flex items-center justify-between">
@@ -60,13 +60,14 @@ export function QuickNoteModal({
               <StickyNote className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-zinc-100">Quick Note & Scratchpad</h3>
+              <h3 id="quick-note-title" className="text-sm font-bold text-zinc-100">Quick Note & Scratchpad</h3>
               <p className="text-[10px] text-zinc-400 font-mono">1-Click Operational Dispatch & Logs</p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition"
+            aria-label="Close dialog"
+            className="p-1 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
@@ -75,10 +76,11 @@ export function QuickNoteModal({
         {/* Form */}
         <form onSubmit={handleSave} className="p-5 space-y-4">
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            <label htmlFor="quick-note-title-input" className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Note Title / Topic
             </label>
             <input
+              id="quick-note-title-input"
               type="text"
               placeholder="e.g. Battery pack #42 high temperature / RSA dispatched..."
               value={title}
@@ -88,12 +90,13 @@ export function QuickNoteModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              <label htmlFor="quick-note-category-select" className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                 Category
               </label>
               <select
+                id="quick-note-category-select"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as NoteCategory)}
                 className="w-full px-2.5 py-1.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-xs text-zinc-200 focus:outline-none focus:border-[#4b6bfb]"
@@ -108,10 +111,11 @@ export function QuickNoteModal({
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+              <label htmlFor="quick-note-hub-select" className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
                 Linked Hub (Optional)
               </label>
               <select
+                id="quick-note-hub-select"
                 value={selectedHub}
                 onChange={(e) => setSelectedHub(e.target.value)}
                 className="w-full px-2.5 py-1.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-xs text-zinc-200 focus:outline-none focus:border-[#4b6bfb]"
@@ -127,10 +131,11 @@ export function QuickNoteModal({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+            <label htmlFor="quick-note-content-input" className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">
               Details & Action Notes
             </label>
             <textarea
+              id="quick-note-content-input"
               rows={4}
               placeholder="Type checklist items, technician observations, vehicle IMEI, or customer details..."
               value={content}
@@ -154,7 +159,7 @@ export function QuickNoteModal({
 
           {/* Footer Actions */}
           <div className="pt-3 border-t border-[#27272a] flex items-center justify-between">
-            <span className="text-[10px] text-zinc-500 font-mono">
+            <span className="text-[10px] text-zinc-400 font-mono">
               Author: {currentUser?.full_name || 'Staff User'} ({currentUser?.roles?.[0]?.label || 'Staff'})
             </span>
             <div className="flex items-center gap-2">

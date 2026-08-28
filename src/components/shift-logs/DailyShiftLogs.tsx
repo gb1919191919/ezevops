@@ -754,26 +754,28 @@ export function DailyShiftLogs() {
 
       {/* Modal: Submit Daily Activity Log */}
       {shiftModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="submit-shift-log-title">
           <div className="w-full max-w-lg bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="p-5 border-b border-[#27272a] bg-[#141416] flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="submit-shift-log-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <CalendarCheck className="w-4 h-4 text-blue-400" />
                 <span>Submit Daily Shift & Activity Report</span>
               </h3>
               <button
                 onClick={() => setShiftModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-200 p-1"
+                aria-label="Close dialog"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleSubmitLog} className="p-5 space-y-3.5 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-300 font-semibold">Shift Date</label>
+                  <label htmlFor="shift-date-input" className="text-zinc-300 font-semibold">Shift Date</label>
                   <input
+                    id="shift-date-input"
                     type="date"
                     required
                     value={logDate}
@@ -783,8 +785,9 @@ export function DailyShiftLogs() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-300 font-semibold">Shift Timing</label>
+                  <label htmlFor="shift-timing-select" className="text-zinc-300 font-semibold">Shift Timing</label>
                   <select
+                    id="shift-timing-select"
                     value={shiftType}
                     onChange={(e) => setShiftType(e.target.value as any)}
                     className="w-full p-2.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
@@ -797,8 +800,9 @@ export function DailyShiftLogs() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-300 font-semibold">Hub Location</label>
+                <label htmlFor="shift-hub-select" className="text-zinc-300 font-semibold">Hub Location</label>
                 <select
+                  id="shift-hub-select"
                   value={logHubId}
                   onChange={(e) => setLogHubId(e.target.value)}
                   className="w-full p-2.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
@@ -812,8 +816,9 @@ export function DailyShiftLogs() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-300 font-semibold">Accomplishments & Key Activities</label>
+                <label htmlFor="shift-accomplishments-input" className="text-zinc-300 font-semibold">Accomplishments & Key Activities</label>
                 <textarea
+                  id="shift-accomplishments-input"
                   rows={3}
                   required
                   value={accomplishments}
@@ -823,10 +828,11 @@ export function DailyShiftLogs() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-300 font-semibold">Vehicles Serviced Count</label>
+                  <label htmlFor="shift-vehicles-serviced-input" className="text-zinc-300 font-semibold">Vehicles Serviced Count</label>
                   <input
+                    id="shift-vehicles-serviced-input"
                     type="number"
                     min="0"
                     value={vehiclesServiced}
@@ -836,8 +842,9 @@ export function DailyShiftLogs() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-300 font-semibold">Disputes / Issues Handled</label>
+                  <label htmlFor="shift-disputes-handled-input" className="text-zinc-300 font-semibold">Disputes / Issues Handled</label>
                   <input
+                    id="shift-disputes-handled-input"
                     type="number"
                     min="0"
                     value={customerIssuesResolved}
@@ -848,8 +855,9 @@ export function DailyShiftLogs() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-300 font-semibold">Blockers / Roadblocks (Optional)</label>
+                <label htmlFor="shift-blockers-input" className="text-zinc-300 font-semibold">Blockers / Roadblocks (Optional)</label>
                 <textarea
+                  id="shift-blockers-input"
                   rows={2}
                   value={blockers}
                   onChange={(e) => setBlockers(e.target.value)}

@@ -252,24 +252,21 @@ export function JobCardsList() {
       return;
     }
 
-    createJobCard({
-      vehicle_id: newVehicleId,
-      hub_id: newHubId,
-      issue_description: newIssue.trim(),
-      solution_applied: newSolution.trim() || undefined,
-      reported_by: currentUser?.id || 'admin',
-      assigned_mechanic_id: currentUser?.id || 'admin',
-      photos_url: newPhotos,
-      parts: newStagedParts.map((p, idx) => ({
-        id: `temp-${Date.now()}-${idx}`,
-        job_card_id: '',
+    createJobCard(
+      {
+        vehicle_id: newVehicleId,
+        hub_id: newHubId,
+        issue_description: newIssue.trim(),
+        solution_applied: newSolution.trim() || undefined,
+        reported_by: currentUser?.id || 'admin',
+        assigned_mechanic_id: currentUser?.id || 'admin',
+        photos_url: newPhotos,
+      },
+      newStagedParts.map((p) => ({
         part_id: p.part_id,
         quantity: p.quantity,
-        unit_cost_snapshot: p.unit_cost_snapshot,
-        is_approved: false,
-        created_at: new Date().toISOString(),
-      })),
-    });
+      }))
+    );
 
     toast.success('Maintenance Job Card created and submitted for review!');
     setCreateModalOpen(false);
@@ -997,18 +994,18 @@ export function JobCardsList() {
                 </div>
 
                 {!selectedJobForSpares.parts || selectedJobForSpares.parts.length === 0 ? (
-                  <div className="p-6 text-center text-zinc-500 text-xs border border-dashed border-zinc-800 rounded-xl">
+                  <div className="p-6 text-center text-zinc-400 text-xs border border-dashed border-zinc-800 rounded-xl">
                     No replacement spare parts logged for this job card.
                   </div>
                 ) : (
-                  <div className="border border-[#2a2a2f] rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-xs">
+                  <div className="border border-[#2a2a2f] rounded-xl overflow-x-auto">
+                    <table className="w-full text-left text-xs min-w-[480px]">
                       <thead className="bg-[#141416] text-zinc-400 border-b border-[#27272a] text-[10px] uppercase font-semibold">
                         <tr>
-                          <th className="p-2.5 pl-3">Spare Part & SKU</th>
-                          <th className="p-2.5">Quantity</th>
-                          <th className="p-2.5">Unit Cost</th>
-                          <th className="p-2.5 text-right pr-3">Total Cost</th>
+                          <th scope="col" className="p-2.5 pl-3">Spare Part & SKU</th>
+                          <th scope="col" className="p-2.5">Quantity</th>
+                          <th scope="col" className="p-2.5">Unit Cost</th>
+                          <th scope="col" className="p-2.5 text-right pr-3">Total Cost</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#27272a] text-zinc-300">
@@ -1067,26 +1064,28 @@ export function JobCardsList() {
 
       {/* Modal: New Maintenance Job Card with Media Attachments */}
       {createModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="create-job-card-title">
           <div className="w-full max-w-xl bg-[#1c1c1f] border border-[#2a2a2f] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
             <div className="p-5 border-b border-[#27272a] bg-[#141416] flex items-center justify-between">
-              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+              <h3 id="create-job-card-title" className="text-base font-bold text-zinc-100 flex items-center gap-2">
                 <Wrench className="w-4 h-4 text-blue-400" />
                 <span>Create Maintenance Job Card</span>
               </h3>
               <button
                 onClick={() => setCreateModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-200 p-1"
+                aria-label="Close dialog"
+                className="text-zinc-400 hover:text-zinc-200 p-1 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleCreateJobCard} className="p-5 space-y-4 overflow-y-auto text-xs">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-zinc-300 font-semibold">Select EV / Scooter</label>
+                  <label htmlFor="create-job-vehicle-select" className="text-zinc-300 font-semibold">Select EV / Scooter</label>
                   <select
+                    id="create-job-vehicle-select"
                     required
                     value={newVehicleId}
                     onChange={(e) => setNewVehicleId(e.target.value)}
@@ -1102,8 +1101,9 @@ export function JobCardsList() {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-zinc-300 font-semibold">Operating Hub</label>
+                  <label htmlFor="create-job-hub-select" className="text-zinc-300 font-semibold">Operating Hub</label>
                   <select
+                    id="create-job-hub-select"
                     value={newHubId}
                     onChange={(e) => setNewHubId(e.target.value)}
                     className="w-full p-2.5 rounded-xl bg-[#141416] border border-[#2a2a2f] text-zinc-100 focus:outline-none focus:border-blue-500"
@@ -1118,8 +1118,9 @@ export function JobCardsList() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-300 font-semibold">Issue Description / Defect Details</label>
+                <label htmlFor="create-job-issue-input" className="text-zinc-300 font-semibold">Issue Description / Defect Details</label>
                 <textarea
+                  id="create-job-issue-input"
                   rows={2}
                   required
                   value={newIssue}
@@ -1130,8 +1131,9 @@ export function JobCardsList() {
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-300 font-semibold">Mechanic Action / Resolution Applied (Optional)</label>
+                <label htmlFor="create-job-solution-input" className="text-zinc-300 font-semibold">Mechanic Action / Resolution Applied (Optional)</label>
                 <input
+                  id="create-job-solution-input"
                   type="text"
                   value={newSolution}
                   onChange={(e) => setNewSolution(e.target.value)}

@@ -512,6 +512,7 @@ export const useAppStore = create<AppStoreState>()(
       settleRefund: (refundId, frappeReference) => {
         const { refunds, auditLogs, currentUser } = get();
         const existing = refunds.find((r) => r.id === refundId);
+        const refCode = frappeReference || existing?.settlement_reference || existing?.frappe_reference || `ERP-DISP-${Date.now()}`;
         const updated = refunds.map((r) =>
           r.id === refundId
             ? {
@@ -519,15 +520,24 @@ export const useAppStore = create<AppStoreState>()(
                 status: 'SETTLED' as const,
                 settled_at: new Date().toISOString(),
                 settled_by_name: currentUser?.full_name || 'Staff Member',
-                frappe_reference: frappeReference || r.frappe_reference,
+                settlement_reference: refCode,
+                frappe_reference: refCode,
                 updated_at: new Date().toISOString(),
               }
             : r
         );
 
-        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'UPDATE', existing, { status: 'SETTLED', frappeReference });
+        const newAudit = createAuditLog(currentUser, 'refunds', refundId, 'UPDATE', existing, { status: 'SETTLED', settlement_reference: refCode, frappe_reference: refCode });
         set({ refunds: updated, auditLogs: [newAudit, ...auditLogs] });
-        supabaseSync.pushMutation('refunds', 'update', { id: refundId, status: 'SETTLED', frappe_reference: frappeReference }, { action: 'UPDATE', old_data: existing });
+        supabaseSync.pushMutation('refunds', 'update', {
+          id: refundId,
+          status: 'SETTLED',
+          settlement_reference: refCode,
+          frappe_reference: refCode,
+          settled_at: new Date().toISOString(),
+          settled_by_name: currentUser?.full_name || 'Staff Member',
+          updated_at: new Date().toISOString(),
+        }, { action: 'UPDATE', old_data: existing });
       },
 
       rejectRefund: (refundId, reason) => {
@@ -1597,9 +1607,9 @@ export const useAppStore = create<AppStoreState>()(
               odometer_km: nextOdometer,
               last_odometer_updated_at: cardData.odometer_km ? new Date().toISOString() : v.last_odometer_updated_at,
               last_odometer_updated_by: cardData.odometer_km ? (currentUser?.id || 'usr-01') : v.last_odometer_updated_by,
-              current_status: isAuthorized ? ('Available' as const) : v.current_status,
+              current_status: isAuthorized ? ('Under Repair' as const) : v.current_status,
               pending_status: isAuthorized ? null : ('Under Repair' as const),
-              status_change_reason: isAuthorized ? null : cardData.issue_description,
+              status_change_reason: cardData.issue_description,
               updated_at: new Date().toISOString(),
             };
           }

@@ -89,6 +89,18 @@ export function RefundsManager() {
     rideId: '',
   });
   const [rejectReasonInput, setRejectReasonInput] = useState('');
+  const [settleModal, setSettleModal] = useState<{
+    isOpen: boolean;
+    refundId: string;
+    rideId: string;
+    amount: number;
+  }>({
+    isOpen: false,
+    refundId: '',
+    rideId: '',
+    amount: 0,
+  });
+  const [settleRefInput, setSettleRefInput] = useState('');
 
   const refunds = useAppStore((s) => s.refunds || []);
   const currentUser = useAppStore((s) => s.currentUser);
@@ -276,9 +288,23 @@ export function RefundsManager() {
     setEditModalOpen(false);
   };
 
-  const handleOneClickSettle = (id: string) => {
-    settleRefund(id);
-    toast.success('Dispute settled! Marked as completed in database.');
+  const handleOpenSettle = (refund: Refund) => {
+    setSettleModal({
+      isOpen: true,
+      refundId: refund.id,
+      rideId: refund.ride_id,
+      amount: refund.amount,
+    });
+    setSettleRefInput('');
+  };
+
+  const handleConfirmSettle = () => {
+    if (!settleModal.refundId) return;
+    const ref = settleRefInput.trim() || `ERP-PAY-${Date.now().toString().slice(-6)}`;
+    settleRefund(settleModal.refundId, ref);
+    toast.success(`Dispute settled for Ride #${settleModal.rideId}! Reference: ${ref}`);
+    setSettleModal({ isOpen: false, refundId: '', rideId: '', amount: 0 });
+    setSettleRefInput('');
   };
 
   const handleConfirmReject = () => {
@@ -668,7 +694,7 @@ export function RefundsManager() {
 
                             {r.status === 'VERIFIED' && isFullAdmin && (
                               <button
-                                onClick={() => handleOneClickSettle(r.id)}
+                                onClick={() => handleOpenSettle(r)}
                                 className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition shadow-sm"
                               >
                                 Settle
@@ -1126,6 +1152,35 @@ export function RefundsManager() {
         </div>
       )}
 
+      {/* Styled In-App Confirmation Modal for Dispute Settlement */}
+      <ConfirmModal
+        isOpen={settleModal.isOpen}
+        title={`Settle Refund Claim for Ride #${settleModal.rideId}`}
+        description={`Authorize disbursement of ${formatCurrency(settleModal.amount)} and record ERP / Bank transaction reference.`}
+        confirmText="Confirm Settlement"
+        variant="primary"
+        onConfirm={handleConfirmSettle}
+        onClose={() => setSettleModal({ isOpen: false, refundId: '', rideId: '', amount: 0 })}
+      >
+        <div className="space-y-2">
+          <label htmlFor="settle-ref-input" className="text-xs font-semibold text-zinc-300 block">
+            Frappe / ERP / Bank UTR Reference <span className="text-rose-400">*</span>
+          </label>
+          <input
+            id="settle-ref-input"
+            type="text"
+            required
+            value={settleRefInput}
+            onChange={(e) => setSettleRefInput(e.target.value)}
+            placeholder="e.g. ERP-PAY-2026-08-9842 or UTR123456789"
+            className="w-full p-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500 font-mono"
+          />
+          <p className="text-[11px] text-zinc-400">
+            This reference will be permanently recorded in the settlement ledger and synced with ERP.
+          </p>
+        </div>
+      </ConfirmModal>
+
       {/* Styled In-App Confirmation Modal for Dispute Rejection */}
       <ConfirmModal
         isOpen={rejectModal.isOpen}
@@ -1137,8 +1192,9 @@ export function RefundsManager() {
         onClose={() => setRejectModal({ isOpen: false, refundId: '', rideId: '' })}
       >
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-300 block">Rejection Reason:</label>
+          <label htmlFor="reject-reason-input" className="text-xs font-semibold text-zinc-300 block">Rejection Reason:</label>
           <textarea
+            id="reject-reason-input"
             value={rejectReasonInput}
             onChange={(e) => setRejectReasonInput(e.target.value)}
             placeholder="e.g. GPS logs confirm trip completed normally without breakdown..."

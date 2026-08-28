@@ -22,6 +22,7 @@ export function ResizableTh({
 }: ResizableThProps) {
   return (
     <th
+      scope="col"
       {...props}
       style={{
         ...style,
@@ -35,6 +36,9 @@ export function ResizableTh({
         <div className="truncate flex items-center gap-1.5 min-w-0">{children}</div>
         {isResizable && onResizeStart && (
           <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label={`Resize ${colKey} column`}
             onMouseDown={(e) => onResizeStart(colKey, e)}
             onClick={(e) => e.stopPropagation()}
             title="Drag to resize column"
